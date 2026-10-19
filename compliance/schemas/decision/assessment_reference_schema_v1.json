@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gsa.gov/oscal-vault/decision/assessment-reference-v1.json",
+  "title": "Normalized assessment guidance reference snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "reference_id", "source", "controls", "extensions"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "reference_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "filename", "sha256", "importer", "historical_observations_included", "redactions"],
+      "properties": {
+        "format": {"enum": ["ods", "xlsx", "csv", "json"]},
+        "filename": {"type": "string"},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "importer": {"const": "oscal-vault.assessment-reference:v1"},
+        "historical_observations_included": {"type": "boolean"},
+        "redactions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["urls", "emails"],
+          "properties": {
+            "urls": {"type": "integer", "minimum": 0},
+            "emails": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    },
+    "controls": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["control_id", "objectives"],
+        "properties": {
+          "control_id": {"type": "string"},
+          "objectives": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["objective_id", "procedure_id", "title", "objective", "prerequisites", "historical", "extensions"],
+              "properties": {
+                "objective_id": {"type": "string"},
+                "procedure_id": {"type": "string"},
+                "title": {"type": "string"},
+                "objective": {"type": "string"},
+                "prerequisites": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["examine", "interview", "test"],
+                  "properties": {
+                    "examine": {"type": "array", "items": {"type": "string"}},
+                    "interview": {"type": "array", "items": {"type": "string"}},
+                    "test": {"type": "array", "items": {"type": "string"}}
+                  }
+                },
+                "historical": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["observation_present", "observation_sha256", "observation", "result", "recommendation", "context_only"],
+                  "properties": {
+                    "observation_present": {"type": "boolean"},
+                    "observation_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+                    "observation": {"type": ["string", "null"]},
+                    "result": {"type": "string"},
+                    "recommendation": {"type": "string"},
+                    "context_only": {"const": true}
+                  }
+                },
+                "extensions": {"type": "object"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "extensions": {"type": "object"}
+  }
+}

@@ -1,0 +1,87 @@
+# --- FedRAMP source documents ---
+# Source SSP documents (customer and template) are intentionally excluded from
+# this repository. Only derived/generated artifacts (JSON/YAML/etc.) are
+# committed. See README.md for how to supply local fixtures for full test
+# coverage.
+*.docx
+*.ods
+
+# Exception (R18): the official *blank* GSA SSP templates are committed under
+# templates/. They contain NO CUI / customer content (they are the empty
+# published GSA/FedRAMP templates) and are needed so a fresh clone can run the
+# roundtrip demo without obtaining source .docx separately. See
+# docs/ADR/ADR-021-commit-blank-templates.md.
+!templates/*.docx
+
+# Exception (R16): jinjafied SSP templates are committed. They are the
+# official *blank* GSA templates with docxtpl Jinja tags injected — they
+# contain NO CUI / customer content, and are needed so a fresh clone can run
+# the roundtrip demo without any local source .docx. See
+# archive/plans/ROUNDTRIP_TEMPLATE_PLAN.md §4.4.
+!compliance/templates/*.jinja.docx
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Virtual environments / uv ---
+.venv/
+venv/
+.python-version
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.zed/
+.opencode/
+opencode.jsonc
+*.DS_Store
+
+# --- Misc build/log artifacts ---
+*.log
+/tmp/
+
+# --- Compliance Vault Snapshots & Exports ---
+.snapshots/history/
+.exports/tmp/
+# Generated OSCAL exports are derived artifacts (regenerate via
+# compliance/scripts/export_oscal.py); never commit them. Leading-slash-free
+# patterns match at any depth (exports live under examples/vault/*/.exports/).
+**/.exports/oscal-json/
+**/.exports/tmp/
+
+# --- Docx catchall dumps (may contain sensitive real-SSP content) ---
+examples/docx_catchall/
+
+# --- Feedback artifacts (may contain sensitive real-SSP content) ---
+examples/feedback/
+
+
+# --- Benchmark harness outputs (may contain sensitive real-SSP content) ---
+# Keep the inaugural + R13 + R14 + R15 reports committed (so reviewers can see the baseline);
+# ignore any new raw runs that future agents / CI produce.
+benchmark/*.json
+benchmark/*.md
+benchmark/*.log
+!benchmark/INAUGURAL_REPORT.md
+!benchmark/R13_3BACKEND_REPORT.md
+!benchmark/R14_EQUAL_FOOTING_REPORT.md
+!benchmark/R15_5BACKEND_REPORT.md
+roundtrip_review/
+
+# Local manual-review overlay packages (source-derived DOCX + manifests).
+review-output/
+
+# Restricted planning outputs. Review outside the future public core export.
+public-core-inventory.json
+
+# LibreOffice lock files
+.~lock.*#

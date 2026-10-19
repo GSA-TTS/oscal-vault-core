@@ -1,0 +1,190 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://fedramp.gov/schemas/oscal-vault/canonical_sidecar_schema_v1.json",
+  "title": "FedRAMP Vault Canonical Sidecar Schema (v1)",
+  "type": "object",
+  "required": ["_meta", "type"],
+  "properties": {
+    "_meta": {
+      "type": "object",
+      "required": ["schema_version", "generated_from", "generated_at", "content_hash", "exportable"],
+      "properties": {
+        "schema_version": { "type": "integer", "minimum": 1 },
+        "generated_from": { "type": "string" },
+        "generated_at": { "type": "string" },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^sha256:[a-fA-F0-9]{64}$"
+        },
+        "exportable": { "type": "boolean" },
+        "instruction_sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["source_locator", "source_hash"],
+            "properties": {
+              "source_locator": { "type": "string" },
+              "source_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "type": { "type": "string" },
+    "stable_id": { "type": "string", "minLength": 1 },
+    "typed_references": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["relation", "id", "type"],
+        "properties": {
+          "relation": { "type": "string", "minLength": 1 },
+          "id": { "type": "string", "minLength": 1 },
+          "type": { "type": "string", "pattern": "^(oscal|oscal\\.x|okf)\\." }
+        }
+      }
+    },
+    "source_lineage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_id", "canonical_pointer"],
+        "properties": {
+          "source_id": {"type": "string", "minLength": 1},
+          "canonical_pointer": {"type": "string", "pattern": "^/"}
+        }
+      }
+    },
+    "oscal_mapping_capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "mapping_sources", "native", "extension_bridge", "preserved_only"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "mapping_sources": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "native": {"type": "integer", "minimum": 0},
+        "extension_bridge": {"type": "integer", "minimum": 0},
+        "preserved_only": {"type": "integer", "minimum": 0}
+      }
+    },
+    "title": { "type": "string" },
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "control_id": { "type": "string" },
+    "statement_parts": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "required": ["id"],
+            "properties": {
+              "id": { "type": "string" },
+              "uuid": { "type": "string" },
+              "text": { "type": "string" }
+            },
+            "additionalProperties": true
+          }
+        ]
+      }
+    },
+    "related_controls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["control_id", "relationship"],
+        "properties": {
+          "control_id": { "type": "string" },
+          "relationship": {
+            "type": "string",
+            "enum": ["depends_on", "informs", "satisfies", "mitigates", "related_to"]
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["local-vault", "external-baseline", "inherited"]
+          },
+          "note": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "path"],
+        "properties": {
+          "id": { "type": "string" },
+          "path": { "type": "string" },
+          "media_type": { "type": "string" },
+          "sha256": { "type": "string" },
+          "source_part": { "type": "string" },
+          "disposition": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "raw_body": {
+      "type": "string",
+      "description": "The verbatim markdown note body preserved for byte-level fidelity."
+    },
+    "body_sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "heading": { "type": ["string", "null"] },
+          "level": { "type": ["integer", "null"] },
+          "content": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "inline_fields": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "table_records": {
+      "type": "array",
+      "description": "Versioned typed projections of Markdown tables; raw_body remains authoritative.",
+      "items": {
+        "type": "object",
+        "required": ["schema_version", "source_locator", "headers", "rows", "row_locators", "valid", "classification", "kind", "disposition", "raw_markdown"],
+        "properties": {
+          "schema_version": { "type": "integer", "const": 1 },
+          "source_heading": { "type": ["string", "null"] },
+          "source_locator": { "type": "string", "pattern": "^markdown:line\\[[1-9][0-9]*\\]$" },
+          "headers": { "type": "array", "items": { "type": "string" } },
+          "rows": { "type": "array", "items": { "type": "array", "items": { "type": "string" } } },
+          "row_locators": { "type": "array", "items": { "type": "string", "pattern": "^markdown:line\\[[1-9][0-9]*\\]$" } },
+          "valid": { "type": "boolean" },
+          "classification": { "type": "string", "enum": ["fact_sheet", "record_set", "presentation_only", "opaque"] },
+          "kind": { "type": "string", "enum": ["external_service", "protocol", "inheritance_provider", "asset_inventory", "software_inventory", "opaque"] },
+          "disposition": { "type": "string", "enum": ["mapped", "unmapped"] },
+          "raw_markdown": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "table_record_metrics": {
+      "type": "object",
+      "required": ["tables_total", "tables_classified", "tables_structured", "tables_opaque", "tables_unmapped"],
+      "properties": {
+        "tables_total": { "type": "integer", "minimum": 0 },
+        "tables_classified": { "type": "integer", "minimum": 0 },
+        "tables_structured": { "type": "integer", "minimum": 0 },
+        "tables_opaque": { "type": "integer", "minimum": 0 },
+        "tables_unmapped": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}

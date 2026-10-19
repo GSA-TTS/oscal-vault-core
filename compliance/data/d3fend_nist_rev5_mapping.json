@@ -1,0 +1,543 @@
+{
+  "mappings": [
+    {
+      "d3fend_id": "D3-ACH",
+      "description": "Hardening application settings, disabling unnecessary features, and securing configurations.",
+      "name": "Application Configuration Hardening",
+      "nist_controls": [
+        "CM-6(3)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#ApplicationConfigurationHardening"
+    },
+    {
+      "d3fend_id": "D3-AH",
+      "description": "Applying defenses to restrict application attack surface and enforce secure execution.",
+      "name": "Application Hardening",
+      "nist_controls": [
+        "SA-11(1)",
+        "SA-11(8)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#ApplicationHardening"
+    },
+    {
+      "d3fend_id": "D3-AL",
+      "description": "Automatically disabling, locking, or removing accounts based on inactivity, policy, or anomalies.",
+      "name": "Account Locking",
+      "nist_controls": [
+        "AC-2(1)",
+        "AC-2(13)",
+        "AC-2(2)",
+        "AC-2(3)",
+        "AC-2(5)",
+        "AC-7",
+        "AC-7(3)",
+        "AC-7(4)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#AccountLocking"
+    },
+    {
+      "d3fend_id": "D3-DA",
+      "description": "Analyzing program behavior during execution to detect vulnerabilities or malicious activity.",
+      "name": "Dynamic Analysis",
+      "nist_controls": [
+        "IR-4(12)",
+        "SI-3(10)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#DynamicAnalysis"
+    },
+    {
+      "d3fend_id": "D3-DAM",
+      "description": "Auditing and monitoring domain account creation, privilege changes, and authentication events.",
+      "name": "Domain Account Monitoring",
+      "nist_controls": [
+        "AC-2(4)",
+        "SA-8(22)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#DomainAccountMonitoring"
+    },
+    {
+      "d3fend_id": "D3-DE",
+      "description": "Deploying decoy systems, sandboxes, or deception environments to detect adversarial activity.",
+      "name": "Decoy Environment",
+      "nist_controls": [
+        "IR-4(13)",
+        "RA-5(4)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#DecoyEnvironment"
+    },
+    {
+      "d3fend_id": "D3-DLIC",
+      "description": "Verifying cryptographic signatures and integrity before loading system drivers.",
+      "name": "Driver Load Integrity Checking",
+      "nist_controls": [
+        "AU-10(5)",
+        "CM-14"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#DriverLoadIntegrityChecking"
+    },
+    {
+      "d3fend_id": "D3-DO",
+      "description": "Planting decoy credentials, files, or resources to identify unauthorized access.",
+      "name": "Decoy Object",
+      "nist_controls": [
+        "IR-4(13)",
+        "RA-5(4)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#DecoyObject"
+    },
+    {
+      "d3fend_id": "D3-DTP",
+      "description": "Enforcing cryptographic trust, cross-domain verification, and mutual authentication policies.",
+      "name": "Domain Trust Policy",
+      "nist_controls": [
+        "AC-4(17)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#DomainTrustPolicy"
+    },
+    {
+      "d3fend_id": "D3-EAL",
+      "description": "Restricting executable execution to explicitly authorized software binaries and hashes.",
+      "name": "Executable Allowlisting",
+      "nist_controls": [
+        "AC-3",
+        "CM-5",
+        "RA-5(7)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#ExecutableAllowlisting"
+    },
+    {
+      "d3fend_id": "D3-EDL",
+      "description": "Prohibiting execution of known malicious or unauthorized binaries and scripts.",
+      "name": "Executable Denylisting",
+      "nist_controls": [
+        "AC-17(8)",
+        "AC-3",
+        "CM-5",
+        "RA-5(7)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#ExecutableDenylisting"
+    },
+    {
+      "d3fend_id": "D3-EI",
+      "description": "Isolating processes, containers, or virtual environments to prevent lateral privilege escalation.",
+      "name": "Execution Isolation",
+      "nist_controls": [
+        "SC-3",
+        "SC-3(1)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#ExecutionIsolation"
+    },
+    {
+      "d3fend_id": "D3-ET",
+      "description": "Encrypting network communication channels using TLS/IPsec tunnels to protect confidentiality and integrity.",
+      "name": "Encrypted Tunnels",
+      "nist_controls": [
+        "SA-8(18)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#EncryptedTunnels"
+    },
+    {
+      "d3fend_id": "D3-FA",
+      "description": "Inspecting file metadata, signatures, and content structure for integrity and malicious payloads.",
+      "name": "File Analysis",
+      "nist_controls": [
+        "RA-3(3)",
+        "RA-3(4)",
+        "SI-3"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#FileAnalysis"
+    },
+    {
+      "d3fend_id": "D3-FCR",
+      "description": "Enforcing content inspection and policy rules on files traversing system boundaries.",
+      "name": "File Content Rules",
+      "nist_controls": [
+        "AC-4(26)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#FileContentRules"
+    },
+    {
+      "d3fend_id": "D3-FV",
+      "description": "Validating firmware cryptographic signatures and measurements prior to boot execution.",
+      "name": "Firmware Verification",
+      "nist_controls": [
+        "SA-10(1)",
+        "SA-10(3)",
+        "SA-10(4)",
+        "SA-10(5)",
+        "SA-10(6)",
+        "SI-2(5)",
+        "SI-2(6)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#FirmwareVerification"
+    },
+    {
+      "d3fend_id": "D3-HBPI",
+      "description": "Using hardware enclaves, virtualization rings, or memory protection to isolate critical processes.",
+      "name": "Hardware-based Process Isolation",
+      "nist_controls": [
+        "AC-6(4)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#Hardware-basedProcessIsolation"
+    },
+    {
+      "d3fend_id": "D3-ID",
+      "description": "Validating and analyzing session tokens, process identifiers, or subject credentials.",
+      "name": "Identifier Analysis",
+      "nist_controls": [
+        "RA-3(3)",
+        "RA-3(4)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#IdentifierAnalysis"
+    },
+    {
+      "d3fend_id": "D3-ITF",
+      "description": "Filtering incoming network packets, ports, and protocols using perimeter and host firewalls.",
+      "name": "Inbound Traffic Filtering",
+      "nist_controls": [
+        "AC-4",
+        "AC-4(1)",
+        "AC-4(10)",
+        "AC-4(11)",
+        "AC-4(12)",
+        "AC-4(13)",
+        "AC-4(14)",
+        "AC-4(15)",
+        "AC-4(19)",
+        "AC-4(20)",
+        "AC-4(21)",
+        "AC-4(27)",
+        "AC-4(28)",
+        "AC-4(29)",
+        "AC-4(3)",
+        "AC-4(30)",
+        "AC-4(32)",
+        "AC-4(4)",
+        "AC-4(5)",
+        "AC-4(6)",
+        "AC-4(8)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#InboundTrafficFiltering"
+    },
+    {
+      "d3fend_id": "D3-JFAPA",
+      "description": "Monitoring user and service access patterns against designated organizational job roles.",
+      "name": "Job Function Access Pattern Analysis",
+      "nist_controls": [
+        "AC-23"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#JobFunctionAccessPatternAnalysis"
+    },
+    {
+      "d3fend_id": "D3-LAM",
+      "description": "Auditing local system accounts, authentication attempts, and privilege delegations.",
+      "name": "Local Account Monitoring",
+      "nist_controls": [
+        "AC-23",
+        "AC-6(9)",
+        "AU-14(2)",
+        "AU-15",
+        "AU-2",
+        "AU-2(1)",
+        "AU-2(2)",
+        "AU-3",
+        "AU-4",
+        "CM-5",
+        "CM-5(1)",
+        "CM-5(3)",
+        "CM-5(5)",
+        "CM-5(6)",
+        "IA-2(4)",
+        "MA-4(1)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#LocalAccountMonitoring"
+    },
+    {
+      "d3fend_id": "D3-LFP",
+      "description": "Restricting file system read, write, and execute permissions according to least privilege.",
+      "name": "Local File Permissions",
+      "nist_controls": [
+        "AC-5",
+        "AC-6",
+        "AC-6(10)",
+        "AC-6(5)",
+        "AC-6(6)",
+        "SC-2",
+        "SC-2(1)",
+        "SI-3(4)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#LocalFilePermissions"
+    },
+    {
+      "d3fend_id": "D3-MA",
+      "description": "Analyzing message headers, payloads, and protocols for policy compliance and anomalies.",
+      "name": "Message Analysis",
+      "nist_controls": [
+        "RA-3(3)",
+        "RA-3(4)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#MessageAnalysis"
+    },
+    {
+      "d3fend_id": "D3-MAC",
+      "description": "Enforcing non-discretionary access policies based on security labels and classification clearance.",
+      "name": "Mandatory Access Control",
+      "nist_controls": [
+        "AC-2(6)",
+        "AC-2(9)",
+        "AC-24",
+        "AC-24(1)",
+        "AC-24(2)",
+        "AC-3",
+        "AC-3(11)",
+        "AC-3(13)",
+        "AC-3(3)",
+        "AC-3(7)",
+        "AC-3(8)",
+        "AC-5",
+        "AC-6",
+        "AC-6(10)",
+        "AC-6(5)",
+        "AC-6(6)",
+        "CM-5",
+        "SC-2",
+        "SC-2(1)",
+        "SI-3(4)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#MandatoryAccessControl"
+    },
+    {
+      "d3fend_id": "D3-MAN",
+      "description": "Verifying origin authenticity and cryptographic integrity of transmitted messages.",
+      "name": "Message Authentication",
+      "nist_controls": [
+        "CM-14"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#MessageAuthentication"
+    },
+    {
+      "d3fend_id": "D3-MFA",
+      "description": "Requiring two or more independent authentication factors prior to granting system access.",
+      "name": "Multi-factor Authentication",
+      "nist_controls": [
+        "AC-2(1)",
+        "IA-2(1)",
+        "IA-2(2)",
+        "IA-2(6)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#Multi-factorAuthentication"
+    },
+    {
+      "d3fend_id": "D3-NI",
+      "description": "Segmenting networks and isolating security zones to restrict unauthorized lateral movement.",
+      "name": "Network Isolation",
+      "nist_controls": [
+        "SC-3"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#NetworkIsolation"
+    },
+    {
+      "d3fend_id": "D3-NTA",
+      "description": "Analyzing network flow telemetry and packet captures to identify malicious or anomalous communications.",
+      "name": "Network Traffic Analysis",
+      "nist_controls": [
+        "RA-3(3)",
+        "RA-3(4)",
+        "RA-5",
+        "RA-5(2)",
+        "RA-5(3)",
+        "SI-3",
+        "SI-4(2)",
+        "SI-4(4)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#NetworkTrafficAnalysis"
+    },
+    {
+      "d3fend_id": "D3-OSM",
+      "description": "Monitoring OS audit logs, system calls, service states, and kernel events for unauthorized actions.",
+      "name": "Operating System Monitoring",
+      "nist_controls": [
+        "SI-4"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#OperatingSystemMonitoring"
+    },
+    {
+      "d3fend_id": "D3-OTF",
+      "description": "Inspecting and restricting egress traffic to authorized destinations, ports, and protocols.",
+      "name": "Outbound Traffic Filtering",
+      "nist_controls": [
+        "AC-4",
+        "AC-4(1)",
+        "AC-4(10)",
+        "AC-4(11)",
+        "AC-4(12)",
+        "AC-4(13)",
+        "AC-4(14)",
+        "AC-4(15)",
+        "AC-4(19)",
+        "AC-4(20)",
+        "AC-4(21)",
+        "AC-4(27)",
+        "AC-4(28)",
+        "AC-4(29)",
+        "AC-4(3)",
+        "AC-4(30)",
+        "AC-4(32)",
+        "AC-4(4)",
+        "AC-4(5)",
+        "AC-4(6)",
+        "AC-4(8)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#OutboundTrafficFiltering"
+    },
+    {
+      "d3fend_id": "D3-PA",
+      "description": "Inspecting running processes, memory spaces, and thread execution for anomalous behavior.",
+      "name": "Process Analysis",
+      "nist_controls": [
+        "RA-3(3)",
+        "RA-3(4)",
+        "SI-3"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#ProcessAnalysis"
+    },
+    {
+      "d3fend_id": "D3-PFV",
+      "description": "Validating cryptographic integrity of firmware installed on attached peripheral hardware devices.",
+      "name": "Peripheral Firmware Verification",
+      "nist_controls": [
+        "SI-2(5)",
+        "SI-2(6)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#PeripheralFirmwareVerification"
+    },
+    {
+      "d3fend_id": "D3-PH",
+      "description": "Applying system security configuration baselines, removing unneeded software, and closing unused ports.",
+      "name": "Platform Hardening",
+      "nist_controls": [
+        "RA-5(5)",
+        "RA-5(6)",
+        "SA-10(1)",
+        "SA-10(5)",
+        "SA-10(6)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#PlatformHardening"
+    },
+    {
+      "d3fend_id": "D3-PM",
+      "description": "Aggregating security telemetry across host platforms to detect configuration drift and compromises.",
+      "name": "Platform Monitoring",
+      "nist_controls": [
+        "RA-3(3)",
+        "RA-3(4)",
+        "SI-3"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#PlatformMonitoring"
+    },
+    {
+      "d3fend_id": "D3-RAPA",
+      "description": "Profiling and analyzing baseline access patterns to sensitive data stores and services.",
+      "name": "Resource Access Pattern Analysis",
+      "nist_controls": [
+        "AC-23"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#ResourceAccessPatternAnalysis"
+    },
+    {
+      "d3fend_id": "D3-SCF",
+      "description": "Restricting allowed kernel system calls per process using seccomp or mandatory execution filters.",
+      "name": "System Call Filtering",
+      "nist_controls": [
+        "AC-3(8)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#SystemCallFiltering"
+    },
+    {
+      "d3fend_id": "D3-SCP",
+      "description": "Gating modifications to system configuration files and registry hives to authorized privileged roles.",
+      "name": "System Configuration Permissions",
+      "nist_controls": [
+        "AC-6(1)",
+        "AC-6(10)",
+        "AC-6(3)",
+        "AC-6(5)",
+        "AC-6(6)",
+        "CM-5(3)",
+        "CM-5(5)",
+        "CM-5(6)",
+        "SC-2",
+        "SC-2(1)",
+        "SI-3(4)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#SystemConfigurationPermissions"
+    },
+    {
+      "d3fend_id": "D3-SFV",
+      "description": "Cryptographically verifying UEFI/BIOS firmware integrity during measured boot sequences.",
+      "name": "System Firmware Verification",
+      "nist_controls": [
+        "SI-2(5)",
+        "SI-2(6)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#SystemFirmwareVerification"
+    },
+    {
+      "d3fend_id": "D3-SU",
+      "description": "Patching operating systems and application software within required security SLAs.",
+      "name": "Software Update",
+      "nist_controls": [
+        "MA-3(6)",
+        "MA-6",
+        "MA-6(1)",
+        "MA-6(2)",
+        "MA-6(3)",
+        "SI-2(4)",
+        "SI-2(5)",
+        "SI-2(6)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#SoftwareUpdate"
+    },
+    {
+      "d3fend_id": "D3-UAP",
+      "description": "Managing user role assignments and granular access permissions across applications.",
+      "name": "User Account Permissions",
+      "nist_controls": [
+        "AC-2(7)",
+        "AC-2(9)",
+        "AC-24(1)",
+        "AC-24(2)",
+        "AC-5",
+        "AC-6",
+        "MA-3(3)",
+        "MA-3(4)",
+        "MA-3(5)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#UserAccountPermissions"
+    },
+    {
+      "d3fend_id": "D3-UBA",
+      "description": "Profiling baseline user activity to identify anomalous account takeovers or insider threats.",
+      "name": "User Behavior Analysis",
+      "nist_controls": [
+        "AC-6(9)",
+        "RA-3(3)",
+        "RA-3(4)",
+        "SI-3(8)"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#UserBehaviorAnalysis"
+    },
+    {
+      "d3fend_id": "D3-UDTA",
+      "description": "Monitoring and controlling volume, destination, and sensitivity of user data downloads and transfers.",
+      "name": "User Data Transfer Analysis",
+      "nist_controls": [
+        "AC-23"
+      ],
+      "source_uri": "http://d3fend.mitre.org/ontologies/d3fend.owl#UserDataTransferAnalysis"
+    }
+  ],
+  "schema_version": 1,
+  "source": "MITRE D3FEND to NIST SP 800-53 Rev. 5 Catalog Mapping",
+  "source_sha256": "a14a7499292e9a24f4045409fe4c55576752aea2ca82bdb17a995a4a1aabe4bb"
+}

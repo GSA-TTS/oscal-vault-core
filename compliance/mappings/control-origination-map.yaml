@@ -1,0 +1,69 @@
+# Maps raw control-origination flags produced by
+# fismatic.parser._origination_to_oscal_list() onto the OSBAPI
+# `ControlOrigination` enum defined in vault-schemas.json
+# (#/$defs/ControlOrigination):
+#
+#   inherited | system-specific | shared | customer-configured |
+#   customer-provided
+#
+# A single FedRAMP control table can have multiple origination checkboxes
+# ticked at once (e.g. both "Inherited" and "Hybrid Control"). The parser
+# preserves all raw flags as a list; this table's `precedence` order picks
+# the single most specific/informative OSBAPI value to report as the
+# canonical `origination`, while the projection builder keeps the full raw
+# list in `remarks` for traceability.
+#
+# This table is data, not code, on purpose: it should be reviewable/editable
+# by compliance/GRC staff without touching parser or projection logic.
+
+version: "1.0"
+
+# Highest-priority raw flag wins when multiple are set simultaneously.
+precedence:
+  - shared
+  - hybrid
+  - customer-provided
+  - customer-configured
+  - inherited
+  - service-provider-corporate
+  - system-specific
+
+mapping:
+  inherited:
+    target: inherited
+
+  hybrid:
+    target: shared
+    remark: >-
+      Raw FedRAMP origination was "Hybrid Control" (shared between the CSP
+      and one or more other systems); mapped to OSBAPI "shared".
+
+  system-specific:
+    target: system-specific
+
+  service-provider-corporate:
+    target: system-specific
+    remark: >-
+      Raw FedRAMP origination was "Service Provider Corporate" (a
+      corporate/organization-wide control); mapped to OSBAPI
+      "system-specific" as the closest analog since OSBAPI has no distinct
+      corporate-wide category.
+
+  customer-configured:
+    target: customer-configured
+
+  customer-provided:
+    target: customer-provided
+
+  shared:
+    target: shared
+
+# Fallback used when no raw flags are set (parser found no checked
+# origination checkboxes at all). Fails loud in strict mode (see
+# compliance/lib/vocab.py); this default is only used when the caller
+# explicitly opts into permissive mode.
+default:
+  target: system-specific
+  remark: >-
+    No control-origination checkbox was recognized in the source control
+    data; defaulted to "system-specific" pending manual review.

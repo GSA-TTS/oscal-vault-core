@@ -1,0 +1,3080 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schemas/osbapi-oscal-suite.json",
+  "title": "OSBAPI OSCAL CRM Interoperability Schema Suite",
+  "$defs": {
+    "ControlOrigination": {
+      "type": "string",
+      "enum": [
+        "inherited",
+        "system-specific",
+        "shared",
+        "customer-configured",
+        "customer-provided"
+      ]
+    },
+    "ImplementationModel": {
+      "type": "string",
+      "enum": [
+        "iaas",
+        "paas",
+        "saas",
+        "on-premises",
+        "customer"
+      ]
+    },
+    "ImplementationStatus": {
+      "type": "string",
+      "enum": [
+        "operational",
+        "under-development",
+        "under-testing",
+        "planned",
+        "not-applicable",
+        "not-implemented"
+      ]
+    },
+    "ControlSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "control_id",
+        "origination",
+        "implementation_status"
+      ],
+      "properties": {
+        "control_id": {
+          "type": "string",
+          "description": "Control identifier such as AC-2 or SC-7."
+        },
+        "statement_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "origination": {
+          "$ref": "#/$defs/ControlOrigination"
+        },
+        "implementation_model": {
+          "$ref": "#/$defs/ImplementationModel"
+        },
+        "implementation_status": {
+          "$ref": "#/$defs/ImplementationStatus"
+        },
+        "exportable": {
+          "type": "boolean",
+          "default": false
+        },
+        "responsible_role": {
+          "type": "string"
+        },
+        "remarks": {
+          "type": "string"
+        },
+        "oscal_implementation_status": {
+          "type": "string",
+          "description": "Raw OSCAL SSP implementation-status.state value (fismatic/python-ssp vocabulary, e.g. 'partially-implemented', 'alternative-implementation', 'customer-configured'), preserved verbatim alongside the coarser OSBAPI implementation_status enum so OSCAL is retained as the lossless interoperability/storage format and no distinction made in the source SSP is silently discarded."
+        },
+        "oscal_origination": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Raw OSCAL SSP control-origination list (fismatic/python-ssp vocabulary, e.g. ['inherited', 'hybrid']), preserved verbatim alongside the single collapsed OSBAPI origination enum. A control may legitimately have multiple origination flags set simultaneously in the source SSP; this field retains all of them."
+        }
+      }
+    },
+    "OscalCrmSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "version",
+        "service_offering_id",
+        "plan_id",
+        "controls"
+      ],
+      "properties": {
+        "profile": {
+          "type": "string",
+          "format": "uri",
+          "const": "https://oscal-project.github.io/osbapi-crm-profile/v1"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+        },
+        "service_offering_id": {
+          "type": "string"
+        },
+        "plan_id": {
+          "type": "string"
+        },
+        "component_ref": {
+          "type": "string",
+          "description": "Pointer or logical ref to OSCAL component definition UUID or URI."
+        },
+        "ssp_ref": {
+          "type": "string"
+        },
+        "crm_document_uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "last_assessed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "controls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ControlSummary"
+          }
+        }
+      }
+    },
+    "BrokerProvisionResponseExtension": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "dashboard_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "attributes": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "oscal_crm": {
+                  "$ref": "#/$defs/OscalCrmSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "OscalImplementedRequirementProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "control_id",
+        "by_components"
+      ],
+      "properties": {
+        "control_id": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "by_components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "component_uuid",
+              "implementation_status"
+            ],
+            "properties": {
+              "component_uuid": {
+                "type": "string"
+              },
+              "implementation_status": {
+                "$ref": "#/$defs/ImplementationStatus"
+              },
+              "origination": {
+                "$ref": "#/$defs/ControlOrigination"
+              },
+              "exportable": {
+                "type": "boolean"
+              },
+              "inherited_from": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "oscal_implementation_status": {
+                "type": "string",
+                "description": "Raw OSCAL SSP implementation-status.state value, preserved verbatim; see ControlSummary.oscal_implementation_status."
+              },
+              "oscal_origination": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Raw OSCAL SSP control-origination list, preserved verbatim; see ControlSummary.oscal_origination."
+              },
+              "satisfied_by": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "assessment_procedures": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "id",
+                    "method"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "method": {
+                      "type": "string",
+                      "enum": [
+                        "examine",
+                        "interview",
+                        "test",
+                        "automated"
+                      ]
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "evidence_uri": {
+                      "type": "string",
+                      "format": "uri"
+                    }
+                  }
+                }
+              },
+              "remarks": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "FullCrmDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "generated_at",
+        "service_instance_id",
+        "service_offering_id",
+        "plan_id",
+        "implemented_requirements"
+      ],
+      "properties": {
+        "profile": {
+          "type": "string",
+          "format": "uri"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "service_instance_id": {
+          "type": "string"
+        },
+        "service_offering_id": {
+          "type": "string"
+        },
+        "plan_id": {
+          "type": "string"
+        },
+        "component_definition_uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "ssp_uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "leveraged_authorizations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "party_uuid"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "party_uuid": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "href": {
+                "type": "string",
+                "format": "uri"
+              }
+            }
+          }
+        },
+        "implemented_requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OscalImplementedRequirementProjection"
+          }
+        }
+      }
+    },
+    "BackstageComplianceAnnotations": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "oscal.io/component-ref": {
+          "type": "string"
+        },
+        "oscal.io/ssp-ref": {
+          "type": "string"
+        },
+        "oscal.io/profile-ref": {
+          "type": "string",
+          "format": "uri"
+        },
+        "oscal.io/crm-endpoint": {
+          "type": "string",
+          "format": "uri"
+        },
+        "oscal.io/evidence-endpoint": {
+          "type": "string",
+          "format": "uri"
+        },
+        "oscal.io/implementation-status": {
+          "$ref": "#/$defs/ImplementationStatus"
+        },
+        "backstage.io/techdocs-ref": {
+          "type": "string"
+        }
+      }
+    },
+    "BackstageEntityComplianceEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "apiVersion",
+        "kind",
+        "metadata",
+        "spec"
+      ],
+      "properties": {
+        "apiVersion": {
+          "type": "string",
+          "enum": [
+            "backstage.io/v1alpha1",
+            "backstage.io/v1beta1"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "Component",
+            "Resource",
+            "System",
+            "API"
+          ]
+        },
+        "metadata": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "additionalProperties": true,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "annotations": {
+              "$ref": "#/$defs/BackstageComplianceAnnotations"
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "spec": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "owner": {
+              "type": "string"
+            },
+            "lifecycle": {
+              "type": "string"
+            },
+            "system": {
+              "type": "string"
+            },
+            "dependsOn": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "ComplianceAdapterEntityResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entity_ref",
+        "broker",
+        "oscal",
+        "summary"
+      ],
+      "properties": {
+        "entity_ref": {
+          "type": "string"
+        },
+        "broker": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "service_offering_id": {
+              "type": "string"
+            },
+            "plan_id": {
+              "type": "string"
+            },
+            "service_instance_id": {
+              "type": "string"
+            },
+            "broker_name": {
+              "type": "string"
+            }
+          }
+        },
+        "oscal": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "component_ref": {
+              "type": "string"
+            },
+            "ssp_ref": {
+              "type": "string"
+            },
+            "crm_document_uri": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "summary": {
+          "$ref": "#/$defs/OscalCrmSummary"
+        },
+        "implemented_requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OscalImplementedRequirementProjection"
+          }
+        },
+        "techdocs_links": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "title",
+              "path"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "VaultControlFrontmatter": {
+      "type": "object",
+      "title": "Control note frontmatter (Controls/<id>.md)",
+      "additionalProperties": false,
+      "required": [
+        "note_type",
+        "control_id",
+        "family",
+        "implementation_status",
+        "origination"
+      ],
+      "properties": {
+        "note_type": {
+          "const": "control"
+        },
+        "control_id": {
+          "type": "string",
+          "description": "NIST 800-53 identifier (e.g. AC-1, AC-2 (1)).",
+          "pattern": "^[A-Z]{2}-\\d+(\\s*\\([^)]+\\))?$"
+        },
+        "family": {
+          "type": "string",
+          "enum": [
+            "AC",
+            "AT",
+            "AU",
+            "CA",
+            "CM",
+            "CP",
+            "IA",
+            "IR",
+            "MA",
+            "MP",
+            "PE",
+            "PL",
+            "PM",
+            "PS",
+            "PT",
+            "RA",
+            "SA",
+            "SC",
+            "SI",
+            "SR"
+          ]
+        },
+        "enhancement": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "system": {
+          "type": "string",
+          "description": "Obsidian wikilink to the owning System note."
+        },
+        "implementation_status": {
+          "type": "string",
+          "enum": [
+            "implemented",
+            "partially-implemented",
+            "alternative-implementation",
+            "planned",
+            "customer-configured",
+            "not-applicable",
+            "not-implemented"
+          ]
+        },
+        "origination": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "inherited",
+              "hybrid",
+              "system-specific",
+              "service-provider-corporate",
+              "configured-by-customer",
+              "provided-by-customer",
+              "shared"
+            ]
+          }
+        },
+        "inherited_from": {
+          "type": "string"
+        },
+        "hybrid_systems": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exportable": {
+          "type": "boolean",
+          "default": false
+        },
+        "responsible_role": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "statements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "satisfied_by": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(control|system|component|plan|org|assessment|evidence)/"
+          }
+        },
+        "source_profile": {
+          "type": "string"
+        },
+        "source_ssp": {
+          "type": "string"
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date"
+        },
+        "parsed_by": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "description": "Dotted-namespace type identifier (oscal.*, oscal.x.*, okf.*)"
+        },
+        "oscal_model": {
+          "type": "string",
+          "description": "NIST OSCAL model name for canonical types"
+        },
+        "extension_model": {
+          "type": "string",
+          "description": "Extension model name for oscal.x.* types"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "canonical",
+            "extension"
+          ],
+          "description": "canonical or extension"
+        },
+        "status": {
+          "type": "string",
+          "description": "Note lifecycle status"
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Responsible party wikilink"
+        },
+        "reviewed": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Last review date (ISO format)"
+        },
+        "statement_parts": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id": { "type": "string" },
+                  "uuid": { "type": "string" },
+                  "text": { "type": "string" }
+                }
+              }
+            ]
+          },
+          "description": "Typed statement parts with stable IDs (#49)"
+        },
+        "related_controls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["control_id", "relationship"],
+            "properties": {
+              "control_id": { "type": "string" },
+              "relationship": { "type": "string" },
+              "scope": { "type": "string" },
+              "note": { "type": "string" }
+            }
+          },
+          "description": "Typed relationships to other controls (#49)"
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "path"],
+            "properties": {
+              "id": { "type": "string" },
+              "path": { "type": "string" },
+              "media_type": { "type": "string" },
+              "sha256": { "type": "string" },
+              "disposition": { "type": "string" }
+            }
+          },
+          "description": "Typed attachments and diagrams (#49)"
+        }
+      }
+    },
+    "VaultSystemFrontmatter": {
+      "type": "object",
+      "title": "System note frontmatter (Systems/<slug>.md)",
+      "additionalProperties": false,
+      "required": [
+        "note_type",
+        "name",
+        "fips_199",
+        "security_objective_confidentiality",
+        "security_objective_integrity",
+        "security_objective_availability",
+        "impact_level",
+        "status",
+        "organization",
+        "components"
+      ],
+      "properties": {
+        "note_type": {
+          "const": "system"
+        },
+        "name": {
+          "type": "string"
+        },
+        "acronym": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "system_id": {
+          "type": "string"
+        },
+        "fips_199": {
+          "type": "string",
+          "enum": [
+            "low",
+            "moderate",
+            "high"
+          ]
+        },
+        "security_objective_confidentiality": {
+          "type": "string",
+          "enum": [
+            "low",
+            "moderate",
+            "high"
+          ]
+        },
+        "security_objective_integrity": {
+          "type": "string",
+          "enum": [
+            "low",
+            "moderate",
+            "high"
+          ]
+        },
+        "security_objective_availability": {
+          "type": "string",
+          "enum": [
+            "low",
+            "moderate",
+            "high"
+          ]
+        },
+        "impact_level": {
+          "type": "string",
+          "enum": [
+            "low",
+            "moderate",
+            "high"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "operational",
+            "under-development",
+            "other"
+          ]
+        },
+        "authorization_boundary": {
+          "type": "string"
+        },
+        "cloud_service_model": {
+          "type": "string"
+        },
+        "cloud_deployment_model": {
+          "type": "string"
+        },
+        "organization": {
+          "type": "string"
+        },
+        "system_owner": {
+          "type": "string"
+        },
+        "isso": {
+          "type": "string"
+        },
+        "authorizing_official": {
+          "type": "string"
+        },
+        "components": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "plans": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "up_plan": {
+          "type": "string",
+          "description": "Obsidian wikilink to the parent Plan note."
+        },
+        "child_components": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Obsidian wikilinks to Components belonging to this System."
+        },
+        "controls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^system/"
+          }
+        },
+        "type": {
+          "type": "string",
+          "description": "Dotted-namespace type identifier (oscal.*, oscal.x.*, okf.*)"
+        },
+        "oscal_model": {
+          "type": "string",
+          "description": "NIST OSCAL model name for canonical types"
+        },
+        "extension_model": {
+          "type": "string",
+          "description": "Extension model name for oscal.x.* types"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "canonical",
+            "extension"
+          ],
+          "description": "canonical or extension"
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Responsible party wikilink"
+        },
+        "reviewed": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Last review date (ISO format)"
+        }
+      }
+    },
+    "VaultComponentFrontmatter": {
+      "type": "object",
+      "title": "Component note frontmatter (Components/<slug>.md)",
+      "additionalProperties": false,
+      "required": [
+        "note_type",
+        "name",
+        "component_type",
+        "status",
+        "belongs_to",
+        "implementation_model",
+        "responsible_party"
+      ],
+      "properties": {
+        "note_type": {
+          "const": "component"
+        },
+        "name": {
+          "type": "string"
+        },
+        "component_kind": {
+          "type": "string"
+        },
+        "component_type": {
+          "type": "string",
+          "enum": [
+            "platform",
+            "service",
+            "infrastructure",
+            "tool",
+            "process",
+            "system",
+            "software"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "operational",
+            "under-development",
+            "other"
+          ]
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "belongs_to": {
+          "type": "string"
+        },
+        "up_system": {
+          "type": "string",
+          "description": "Obsidian wikilink to the owning System note."
+        },
+        "implementation_model": {
+          "type": "string",
+          "enum": [
+            "iaas",
+            "paas",
+            "saas",
+            "on-premises",
+            "customer",
+            "hybrid"
+          ]
+        },
+        "responsible_party": {
+          "type": "string"
+        },
+        "cloud_deployment_model": {
+          "type": "string",
+          "enum": [
+            "public",
+            "private",
+            "community",
+            "hybrid"
+          ]
+        },
+        "fips_199": {
+          "type": "string",
+          "enum": [
+            "low",
+            "moderate",
+            "high"
+          ]
+        },
+        "fedramp_package": {
+          "type": "string"
+        },
+        "documentation": {
+          "type": "string"
+        },
+        "fedramp_authorization": {
+          "type": "string"
+        },
+        "provenance": {
+          "type": "string"
+        },
+        "source_chapter": {
+          "type": "string"
+        },
+        "table_record_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "table_kinds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["external_service", "protocol", "inheritance_provider", "opaque"]
+          }
+        },
+        "table_classifications": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["fact_sheet", "record_set", "presentation_only", "opaque"]
+          }
+        },
+        "table_structured_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "table_opaque_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "table_unmapped_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "implements_controls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "control",
+              "status"
+            ],
+            "properties": {
+              "control": {
+                "type": "string"
+              },
+              "status": {
+                "$ref": "#/$defs/ImplementationStatus"
+              },
+              "origination": {
+                "$ref": "#/$defs/ControlOrigination"
+              }
+            }
+          }
+        },
+        "leveraged_from": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "component"
+            ],
+            "properties": {
+              "component": {
+                "type": "string"
+              },
+              "authorization": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^component/"
+          }
+        },
+        "type": {
+          "type": "string",
+          "description": "Dotted-namespace type identifier (oscal.*, oscal.x.*, okf.*)"
+        },
+        "oscal_model": {
+          "type": "string",
+          "description": "NIST OSCAL model name for canonical types"
+        },
+        "extension_model": {
+          "type": "string",
+          "description": "Extension model name for oscal.x.* types"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "canonical",
+            "extension"
+          ],
+          "description": "canonical or extension"
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Responsible party wikilink"
+        },
+        "reviewed": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Last review date (ISO format)"
+        }
+      }
+    },
+    "VaultPlanFrontmatter": {
+      "type": "object",
+      "title": "Plan/SSP note frontmatter (Plans/<slug>.md)",
+      "additionalProperties": false,
+      "required": [
+        "note_type",
+        "plan_id",
+        "title",
+        "version",
+        "date",
+        "plan_type",
+        "system",
+        "status"
+      ],
+      "properties": {
+        "note_type": {
+          "const": "plan"
+        },
+        "plan_id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "plan_type": {
+          "type": "string",
+          "enum": [
+            "ssp",
+            "profile",
+            "baseline"
+          ]
+        },
+        "profile_ref": {
+          "type": "string",
+          "format": "uri"
+        },
+        "import_profile": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "system": {
+          "type": "string"
+        },
+        "child_systems": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Obsidian wikilinks to Systems described by this Plan."
+        },
+        "child_controls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Obsidian wikilinks to Controls implemented under this Plan."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "superseded",
+            "draft"
+          ]
+        },
+        "template_version": {
+          "type": "string"
+        },
+        "parser": {
+          "type": "string"
+        },
+        "controls_parsed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "oscasl_version": {
+          "type": "string"
+        },
+        "source_docx": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^plan/"
+          }
+        },
+        "type": {
+          "type": "string",
+          "description": "Dotted-namespace type identifier (oscal.*, oscal.x.*, okf.*)"
+        },
+        "oscal_model": {
+          "type": "string",
+          "description": "NIST OSCAL model name for canonical types"
+        },
+        "extension_model": {
+          "type": "string",
+          "description": "Extension model name for oscal.x.* types"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "canonical",
+            "extension"
+          ],
+          "description": "canonical or extension"
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Responsible party wikilink"
+        },
+        "reviewed": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Last review date (ISO format)"
+        },
+        "allow_synthetic": {
+          "type": "boolean",
+          "description": "Allow synthetic requirement generation when zero controls captured (#51)"
+        }
+      }
+    },
+    "VaultOrganizationFrontmatter": {
+      "type": "object",
+      "title": "Organization note frontmatter (Organizations/<slug>.md)",
+      "additionalProperties": false,
+      "required": [
+        "note_type",
+        "name",
+        "acronym",
+        "org_type",
+        "role"
+      ],
+      "properties": {
+        "note_type": {
+          "const": "organization"
+        },
+        "name": {
+          "type": "string"
+        },
+        "acronym": {
+          "type": "string"
+        },
+        "org_type": {
+          "type": "string",
+          "enum": [
+            "agency",
+            "team",
+            "company"
+          ]
+        },
+        "role": {
+          "type": "string"
+        },
+        "role_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "email_addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "telephone_numbers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["number"],
+            "properties": {
+              "number": {"type": "string"},
+              "type": {"type": "string"}
+            }
+          }
+        },
+        "parent": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sub_orgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "systems": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "child_systems": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Obsidian wikilinks to Systems this Organization is responsible for."
+        },
+        "responsible_for": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "control",
+              "role"
+            ],
+            "properties": {
+              "control": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^org/"
+          }
+        },
+        "type": {
+          "type": "string",
+          "description": "Dotted-namespace type identifier (oscal.*, oscal.x.*, okf.*)"
+        },
+        "oscal_model": {
+          "type": "string",
+          "description": "NIST OSCAL model name for canonical types"
+        },
+        "extension_model": {
+          "type": "string",
+          "description": "Extension model name for oscal.x.* types"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "canonical",
+            "extension"
+          ],
+          "description": "canonical or extension"
+        },
+        "status": {
+          "type": "string",
+          "description": "Note lifecycle status"
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Responsible party wikilink"
+        },
+        "reviewed": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Last review date (ISO format)"
+        }
+      }
+    },
+    "VaultEvidenceFrontmatter": {
+      "type": "object",
+      "title": "Evidence note frontmatter (Evidence/<slug>.md)",
+      "additionalProperties": false,
+      "required": [
+        "note_type",
+        "title",
+        "evidence_type",
+        "status",
+        "date",
+        "source_organization",
+        "supports_controls"
+      ],
+      "properties": {
+        "note_type": {
+          "const": "evidence"
+        },
+        "title": {
+          "type": "string"
+        },
+        "evidence_type": {
+          "type": "string",
+          "enum": [
+            "policy",
+            "procedure",
+            "scan",
+            "report",
+            "screenshot",
+            "assessment",
+            "training"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "current",
+            "superseded",
+            "expired"
+          ]
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "version": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "source_organization": {
+          "type": "string"
+        },
+        "supports_controls": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "control"
+            ],
+            "properties": {
+              "control": {
+                "type": "string"
+              },
+              "statement": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^evidence/"
+          }
+        },
+        "type": {
+          "type": "string",
+          "description": "Dotted-namespace type identifier (oscal.*, oscal.x.*, okf.*)"
+        },
+        "oscal_model": {
+          "type": "string",
+          "description": "NIST OSCAL model name for canonical types"
+        },
+        "extension_model": {
+          "type": "string",
+          "description": "Extension model name for oscal.x.* types"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "canonical",
+            "extension"
+          ],
+          "description": "canonical or extension"
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Responsible party wikilink"
+        },
+        "reviewed": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Last review date (ISO format)"
+        }
+      }
+    },
+    "VaultAssessmentFrontmatter": {
+      "type": "object",
+      "title": "Assessment note frontmatter (Assessments/<slug>.md)",
+      "additionalProperties": false,
+      "required": [
+        "note_type",
+        "assessment_id",
+        "title",
+        "date",
+        "assessment_type",
+        "system",
+        "overall_status"
+      ],
+      "properties": {
+        "note_type": {
+          "const": "assessment"
+        },
+        "assessment_id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "assessment_type": {
+          "type": "string",
+          "enum": [
+            "readiness-review",
+            "annual",
+            "continuous-monitoring",
+            "penetration-test"
+          ]
+        },
+        "system": {
+          "type": "string"
+        },
+        "overall_status": {
+          "type": "string",
+          "enum": [
+            "satisfactory",
+            "at-risk",
+            "non-compliant"
+          ]
+        },
+        "finding_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "risk_level": {
+          "type": "string",
+          "enum": [
+            "low",
+            "moderate",
+            "high",
+            "critical"
+          ]
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "control",
+              "severity",
+              "status",
+              "description"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "control": {
+                "type": "string"
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "moderate",
+                  "high",
+                  "critical"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "closed",
+                  "mitigated",
+                  "accepted"
+                ]
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "next_assessment": {
+          "type": "string",
+          "format": "date"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^assessment/"
+          }
+        },
+        "type": {
+          "type": "string",
+          "description": "Dotted-namespace type identifier (oscal.*, oscal.x.*, okf.*)"
+        },
+        "oscal_model": {
+          "type": "string",
+          "description": "NIST OSCAL model name for canonical types"
+        },
+        "extension_model": {
+          "type": "string",
+          "description": "Extension model name for oscal.x.* types"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "canonical",
+            "extension"
+          ],
+          "description": "canonical or extension"
+        },
+        "status": {
+          "type": "string",
+          "description": "Note lifecycle status"
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Responsible party wikilink"
+        },
+        "reviewed": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Last review date (ISO format)"
+        }
+      }
+    },
+    "CanonicalControl": {
+      "type": "object",
+      "title": "Canonical intermediate control record (compliance/lib/canonical_model.py)",
+      "description": "Internal pipeline model bridging parser output to OSBAPI projections. Every OSBAPI generator builds from these records.",
+      "additionalProperties": false,
+      "required": [
+        "control_id",
+        "implementation_status",
+        "origination"
+      ],
+      "properties": {
+        "control_id": {
+          "type": "string"
+        },
+        "implementation_status": {
+          "$ref": "#/$defs/ImplementationStatus"
+        },
+        "origination": {
+          "$ref": "#/$defs/ControlOrigination"
+        },
+        "statement_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "responsible_role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "exportable": {
+          "type": "boolean",
+          "default": false
+        },
+        "remarks": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "oscal_implementation_status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "oscal_origination": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        }
+      }
+    },
+    "OscalSspInputDocument": {
+      "type": "object",
+      "title": "OSCAL SSP input shape (fismatic's SSPConverter.get_oscal_data())",
+      "description": "Top-level dict consumed by the CRM/Backstage/adapter/vault generators. Either loaded from JSON or produced by live fismatic parse.",
+      "additionalProperties": true,
+      "required": [
+        "system-security-plan"
+      ],
+      "properties": {
+        "system-security-plan": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": [
+            "uuid",
+            "metadata",
+            "system-characteristics",
+            "control-implementation"
+          ],
+          "properties": {
+            "uuid": {
+              "type": "string"
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": [
+                "title",
+                "last-modified",
+                "version",
+                "oscal-version"
+              ],
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "last-modified": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "version": {
+                  "type": "string"
+                },
+                "oscal-version": {
+                  "type": "string"
+                },
+                "parties": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "required": [
+                      "uuid",
+                      "type",
+                      "name"
+                    ],
+                    "properties": {
+                      "uuid": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "enum": [
+                          "organization",
+                          "person"
+                        ]
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "role-ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                },
+                "roles": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "required": [
+                      "id",
+                      "title"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "import-profile": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "href": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            },
+            "system-characteristics": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": [
+                "system-name",
+                "security-sensitivity-level",
+                "security-impact-level",
+                "status"
+              ],
+              "properties": {
+                "system-ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "required": [
+                      "id"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "identifier-type": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "system-name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "security-sensitivity-level": {
+                  "enum": [
+                    "low",
+                    "moderate",
+                    "high"
+                  ]
+                },
+                "system-information": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "information-types": {
+                      "type": "array"
+                    }
+                  }
+                },
+                "security-impact-level": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "required": [
+                    "security-objective-confidentiality",
+                    "security-objective-integrity",
+                    "security-objective-availability"
+                  ],
+                  "properties": {
+                    "security-objective-confidentiality": {
+                      "type": "string"
+                    },
+                    "security-objective-integrity": {
+                      "type": "string"
+                    },
+                    "security-objective-availability": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "status": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "state": {
+                      "enum": [
+                        "operational",
+                        "under-development",
+                        "other"
+                      ]
+                    }
+                  }
+                },
+                "authorization-boundary": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "description": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "control-implementation": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": [
+                "implemented-requirements"
+              ],
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "implemented-requirements": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/OscalSspImplementedRequirement"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "OscalSspImplementedRequirement": {
+      "type": "object",
+      "title": "Single implemented-requirement in the OSCAL SSP input",
+      "additionalProperties": true,
+      "required": [
+        "uuid",
+        "control-id"
+      ],
+      "properties": {
+        "uuid": {
+          "type": "string"
+        },
+        "control-id": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}-\\d+(\\s*\\([^)]+\\))?$"
+        },
+        "implementation-status": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "state": {
+              "enum": [
+                "implemented",
+                "partially-implemented",
+                "alternative-implementation",
+                "planned",
+                "customer-configured",
+                "not-applicable",
+                "not-implemented"
+              ]
+            }
+          }
+        },
+        "control-origination": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "inherited",
+              "hybrid",
+              "system-specific",
+              "service-provider-corporate",
+              "configured-by-customer",
+              "provided-by-customer",
+              "shared"
+            ]
+          }
+        },
+        "statements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "statement-id",
+              "uuid"
+            ],
+            "properties": {
+              "statement-id": {
+                "type": "string"
+              },
+              "uuid": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "responsible-roles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "role-id"
+            ],
+            "properties": {
+              "role-id": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "ImplementationStatusMappingTable": {
+      "type": "object",
+      "title": "compliance/mappings/implementation-status-map.yaml schema",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "mapping",
+        "default"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+$"
+        },
+        "mapping": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "implemented",
+              "partially-implemented",
+              "alternative-implementation",
+              "planned",
+              "customer-configured",
+              "not-applicable",
+              "not-implemented"
+            ]
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/MappingEntry"
+          }
+        },
+        "default": {
+          "$ref": "#/$defs/MappingEntry"
+        }
+      }
+    },
+    "ControlOriginationMappingTable": {
+      "type": "object",
+      "title": "compliance/mappings/control-origination-map.yaml schema",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "precedence",
+        "mapping",
+        "default"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+$"
+        },
+        "precedence": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "shared",
+              "hybrid",
+              "customer-provided",
+              "customer-configured",
+              "inherited",
+              "service-provider-corporate",
+              "system-specific"
+            ]
+          }
+        },
+        "mapping": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "inherited",
+              "hybrid",
+              "system-specific",
+              "service-provider-corporate",
+              "customer-configured",
+              "customer-provided",
+              "shared"
+            ]
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/MappingEntry"
+          }
+        },
+        "default": {
+          "$ref": "#/$defs/MappingEntry"
+        }
+      }
+    },
+    "MappingEntry": {
+      "type": "object",
+      "title": "Single vocabulary mapping row",
+      "additionalProperties": false,
+      "required": [
+        "target"
+      ],
+      "properties": {
+        "target": {
+          "type": "string"
+        },
+        "remark": {
+          "type": "string"
+        }
+      }
+    },
+    "FederationDocument": {
+      "type": "object",
+      "title": "SSP federation manifest (compliance/federation.yaml)",
+      "description": "Maps inheritance/child relationships between multiple SSPs for multi-document processing of authorization packages.",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "systems"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+$"
+        },
+        "systems": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/FederationSystem"
+          }
+        }
+      }
+    },
+    "FederationSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "system_id",
+        "acronym",
+        "ssp"
+      ],
+      "properties": {
+        "system_id": {
+          "type": "string"
+        },
+        "acronym": {
+          "type": "string"
+        },
+        "ssp": {
+          "type": "string",
+          "description": "Path to source SSP .docx or OSCAL JSON (relative to repo root)."
+        },
+        "leveraged_system_fedramp_package": {
+          "type": "string"
+        },
+        "inherits_from": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "system_id"
+            ],
+            "properties": {
+              "system_id": {
+                "type": "string"
+              },
+              "controls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "system_id"
+            ],
+            "properties": {
+              "system_id": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "VaultControlFrontmatterR1": {
+      "type": "object",
+      "description": "Updated control note frontmatter with OSCAL + OKF type taxonomy (R1)",
+      "required": [
+        "type",
+        "oscal_model",
+        "kind",
+        "control_id",
+        "family",
+        "implementation_status",
+        "origination"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "oscal.control"
+        },
+        "oscal_model": {
+          "type": "string",
+          "const": "control"
+        },
+        "kind": {
+          "type": "string",
+          "const": "canonical"
+        },
+        "note_type": {
+          "type": "string",
+          "const": "control"
+        },
+        "control_id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "family": {
+          "type": "string"
+        },
+        "enhancement": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "system": {
+          "type": "string"
+        },
+        "implementation_status": {
+          "type": "string"
+        },
+        "origination": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exportable": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reviewed": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parameters": {
+          "type": "array",
+          "description": "Lossless organization-defined parameter values.",
+          "items": {
+            "type": "object",
+            "required": [
+              "param_id",
+              "value"
+            ],
+            "properties": {
+              "param_id": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "statement_parts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "VaultExtensionDiagramFrontmatter": {
+      "type": "object",
+      "description": "Extension diagram note frontmatter (oscal.x.diagram)",
+      "required": [
+        "type",
+        "extension_model",
+        "kind",
+        "title",
+        "diagram_id",
+        "diagram_kind"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "oscal.x.diagram"
+        },
+        "extension_model": {
+          "type": "string",
+          "const": "diagram"
+        },
+        "kind": {
+          "type": "string",
+          "const": "extension"
+        },
+        "note_type": {
+          "type": "string",
+          "const": "diagram"
+        },
+        "title": {
+          "type": "string"
+        },
+        "diagram_id": {
+          "type": "string"
+        },
+        "diagram_kind": {
+          "type": "string",
+          "enum": [
+            "architecture",
+            "dataflow",
+            "sequence",
+            "network-boundary",
+            "mermaid"
+          ]
+        },
+        "system_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reviewed": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "relates_to": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "media_files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Attachment filenames (under Diagrams/media/) extracted from the source .docx and embedded in the note body via Obsidian ![[...]] syntax."
+        },
+        "source_chapter": {
+          "type": "string"
+        },
+        "provenance": {
+          "type": "string"
+        },
+        "table_record_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "table_kinds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["external_service", "protocol", "inheritance_provider", "opaque"]
+          }
+        },
+        "table_classifications": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["fact_sheet", "record_set", "presentation_only", "opaque"]
+          }
+        },
+        "table_structured_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "table_opaque_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "table_unmapped_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "VaultExtensionEvidenceFrontmatter": {
+      "type": "object",
+      "description": "Extension evidence note frontmatter (oscal.x.evidence)",
+      "required": [
+        "type",
+        "extension_model",
+        "kind",
+        "title",
+        "evidence_id"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "oscal.x.evidence"
+        },
+        "extension_model": {
+          "type": "string",
+          "const": "evidence"
+        },
+        "kind": {
+          "type": "string",
+          "const": "extension"
+        },
+        "note_type": {
+          "type": "string",
+          "const": "evidence"
+        },
+        "title": {
+          "type": "string"
+        },
+        "evidence_id": {
+          "type": "string"
+        },
+        "evidence_kind": {
+          "type": "string"
+        },
+        "system_id": {
+          "type": "string"
+        },
+        "control_id": {
+          "type": "string"
+        },
+        "component_id": {
+          "type": "string"
+        },
+        "collected": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expires": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_status": {
+          "type": "string"
+        },
+        "source_uri": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "VaultOkfSchemaFrontmatter": {
+      "type": "object",
+      "description": "OKF schema registry note frontmatter (okf.schema)",
+      "required": [
+        "type",
+        "title",
+        "status"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "okf.schema"
+        },
+        "note_type": {
+          "type": "string",
+          "const": "schema"
+        },
+        "title": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "last_updated": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "VaultOkfValidationRuleFrontmatter": {
+      "type": "object",
+      "description": "OKF validation rule note frontmatter (okf.validation_rule)",
+      "required": [
+        "type",
+        "title",
+        "rule_id",
+        "severity",
+        "status"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "okf.validation_rule"
+        },
+        "note_type": {
+          "type": "string",
+          "const": "validation_rule"
+        },
+        "title": {
+          "type": "string"
+        },
+        "rule_id": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "status": {
+          "type": "string"
+        },
+        "applies_to": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "VaultOkfIndexFrontmatter": {
+      "type": "object",
+      "description": "OKF index note frontmatter (okf.index)",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "okf.index"
+        },
+        "note_type": {
+          "type": "string",
+          "enum": [
+            "index",
+            "coverage"
+          ]
+        },
+        "fips_199": {
+          "type": "string",
+          "enum": [
+            "low",
+            "moderate",
+            "high"
+          ]
+        },
+        "last_updated": {
+          "type": "string"
+        }
+      }
+    },
+    "VaultExtensionInheritanceFrontmatter": {
+      "type": "object",
+      "description": "Extension inheritance note frontmatter (oscal.x.inheritance)",
+      "required": [
+        "type",
+        "extension_model",
+        "kind",
+        "title",
+        "inheritance_id"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "oscal.x.inheritance"
+        },
+        "extension_model": {
+          "type": "string",
+          "const": "inheritance"
+        },
+        "kind": {
+          "type": "string",
+          "const": "extension"
+        },
+        "note_type": {
+          "type": "string",
+          "const": "inheritance"
+        },
+        "title": {
+          "type": "string"
+        },
+        "inheritance_id": {
+          "type": "string"
+        },
+        "system_id": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "consumer": {
+          "type": "string"
+        },
+        "controls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "type": "string"
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "residual_responsibility": {
+          "type": "string"
+        }
+      }
+    },
+    "GeneratedProjectionProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ownership", "generator", "generator_version", "source_sha256"],
+      "properties": {
+        "ownership": {"const": "generated"},
+        "generator": {"type": "string", "minLength": 1},
+        "generator_version": {"type": "integer", "minimum": 1},
+        "source_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "VaultSourceTableFrontmatter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "title", "status", "owner", "provenance", "source_table_id", "source_table_index", "row_count", "column_count", "cell_count", "merged_cell_count", "paragraph_count", "projected_row_count", "projection_status", "classification_status", "semantic_family", "preservation_manifest"],
+      "properties": {
+        "type": {"const": "okf.source_table"},
+        "title": {"type": "string"},
+        "status": {"type": "string"},
+        "owner": {"type": ["string", "null"]},
+        "provenance": {"$ref": "#/$defs/GeneratedProjectionProvenance"},
+        "source_table_id": {"type": "string", "minLength": 1},
+        "source_table_index": {"type": "integer", "minimum": 1},
+        "row_count": {"type": "integer", "minimum": 0},
+        "column_count": {"type": "integer", "minimum": 0},
+        "cell_count": {"type": "integer", "minimum": 0},
+        "merged_cell_count": {"type": "integer", "minimum": 0},
+        "paragraph_count": {"type": "integer", "minimum": 0},
+        "projected_row_count": {"type": "integer", "minimum": 0},
+        "projection_status": {"enum": ["fully_projected", "preserved_only"]},
+        "classification_status": {"enum": ["classified", "unclassified"]},
+        "semantic_family": {"type": ["string", "null"]},
+        "preservation_manifest": {"type": "string"}
+      }
+    },
+    "VaultTableRowFrontmatter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "title", "status", "owner", "provenance", "table_row_id", "source_table_id", "source_row_index", "source_cell_ids", "fields"],
+      "properties": {
+        "type": {"const": "okf.table_row"},
+        "title": {"type": "string"},
+        "status": {"type": "string"},
+        "owner": {"type": ["string", "null"]},
+        "provenance": {"$ref": "#/$defs/GeneratedProjectionProvenance"},
+        "table_row_id": {"type": "string", "pattern": "^row-[a-f0-9]{20}$"},
+        "source_table_id": {"type": "string", "minLength": 1},
+        "source_row_index": {"type": "integer", "minimum": 1},
+        "source_cell_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "fields": {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    },
+    "VaultInstructionFrontmatter": {
+      "type": "object",
+      "title": "Source-located authoring instruction",
+      "additionalProperties": false,
+      "required": ["type", "title", "status", "owner", "source_locator", "source_hash", "disposition", "visibility", "source_kind", "detection"],
+      "properties": {
+        "type": {"const": "okf.instruction"},
+        "title": {"type": "string"},
+        "status": {"type": "string"},
+        "owner": {"type": ["string", "null"]},
+        "source_locator": {"type": "string"},
+        "source_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "disposition": {"type": "string"},
+        "visibility": {"type": "string"},
+        "source_kind": {"type": "string"},
+        "detection": {"type": "string"},
+        "anchor": {"type": ["string", "null"]}
+      }
+    },
+    "VaultMappingFrontmatter": {
+      "type": "object",
+      "description": "Mapping note frontmatter (Mappings/*.md)",
+      "required": [
+        "note_type",
+        "mapping"
+      ],
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "note_type": {
+          "type": "string",
+          "const": "mapping"
+        },
+        "mapping": {
+          "type": "string"
+        },
+        "last_updated": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "VaultExtensionNarrativeFrontmatter": {
+      "type": "object",
+      "description": "Generic oscal.x.* narrative note frontmatter recovered from SSP Chapters 1-12 by the contract-driven heading_parser (boundary, relationship, inheritance, runbook, decision). type/extension_model/note_type are not const-locked here because a single builder emits several extension_models from the same shape; the per-model concrete schemas (e.g. VaultExtensionDiagramFrontmatter) remain authoritative for their model.",
+      "required": [
+        "type",
+        "extension_model",
+        "kind",
+        "title"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "pattern": "^oscal\\.x\\."
+        },
+        "oscal_model": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "extension_model": {
+          "type": "string",
+          "enum": [
+            "boundary",
+            "relationship",
+            "inheritance",
+            "runbook",
+            "decision",
+            "diagram",
+            "evidence",
+            "finding",
+            "crm",
+            "privacy"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "const": "extension"
+        },
+        "note_type": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "system_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "owner": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_chapter": {
+          "type": "string"
+        },
+        "provenance": {
+          "type": "string"
+        },
+        "table_record_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "table_kinds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["external_service", "protocol", "inheritance_provider", "opaque"]
+          }
+        },
+        "table_classifications": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["fact_sheet", "record_set", "presentation_only", "opaque"]
+          }
+        },
+        "table_structured_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "table_opaque_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "table_unmapped_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}
