@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gsa.gov/oscal-vault/decision/control-packet-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "packet_id", "control_id", "sources", "data_handling", "implementation", "assessment_objectives", "instructions", "d3fend", "deterministic_findings", "allowed_citations"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "packet_id": {"type": "string"},
+    "control_id": {"type": "string"},
+    "sources": {"type": "object"},
+    "data_handling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["historical_observations_included", "llm_safe_default"],
+      "properties": {
+        "historical_observations_included": {"type": "boolean"},
+        "llm_safe_default": {"type": "boolean"}
+      }
+    },
+    "implementation": {"type": "object"},
+    "assessment_objectives": {"type": "array", "items": {"type": "object"}},
+    "instructions": {"type": "array", "items": {"type": "object"}},
+    "d3fend": {"type": "object"},
+    "deterministic_findings": {"type": "array", "items": {"type": "object"}},
+    "allowed_citations": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+  }
+}

@@ -1,0 +1,1085 @@
+# Open Data Contract Standard (ODCS v3.1.0) — Moderate SSP roundtrip fill-back
+#
+# Phase R16.2 — instruction-anchored roundtrip contract for the official
+# GSA FedRAMP rev5 **Moderate** SSP blank template.
+#
+# Unlike compliance/datacontracts/fedramp-ssp-v1.yaml (a large read-only
+# routing contract for the whole document), this contract is scoped to the
+# roundtrip DEMONSTRATION: a representative set of writable slots, each
+# carrying BOTH the read metadata (sourceHeading / captureStrategy) AND the
+# write metadata (templateTag / writeStrategy / instructionAnchor) so a single
+# contract drives extract -> jinjafy -> fill -> re-extract.
+#
+# Consumed by:
+#   - compliance/lib/instruction_anchors.py  (R16.1 — instruction/slot detection)
+#   - compliance/lib/docx_jinjafier.py        (R16.3 — inject {{ tags }})
+#   - compliance/lib/docx_fill.py             (R16.4 — render via docxtpl)
+#   - compliance/lib/heading_parser.py        (existing — read path)
+#
+# Validated against:
+#   compliance/datacontracts/schemas/odcs-json-schema-v3.1.0.json
+#
+# customProperties (R16 write extension, all camelCase per ODCS):
+#   Object-level:
+#     blankTemplatePath        — official blank .docx this contract targets
+#     instructionColors        — hex colors treated as instruction color
+#                                (default ["0070C0"]); text-prefix fallback
+#                                always applies
+#     instructionTextPrefixes  — instruction text prefixes (default
+#                                Instruction/Instructions/Note/Example)
+#   Property-level (in addition to the existing read props):
+#     templateTag        — Jinja variable name for this slot
+#     writeStrategy      — paragraph_after_instruction | table_after_instruction
+#                          | constant
+#     instructionAnchor  — instruction text (prefix/regex) that precedes the
+#                          writable slot; the join key between anchor pass,
+#                          jinjafier, and fill
+#     writeScope         — replace_slot (default) | append
+
+apiVersion: v3.1.0
+kind: DataContract
+id: fedramp-moderate-sspp-roundtrip-v1
+name: fedramp_moderate_sspp_roundtrip
+version: 1.0.0
+status: active
+domain: fedramp-ssp
+tenant: GSA
+contractCreatedTs: "2026-07-20T00:00:00Z"
+
+tags:
+  - fedramp
+  - ssp
+  - moderate
+  - roundtrip
+  - docx
+  - docxtpl
+
+description:
+  purpose: >
+    Instruction-anchored roundtrip contract for the GSA FedRAMP rev5 Moderate SSP
+    blank template. Each destination property declares where its content is
+    read from and where it is written back (the writable slot immediately
+    after the #0070C0 instruction block), enabling a lossless
+    extract->fill->re-extract demonstration via docxtpl.
+  usage: >
+    Consumed by compliance/lib/docx_jinjafier.py to inject Jinja tags into a
+    clone of the blank template, and by compliance/lib/docx_fill.py to render
+    synthetic/sample content back into a filled .docx.
+  limitations: >
+    Scoped to a representative subset of narrative + table slots for the
+    roundtrip demo, not the full document. Add slots by editing this file;
+    no code change required.
+
+servers:
+  - id: local_docx
+    server: local-fedramp-moderate-ssp
+    type: local
+    description: Local Moderate SSP blank template under fismatic/ (gitignored).
+    environment: dev
+    customProperties:
+      - property: path
+        value: "fismatic/Moderate-SSPP-Template-[Contains-CUI]-10-16-2024.docx"
+      - property: format
+        value: docx
+
+authoritativeDefinitions:
+  - id: odcs-spec
+    url: https://bitol-io.github.io/open-data-contract-standard/latest/
+    type: businessDefinition
+    description: Open Data Contract Standard (ODCS) v3.1.0 specification.
+  - id: roundtrip-plan
+    url: archive/plans/ROUNDTRIP_TEMPLATE_PLAN.md
+    type: businessDefinition
+    description: Phase R16 roundtrip template plan.
+
+customProperties:
+  - property: sourceFormat
+    value: docx
+  - property: targetTaxonomy
+    value: fedramp-vault
+  - property: roundtripDemo
+    value: "true"
+
+schema:
+  # --- SOURCE ----------------------------------------------------------------
+  - id: moderate_sspp_docx
+    name: moderate_sspp_docx
+    logicalType: object
+    physicalType: file
+    physicalName: "Moderate-SSPP-Template-*.docx"
+    description: Synthetic source object representing the Moderate SSP blank .docx.
+    tags: [source, docx]
+    customProperties:
+      - property: isSource
+        value: "true"
+      - property: blankTemplatePath
+        value: "fismatic/Moderate-SSPP-Template-[Contains-CUI]-10-16-2024.docx"
+      - property: instructionColors
+        value: "0070C0"
+      - property: instructionTextPrefixes
+        value: "Instruction,Instructions,Note,Example"
+    properties:
+      - name: marker
+        logicalType: string
+        description: Placeholder property (ODCS requires >=1 property).
+        customProperties:
+          - property: sourceKind
+            value: constant
+
+  # --- DESTINATION: system-security-plan narrative slots --------------------
+  - id: oscal_ssp_system
+    name: oscal_ssp
+    logicalType: object
+    physicalType: object
+    description: System Security Plan narrative fields (Moderate template).
+    tags: [oscal, ssp]
+    customProperties:
+      - property: oscalType
+        value: oscal.ssp
+      - property: oscalModel
+        value: system-security-plan
+      - property: noteType
+        value: system
+      - property: destinationFolder
+        value: "Systems/"
+      - property: required
+        value: "true"
+    properties:
+      - name: general_system_description
+        logicalType: string
+        description: >
+          General system description — the writable narrative slot that
+          follows the "Asset Inventory" instruction block in the FedRAMP
+          template (the instruction sits under the Asset Inventory heading,
+          hence sourceHeading below; templateTag is kept as
+          general_system_description because it is baked into the committed
+          *.jinja.docx templates — do NOT rename without regenerating them).
+          (D-16 / #48)
+        customProperties:
+          - property: sourceHeading
+            value: "Asset Inventory"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: general_system_description
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: For addressing the system"
+          - property: writeScope
+            value: append
+
+      - name: components_and_boundaries
+        logicalType: string
+        description: Authorization boundary narrative writable slot.
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Components and Boundaries"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: components_and_boundaries
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: In the space that follows, describe the information system"
+          - property: writeScope
+            value: append
+
+      - name: network_architecture
+        logicalType: string
+        description: Network architecture narrative writable slot.
+        customProperties:
+          - property: sourceHeading
+            value: "Network Architecture"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: network_architecture
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: The architecture diagram must fully and clearly define"
+          - property: writeScope
+            value: append
+
+      - name: data_flow
+        logicalType: string
+        description: Data flow narrative writable slot.
+        customProperties:
+          - property: sourceHeading
+            value: "Data Flow"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: data_flow
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: In this section describe the flow of data"
+          - property: writeScope
+            value: append
+
+      - name: signatures
+        logicalType: string
+        description: Signature block acknowledgements for SSPP roles.
+        customProperties:
+          - property: sourceHeading
+            value: "Signature Block"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: signatures
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Signatures are required as part"
+          - property: writeScope
+            value: append
+
+      - name: digital_identity_acceptance
+        logicalType: string
+        description: Digital Identity Acceptance Statement narrative slot.
+        customProperties:
+          - property: sourceHeading
+            value: "Digital Identity Acceptance Statement"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: digital_identity_acceptance
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: A GSA Digital Identity Acceptance Statement"
+          - property: writeScope
+            value: append
+
+      - name: controls_summary
+        logicalType: string
+        description: System-level list of common/hybrid controls provided by upstream systems.
+        customProperties:
+          - property: sourceHeading
+            value: "Controls Summary"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: controls_summary
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: List all systems providing controls"
+          - property: writeScope
+            value: append
+
+      - name: urls_and_hosting
+        logicalType: string
+        description: URLs and hosting information for the information system.
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Owner"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: urls_and_hosting
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: List all URLs associated with the information system"
+          - property: writeScope
+            value: append
+
+      - name: user_roles_and_sensitivity
+        logicalType: string
+        description: Table 9-1 user role sensitivity and system access levels.
+        customProperties:
+          - property: sourceHeading
+            value: "Personnel Roles and Responsibilities"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: user_roles_and_sensitivity
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: For an External User, please write"
+          - property: writeScope
+            value: append
+
+      - name: privileged_authentication
+        logicalType: string
+        description: Privileged user authentication process narrative.
+        customProperties:
+          - property: sourceHeading
+            value: "Privileged User Authentication"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: privileged_authentication
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Provide a brief description of the authentication process for a privileged user"
+          - property: writeScope
+            value: append
+
+      - name: non_privileged_authentication
+        logicalType: string
+        description: Non-privileged user authentication process narrative.
+        customProperties:
+          - property: sourceHeading
+            value: "Non-Privileged User Authentication"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: non_privileged_authentication
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Provide a brief description of the authentication process for a non-privileged user"
+          - property: writeScope
+            value: append
+
+      - name: network_diagram
+        logicalType: string
+        description: Insertion slot for the network architecture diagram.
+        customProperties:
+          - property: sourceHeading
+            value: "Network Architecture"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: network_diagram
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Insert network diagram here"
+          - property: writeScope
+            value: append
+
+      - name: external_services
+        logicalType: string
+        description: External integrated services table (Table 10-2).
+        customProperties:
+          - property: sourceHeading
+            value: "External Services"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: external_services
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: In the table below, fill out the applicable details for any external services"
+          - property: writeScope
+            value: append
+
+      - name: operating_systems_table
+        logicalType: string
+        description: Operating Systems and Applications table (Table 10-3).
+        customProperties:
+          - property: sourceHeading
+            value: "System Inventory"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: operating_systems_table
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Populate the following table with the major Operating Systems"
+          - property: writeScope
+            value: append
+
+      - name: data_flow_diagram
+        logicalType: string
+        description: Insertion slot for the data flow diagram.
+        customProperties:
+          - property: sourceHeading
+            value: "Data Flow"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: data_flow_diagram
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Insert data flow diagram here"
+          - property: writeScope
+            value: append
+
+      - name: ports_protocols_services
+        logicalType: string
+        description: Ports, Protocols, and Services table (Table 10-4).
+        customProperties:
+          - property: sourceHeading
+            value: "Ports, Protocols, and Services"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: ports_protocols_services
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: In the column labeled"
+          - property: writeScope
+            value: append
+
+      - name: devsecops_code_management
+        logicalType: string
+        description: Code management, repository branching, review, CI process (Section 10.8.1).
+        customProperties:
+          - property: sourceHeading
+            value: "Code Management"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: devsecops_code_management
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe how code is stored and maintained"
+          - property: writeScope
+            value: append
+
+      - name: devsecops_infrastructure
+        logicalType: string
+        description: Infrastructure-as-code maintenance and CI/CD (Section 10.8.2).
+        customProperties:
+          - property: sourceHeading
+            value: "Infrastructure Management"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: devsecops_infrastructure
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe how the infrastructure is maintained"
+          - property: writeScope
+            value: append
+
+      - name: devsecops_pipeline
+        logicalType: string
+        description: CI/CD pipeline features, isolation, and blue-green deployment (Section 10.8.3).
+        customProperties:
+          - property: sourceHeading
+            value: "CI/CD Pipeline"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: devsecops_pipeline
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe the pipeline used to deliver features"
+          - property: writeScope
+            value: append
+
+      - name: devsecops_static_analysis
+        logicalType: string
+        description: Static analysis, linting, secret scanning during development (Section 10.8.4).
+        customProperties:
+          - property: sourceHeading
+            value: "Static Analysis"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: devsecops_static_analysis
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe how code is scanned for security issues"
+          - property: writeScope
+            value: append
+
+      - name: devsecops_dependency_scanning
+        logicalType: string
+        description: Dependency and 3rd-party library scanning process (Section 10.8.5).
+        customProperties:
+          - property: sourceHeading
+            value: "Dependency Scanning"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: devsecops_dependency_scanning
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe the process for running dependency scans"
+          - property: writeScope
+            value: append
+
+      - name: devsecops_ami_process
+        logicalType: string
+        description: AMI / gold image build, validation, retention policy (Section 10.8.6).
+        customProperties:
+          - property: sourceHeading
+            value: "Image Building"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: devsecops_ami_process
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Explain the process for building, updating, and republishing"
+          - property: writeScope
+            value: append
+
+      - name: devsecops_secrets_management
+        logicalType: string
+        description: Centralized secrets, rotation, monitoring (Section 10.8.7).
+        customProperties:
+          - property: sourceHeading
+            value: "Secrets Management"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: devsecops_secrets_management
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe secrets are centralized"
+          - property: writeScope
+            value: append
+
+      - name: devsecops_artifact_management
+        logicalType: string
+        description: Artifact scanning, access controls, outdated-library monitoring (Section 10.8.8).
+        customProperties:
+          - property: sourceHeading
+            value: "Artifact Management"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: devsecops_artifact_management
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe the process for maintaining artifacts"
+          - property: writeScope
+            value: append
+
+      - name: devsecops_change_management
+        logicalType: string
+        description: Standardized change and release management (Section 10.8.9).
+        customProperties:
+          - property: sourceHeading
+            value: "Change Management"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: devsecops_change_management
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe how the process for handling all code changes"
+          - property: writeScope
+            value: append
+
+      - name: microservices_architecture
+        logicalType: string
+        description: Microservice / serverless architecture and API security (Section 10.8.10).
+        customProperties:
+          - property: sourceHeading
+            value: "Microservices Architecture"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: microservices_architecture
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe the microservice-based architecture"
+          - property: writeScope
+            value: append
+
+      - name: containers_build
+        logicalType: string
+        description: Container image build via CI/CD and security checks (Section 10.9.1).
+        customProperties:
+          - property: sourceHeading
+            value: "Container Build"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: containers_build
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe how images for Containers are built"
+          - property: writeScope
+            value: append
+
+      - name: containers_vulnerability_scan
+        logicalType: string
+        description: Container image vulnerability scanning (Section 10.9.2).
+        customProperties:
+          - property: sourceHeading
+            value: "Container Vulnerability Scanning"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: containers_vulnerability_scan
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe how container images are scanned"
+          - property: writeScope
+            value: append
+
+      - name: containers_registry
+        logicalType: string
+        description: Container registry, access controls, FedRAMP status (Section 10.9.3).
+        customProperties:
+          - property: sourceHeading
+            value: "Container Registry"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: containers_registry
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe which container registry is used"
+          - property: writeScope
+            value: append
+
+      - name: containers_image_development
+        logicalType: string
+        description: Docker image development and base-image trust (Section 10.9.4).
+        customProperties:
+          - property: sourceHeading
+            value: "Container Image Development"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: containers_image_development
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe how Docker images are developed"
+          - property: writeScope
+            value: append
+
+      - name: containers_logging
+        logicalType: string
+        description: Container log aggregation and analysis (Section 10.9.5).
+        customProperties:
+          - property: sourceHeading
+            value: "Container Logging"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: containers_logging
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe how logs generated from containers"
+          - property: writeScope
+            value: append
+
+      - name: containers_infrastructure
+        logicalType: string
+        description: Container infrastructure platform and CIS hardening (Section 10.9.6).
+        customProperties:
+          - property: sourceHeading
+            value: "Container Infrastructure"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: containers_infrastructure
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe which Container Infrastructure is used"
+          - property: writeScope
+            value: append
+
+      - name: containers_least_privilege
+        logicalType: string
+        description: Cluster RBAC and non-root user usage (Section 10.9.7).
+        customProperties:
+          - property: sourceHeading
+            value: "Container Least Privilege"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: containers_least_privilege
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe how least privileges are applied to users"
+          - property: writeScope
+            value: append
+
+      - name: containers_network_security
+        logicalType: string
+        description: Cluster network topology, monitoring, isolation (Section 10.9.8).
+        customProperties:
+          - property: sourceHeading
+            value: "Container Network Security"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: containers_network_security
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe how network security control is implemented for communication between cluster"
+          - property: writeScope
+            value: append
+
+      - name: containers_orchestrator
+        logicalType: string
+        description: Container orchestrator platform and hardening (Section 10.9.9).
+        customProperties:
+          - property: sourceHeading
+            value: "Container Orchestrator"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: containers_orchestrator
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe the Container Orchestrator used"
+          - property: writeScope
+            value: append
+
+      - name: containers_monitoring
+        logicalType: string
+        description: Container monitoring and alerting (Section 10.9.10).
+        customProperties:
+          - property: sourceHeading
+            value: "Container Monitoring"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: containers_monitoring
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe how monitoring on Containerized applications"
+          - property: writeScope
+            value: append
+
+      - name: aws_services_table
+        logicalType: string
+        description: AWS Services table (Table 10-5).
+        customProperties:
+          - property: sourceHeading
+            value: "AWS Services"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: aws_services_table
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: List AWS services used in the system boundary"
+          - property: writeScope
+            value: append
+
+      - name: aws_iam
+        logicalType: string
+        description: AWS platform IAM, MFA, least privilege (Section 10.10.1).
+        customProperties:
+          - property: sourceHeading
+            value: "AWS IAM"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: aws_iam
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe the identity and access control design for AWS"
+          - property: writeScope
+            value: append
+
+      - name: aws_account_strategy
+        logicalType: string
+        description: AWS account separation of workloads (Section 10.10.2).
+        customProperties:
+          - property: sourceHeading
+            value: "AWS Account Strategy"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: aws_account_strategy
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe the AWS account strategy for defining separation"
+          - property: writeScope
+            value: append
+
+      - name: aws_ha_strategy
+        logicalType: string
+        description: AWS network high-availability strategy (Section 10.10.3).
+        customProperties:
+          - property: sourceHeading
+            value: "AWS High Availability"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: aws_ha_strategy
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe the network's high availability strategy"
+          - property: writeScope
+            value: append
+
+      - name: aws_security_groups
+        logicalType: string
+        description: AWS Security Group and NACL strategy (Section 10.10.4).
+        customProperties:
+          - property: sourceHeading
+            value: "AWS Security Groups"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: aws_security_groups
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe the network's security group and network access control list"
+          - property: writeScope
+            value: append
+
+      - name: aws_encryption_in_transit
+        logicalType: string
+        description: AWS encryption-in-transit strategy (Section 10.10.5).
+        customProperties:
+          - property: sourceHeading
+            value: "AWS Encryption in Transit"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: aws_encryption_in_transit
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe the network's encryption in transit strategy"
+          - property: writeScope
+            value: append
+
+      - name: aws_encryption_at_rest
+        logicalType: string
+        description: AWS encryption-at-rest strategy (Section 10.10.6).
+        customProperties:
+          - property: sourceHeading
+            value: "AWS Encryption at Rest"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: aws_encryption_at_rest
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe the encryption at rest strategy"
+          - property: writeScope
+            value: append
+
+      - name: aws_s3_bucket_security
+        logicalType: string
+        description: AWS S3 bucket security strategy (Section 10.10.7).
+        customProperties:
+          - property: sourceHeading
+            value: "AWS S3 Bucket Security"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: aws_s3_bucket_security
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe the S3 Bucket Security Strategy"
+          - property: writeScope
+            value: append
+
+      - name: aws_kms_key_management
+        logicalType: string
+        description: AWS KMS key management strategy (Section 10.10.8).
+        customProperties:
+          - property: sourceHeading
+            value: "AWS KMS"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: aws_kms_key_management
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe the KMS and Key Management Strategy"
+          - property: writeScope
+            value: append
+
+      - name: aws_account_provisioning
+        logicalType: string
+        description: AWS account provisioning/decommissioning governance (Section 10.10.9).
+        customProperties:
+          - property: sourceHeading
+            value: "AWS Account Provisioning"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: aws_account_provisioning
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe the AWS account provisioning and decommissioning"
+          - property: writeScope
+            value: append
+
+      - name: aws_cloud_native_security
+        logicalType: string
+        description: Cloud-native AWS security services (Section 10.10.10).
+        customProperties:
+          - property: sourceHeading
+            value: "AWS Cloud Native Security"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: aws_cloud_native_security
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe the Cloud Native Security Services utilized"
+          - property: writeScope
+            value: append
+
+      - name: aws_baseline_security
+        logicalType: string
+        description: Baseline AWS security posture monitoring (Section 10.10.11).
+        customProperties:
+          - property: sourceHeading
+            value: "AWS Baseline Security"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: aws_baseline_security
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: Describe how baseline AWS Security is implemented"
+          - property: writeScope
+            value: append
+
+      - name: interconnections
+        logicalType: string
+        description: System Interconnections tables 11-1 and 11-2.
+        customProperties:
+          - property: sourceHeading
+            value: "System Interconnections"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: interconnections
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: List data covering all interconnected systems"
+          - property: writeScope
+            value: append
+

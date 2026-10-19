@@ -1,0 +1,310 @@
+# Interchange Field Model — .docx -> vault -> JSON -> .docx
+#
+# A verbose, stage-by-stage data contract for the full FedRAMP SSP round trip.
+# For every interchange boundary this records the fields that cross it, their
+# shape, where they live (frontmatter / markdown body / inline Dataview field /
+# JSON key / docx cell), and their disposition.
+#
+# DESCRIPTIVE artifact. Internal consistency is asserted by
+# compliance/tests/test_interchange_model.py (the note types and required
+# frontmatter keys it claims the pipeline emits are checked against the vault
+# builder). No runtime code reads this to place values; it is the human/tool
+# map of the pipeline that the executable contracts (fedramp-ssp-v1.yaml +
+# *-roundtrip.yaml) and schemas (vault-schemas.json,
+# canonical_sidecar_schema_v1.json, OSCAL 1.1.3) implement.
+#
+# disposition vocabulary (aligned with compliance/lib/docx_ir.py):
+#   structured              parsed into a typed field and routed to a model
+#   carried_forward         preserved verbatim (opaque) so it is not lost
+#   intentionally_excluded  presentation/plumbing deliberately not carried
+#   gap                     source exists but is not yet wired; see
+#                           oscal-schema-coverage.yaml
+#
+# stages:
+#   s1  .docx           source document extractors
+#   s2  vault markdown  frontmatter + body sections + inline Dataview fields
+#   s3  canonical JSON  .snapshots/current/*.json sidecars
+#   s4  OSCAL JSON      .exports/oscal-json/*.json (NIST 1.1.3)
+#   s5  .docx writer    CIS-table interchange fill / from-scratch interchange
+
+apiVersion: oscal-vault/interchange-model/v1
+kind: InterchangeModel
+id: fedramp-ssp-full-roundtrip
+name: fedramp_ssp_full_roundtrip
+version: 1.0.0
+status: active
+description: >-
+  End-to-end field model for a FedRAMP SSP as it moves .docx -> Obsidian vault
+  -> canonical JSON -> OSCAL JSON and back to .docx. Each stage lists what
+  crosses the boundary and how, so a reviewer can trace any field from source
+  cell to OSCAL path to regenerated cell and see where fidelity is structured,
+  carried forward, or lost.
+
+stages:
+
+  s1_docx_source:
+    description: >-
+      Content is extracted from the .docx by one primary parser (fismatic,
+      Chapter-13 control tables) plus targeted secondary extractors so
+      Chapters 1-12 and non-control artifacts are not dropped.
+    extractors:
+
+      - name: fismatic
+        module: compliance/lib/oscal_source.py
+        produces: CanonicalControl
+        scope: Chapter 13 control implementation (CIS) tables
+        fields:
+          - {name: control_id, kind: str, disposition: structured}
+          - {name: implementation_status, kind: enum, disposition: structured}
+          - {name: origination, kind: enum, disposition: structured}
+          - {name: statement_ids, kind: list-of-str, disposition: structured}
+          - {name: responsible_role, kind: optional-str, disposition: structured}
+          - {name: exportable, kind: bool, disposition: structured}
+          - {name: remarks, kind: optional-str, disposition: structured}
+          - {name: oscal_implementation_status, kind: optional-str, disposition: carried_forward}
+          - {name: oscal_origination, kind: list-of-str, disposition: carried_forward}
+        statement_text_map:
+          shape: "control_id -> statement_id -> text"
+          source_fields: [statements.description, statements.remarks, by-components.description]
+          disposition: structured
+
+      - name: heading_parser
+        module: compliance/lib/heading_parser.py
+        contract: compliance/datacontracts/fedramp-ssp-v1.yaml
+        scope: Chapters 1-12 narrative + non-control headings/tables/images
+        record_fields:
+          - {name: control_id, disposition: structured}
+          - {name: implementation_status, disposition: structured}
+          - {name: control_origination, kind: list, disposition: structured}
+          - {name: inherited_from, disposition: structured}
+          - {name: hybrid_systems, kind: list, disposition: structured}
+          - {name: responsible_role, disposition: structured}
+          - {name: statement_parts, kind: list-of-obj, disposition: structured}
+          - {name: parameters, kind: list-of-obj, disposition: structured}
+          - {name: raw_headers, kind: list, disposition: carried_forward}
+          - {name: raw_rows, kind: list, disposition: carried_forward}
+        structural_models:
+          ParsedTable: [table_index, heading, rows, cols, control_id, headers, data_rows]
+          ParsedImage: [image_index, paragraph_index, style, rid, part]
+          HeadingSection: [level, title, style, paragraph_index, paragraphs, tables, images, raw_lines]
+
+      - name: control_parameters
+        module: compliance/lib/control_parameters.py
+        produces: ControlParameter
+        scope: organization-defined parameter (ODP) values (#18)
+        fields:
+          - {name: control_id, disposition: structured}
+          - {name: value, disposition: structured}
+          - {name: ordinal, kind: int, disposition: structured}
+          - {name: param_id, kind: derived, note: "e.g. ac-02_odp.01", disposition: structured}
+
+      - name: control_guidance
+        module: compliance/lib/control_guidance.py
+        produces: [ControlGuidance, SectionGuidance]
+        scope: blue instruction blocks + CIS prompts (R18/R19)
+        fields:
+          - {name: control_id, disposition: structured}
+          - {name: instruction_blocks, disposition: carried_forward}
+          - {name: describe_prompt, disposition: carried_forward}
+
+      - name: crm_ods
+        module: compliance/lib/crm_ods.py
+        produces: CRMEntry
+        scope: secondary CRM .ods inheritance / tenant-responsibility matrix
+        fields:
+          - {name: control_id, disposition: structured}
+          - {name: control_name, disposition: structured}
+          - {name: implementation_status, disposition: structured}
+          - {name: inheritance, disposition: structured}
+          - {name: impacted, disposition: structured}
+          - {name: assessment_objective, disposition: structured}
+          - {name: assessment_method, disposition: structured}
+          - {name: evidence, disposition: structured}
+          - {name: evidence_link, disposition: structured}
+          - {name: extra, kind: dict, note: "unrecognized columns #43", disposition: carried_forward}
+
+      - name: docx_images
+        module: compliance/lib/docx_images.py
+        produces: ExtractedImage
+        fields: [rid, part_name, content_type, ext, data, media_stem]
+        disposition: carried_forward
+
+      - name: fips199
+        module: compliance/lib/fips199.py
+        produces: [InformationType, Fips199Result]
+        scope: FIPS-199 categorization information types (#24)
+        fields:
+          InformationType: [title, sp800_60_id, confidentiality, integrity, availability]
+          Fips199Result: [overall_level, information_types]
+        disposition: structured
+
+      - name: docx_preservation
+        module: compliance/lib/docx_preservation.py
+        produces: PreservationReport
+        sidecar: _preservation/docx-opaque.json
+        scope: >-
+          comments, tracked revisions (w:ins/w:del), footnotes, endnotes,
+          drawings, headers/footers that no semantic parser reads
+        fields: [source_locator, kind, disposition, text, payload, content_sha256]
+        disposition: carried_forward
+
+  s2_vault_markdown:
+    description: >-
+      One markdown note per entity; markdown is the single editable source of
+      truth. Per note type: frontmatter keys, body section headings, and inline
+      Dataview fields.
+    module: compliance/lib/vault.py
+    note_types:
+
+      oscal.control:
+        builder: build_control_note
+        frontmatter_required: [type, oscal_model, kind, note_type, control_id, title, status, owner]
+        frontmatter_common: [family, enhancement, system, component, implementation_status, origination, exportable, reviewed]
+        frontmatter_conditional: [parameters, crm, inherited_from, hybrid_systems, source_ssp, last_updated, parsed_by, responsible_role, statement_parts, tags, up_control, up_plan, sub_controls, related_controls]
+        body_sections: ["# <control_id>", template-guidance-callout, "# Upstream", "# Parameters (dataview table)", "# Statement Parts", "## Part <x>", "# CRM Guidance", "## Inheritance (secondary CRM)", "## Responsible Role", "# Evidence", "## Related Controls"]
+        inline_fields: [statement_part, inheritance_mode, inherited_from, implementation_status, crm_guidance_level, crm_inheritance, crm_status, crm_impacted]
+
+      oscal.ssp.system:
+        builder: build_system_note
+        note_type: system
+        frontmatter_required: [type, oscal_model, kind, note_type, name, status, owner, system_id]
+        frontmatter_common: [acronym, fips_199, security_objective_confidentiality, security_objective_integrity, security_objective_availability, impact_level, authorization_boundary, organization, system_owner, isso, authorizing_official, information_types, components, plans, last_updated, tags, up_plan, child_components, cloud_service_model, cloud_deployment_model]
+        body_sections: ["# <name>", "## Description", "## Authorization Boundary", "## Components", "## Information Types (markdown table)", "## Information System Type", "## Cloud Service Model", "## Cloud Deployment Model", "## System Environment", "## System Data Nature"]
+        inline_fields: []
+
+      oscal.ssp.plan:
+        builder: build_plan_note
+        note_type: plan
+        frontmatter_required: [type, oscal_model, kind, note_type, plan_id, title, status, owner]
+        frontmatter_common: [version, date, plan_type, import_profile, system, template_version, parser, controls_parsed, oscasl_version, source_docx, tags, reviewed, profile_ref, child_systems]
+        body_sections: ["# <title>", "## Summary", "## Source", "## Controls"]
+        inline_fields: []
+        note: controls_parsed drives the export control-parity gate (#51)
+
+      oscal.component_definition:
+        builders: [build_synthetic_component_note, build_real_component_notes]
+        note_type: component
+        frontmatter_required: [type, oscal_model, kind, note_type, name, status, owner]
+        frontmatter_common: [component_type, component_kind, version, belongs_to, implementation_model, responsible_party, cloud_deployment_model, fips_199, fedramp_package, tags, up_system, provenance, source_chapter]
+        body_sections: ["# <name>", "## Notes", "## Leveraged Authorizations", "## Control Implementation", "## Asset Inventory", "## Software Inventory", "## External Services", "## AWS Services In Use"]
+        inline_fields: []
+
+      oscal.party:
+        builder: build_organization_notes
+        note_type: organization
+        frontmatter_required: [type, oscal_model, kind, note_type, name, status, owner]
+        frontmatter_common: [acronym, org_type, role, systems, responsible_for, tags, child_systems]
+        body_sections: ["# <name>", "## Roles", "## Systems"]
+        inline_fields: []
+
+      oscal.x.*:
+        builder: build_narrative_notes
+        spec: _NARRATIVE_NOTE_SPECS
+        frontmatter_required: [type, extension_model, kind, note_type, title, status, owner]
+        frontmatter_common: [system_id, source_chapter, provenance, tags, diagram_kind, media_files, evidence_id, evidence_kind]
+        body_sections_by_model:
+          oscal.x.boundary: [Network Architecture, Components and Boundaries, Locations, Website URLs, Types of Users, Common Integrations]
+          oscal.x.relationship: [System Interconnections, Ports Protocols and Services]
+          oscal.x.inheritance: [Direction, Provided By]
+          oscal.x.runbook: [Discipline, DevOps-DevSecOps, Container Workload, AWS Management]
+          oscal.x.decision: [Decision Kind, Digital Identity Acceptance, IPv6 Transition, GSA Showstoppers]
+          oscal.x.diagram: [Diagrams, Captions]
+          oscal.x.crm: [Overview, Customer Responsibility Controls]
+          oscal.x.privacy: [PII Processing, Transparency]
+          oscal.x.evidence: [Attachments]
+        disposition: carried_forward
+        note: >-
+          Extension notes preserve Chapters 1-12 content that has no first-class
+          OSCAL home in the current exporter; several are candidates to be wired
+          into native OSCAL assemblies (see oscal-schema-coverage.yaml).
+
+  s3_canonical_json:
+    description: >-
+      Generated-only projection of a note: frontmatter spread verbatim, exact
+      body, structural section split, Dataview inline fields, content hash.
+    module: compliance/lib/canonical_json.py
+    schema: compliance/schemas/canonical/canonical_sidecar_schema_v1.json
+    keys:
+      - {name: "frontmatter.*", disposition: carried_forward, note: every frontmatter key spread verbatim}
+      - {name: raw_body, kind: str, disposition: carried_forward, note: exact markdown body; makes section-splitter loss hash-detectable}
+      - {name: body_sections, kind: list-of-obj, note: "heading, level, content", disposition: structured}
+      - {name: inline_fields, kind: dict, disposition: structured}
+      - {name: _meta, kind: obj, note: "schema_version, generated_from, generated_at, content_hash, exportable"}
+    content_hash_covers: [frontmatter, raw_body, body_sections, inline_fields]
+    drift_gate:
+      command: compliance/scripts/generate_canonical_json.py --check
+      asserts: committed content_hash equals freshly generated; no missing or orphan sidecars
+
+  s4_oscal_json:
+    description: >-
+      Schema-valid NIST OSCAL 1.1.3. See oscal-schema-coverage.yaml for the full
+      USED/UNUSED element inventory per model.
+    module: compliance/lib/export_oscal.py
+    system_security_plan:
+      first_class:
+        - metadata.title
+        - metadata.roles
+        - metadata.parties
+        - metadata.responsible-parties
+        - import-profile.href
+        - system-characteristics.system-name
+        - system-characteristics.system-information.information-types
+        - system-characteristics.security-impact-level
+        - system-characteristics.status
+        - system-characteristics.authorization-boundary.description
+        - system-implementation.components
+        - control-implementation.implemented-requirements
+      props_passthrough:
+        - metadata.props
+        - implemented-requirement.props.implementation-status
+        - implemented-requirement.props.control-origination
+      gaps:
+        - back-matter.resources
+        - system-implementation.leveraged-authorizations
+        - system-implementation.inventory-items
+        - system-characteristics.network-architecture
+        - system-characteristics.data-flow
+        - authorization-boundary.diagrams
+        - by-component.export
+    component_definition:
+      first_class: [metadata.title, components.type, components.title, components.description]
+      props_passthrough: [status, inventory_items, software_inventory, external_services, aws_services_in_use, extension_props]
+      gaps:
+        - components.control-implementations
+        - components.responsible-roles
+        - components.protocols
+        - capabilities
+        - back-matter
+
+  s5_docx_writer:
+    description: >-
+      Writes control-interchange CIS tables, not a full source-document
+      regeneration. The in-place filler is production.
+    production_path:
+      module: compliance/lib/control_table_fill.py
+      entrypoint: fill_control_tables
+      writes:
+        - {field: implementation_status, target: status-cell checkboxes, from: oscal_implementation_status}
+        - {field: origination, target: origination-cell checkboxes, from: oscal_origination}
+        - {field: statement_parts, target: Part-x narrative rows or blank answer cell, from: statement_text_by_control}
+      not_written: [responsible_role, metadata, parties, set_parameter_values, authorization_boundary]
+      preserves: 100% of original template fidelity (styles, headers, footers, numbering)
+    from_scratch_path:
+      module: compliance/lib/docx_generator.py
+      entrypoint: generate_control_interchange_docx
+      scope: synthetic/interchange only (tests + archived batch regen)
+      writes: [title, system-name, CIS-tables]
+    explicitly_not_regenerated:
+      - full Chapters 1-12 narrative
+      - metadata, parties, system-characteristics
+      - set-parameters, authorization boundary
+
+roundtrip_trace_example:
+  description: One control implementation status traced through all five stages.
+  field: implementation_status
+  s1_docx: CIS table Implementation Status checkbox (fismatic reads state)
+  s2_vault: frontmatter implementation_status + inline implementation_status
+  s3_json: frontmatter.implementation_status (hashed) + inline_fields.implementation_status
+  s4_oscal: implemented-requirement.props name=implementation-status (carried as prop)
+  s5_docx: status-cell checkbox re-toggled via OSCAL_STATE_TO_KEY
+  fidelity: lossless_for_this_field

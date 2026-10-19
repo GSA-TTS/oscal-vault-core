@@ -1,0 +1,2821 @@
+# Open Data Contract Standard (ODCS v3.1.0) — FedRAMP SSP docx → vault routing
+#
+# This contract documents the to/from relationship for every source heading
+# in a FedRAMP SSP .docx and where its content should land in the existing
+# type taxonomy (oscal.*, oscal.x.*, okf.* — see
+# .agents/skills/fedramp-vault/SKILL.md).
+#
+# It is consumed by:
+#   - compliance/lib/heading_parser.py  (secondary parser, contract-driven)
+#   - compliance/scripts/extract_by_contract.py  (CLI)
+#
+# And validated against:
+#   compliance/datacontracts/schemas/odcs-json-schema-v3.1.0.json
+#
+# Conventions used in customProperties:
+#   Object-level:
+#     oscalType          — dotted vault type (e.g. "oscal.party")
+#     oscalModel         — OSCAL model name (e.g. "party")
+#     noteType           — disambiguator for types with multiple note flavors
+#     destinationFolder  — vault folder (e.g. "Organizations/")
+#     required           — true if this destination is mandatory for a valid SSP
+#     multiple           — true if a single source yields many records
+#     isSource           — true for the synthetic source object (the docx itself)
+#   Property-level:
+#     sourceHeading      — exact/prefix/regex match for the source .docx heading
+#     sourceKind         — paragraph | table | image | constant | derived
+#     captureStrategy    — heading_paragraph | heading_paragraph_first |
+#                          heading_table_first | heading_table_all |
+#                          heading_image_first | heading_image_all |
+#                          heading_all | constant | derived
+#     captureScope       — immediate_only (default) | until_next_same_or_higher
+#     oscalPath          — primary dotted target in the OSCAL model.
+#     nativeOscalPaths   — one or more native target paths; permits one
+#                          authoring field to feed multiple assemblies.
+#     mappingClass       — native_core | authoring_extension |
+#                          true_extension | unimplemented.
+#     mappingStatus      — active mappings must be claimed by a typed
+#                          exporter adapter (validate_oscal_mappings.py).
+#     exportAdapter      — exact typed adapter consuming this source property.
+#     legacyExtensionPath / authoringExtensionType — preserve the vault's
+#                          oscal.x authoring identity during migration.
+#     note               — free-text note for reviewers
+#     provenance         — link to the routing-decision row in INDEX.md
+#
+# Object-level (additional):
+#     handledByPrimaryParser — true when the primary parser (fismatic) fills
+#                          this object; the contract-driven secondary parser
+#                          (heading_parser) then SKIPS it so its properties are
+#                          not counted as "unfilled" (D-9 / #43).
+#
+# Adding a new mapping = edit this file; no code change required.
+
+apiVersion: v3.1.0
+kind: DataContract
+id: fedramp-ssp-docx-to-vault-v1
+name: fedramp_ssp_docx_to_vault
+version: 1.0.0
+status: active
+domain: fedramp-ssp
+tenant: GSA
+contractCreatedTs: "2026-07-18T00:00:00Z"
+
+tags:
+  - fedramp
+  - ssp
+  - oscal
+  - docx
+  - vault
+  - okf
+
+description:
+  purpose: >
+    Establish the to/from contract between a FedRAMP SSP .docx source and the
+    Obsidian vault destination types (oscal.*, oscal.x.*, okf.*). Every
+    source heading currently DROPPED by the primary fismatic parser is mapped
+    here to its destination note type, with capture strategy and OSCAL path.
+  usage: >
+    Consumed by compliance/lib/heading_parser.py to drive a secondary
+    markdown-heading-based extractor. The primary fismatic parser handles
+    Chapter 13 control implementation tables (oscal.control); this contract
+    covers everything else (system identity, parties, architecture, data flow,
+    inheritance, interconnections, references, etc.).
+  limitations: >
+    Source heading names follow the FedRAMP SSP rev5 template and are stable
+    across the corpus, but hand-edited SSPs may use variations. Use the
+    prefix (`*`) or `regex:` sourceHeading forms for tolerant matching.
+    Review the catchall dump (examples/docx_catchall/) to confirm coverage.
+
+servers:
+  - id: local_docx
+    server: local-fedramp-ssp
+    type: local
+    description: >
+      Local .docx source files under fismatic/. No .docx is committed to the
+      repo (see .gitignore); supply your own or use FedRAMP's public blank
+      baseline templates.
+    environment: dev
+    customProperties:
+      - property: path
+        value: fismatic/*.docx
+        description: Glob for FedRAMP SSP .docx source files.
+      - property: format
+        value: docx
+      - property: primaryParser
+        value: fismatic.SSPConverter
+        description: >
+          The primary parser (Chapter 13 control tables only). The contract
+          + heading_parser.py form the secondary parser for everything else.
+      - property: catchallDumper
+        value: scripts/docx_catchall_dump.py
+        description: >
+          Produces the markdown intermediate this contract's capture
+          strategies operate on.
+
+authoritativeDefinitions:
+  - id: odcs-spec
+    url: https://bitol-io.github.io/open-data-contract-standard/latest/
+    type: businessDefinition
+    description: Open Data Contract Standard (ODCS) v3.1.0 specification.
+  - id: odcs-schema
+    url: https://raw.githubusercontent.com/bitol-io/open-data-contract-standard/main/schema/odcs-json-schema-v3.1.0.json
+    type: implementation
+    description: ODCS v3.1.0 JSON Schema (cached locally at compliance/datacontracts/schemas/).
+  - id: vault-skill
+    url: .agents/skills/fedramp-vault/SKILL.md
+    type: businessDefinition
+    description: FedRAMP vault type taxonomy (oscal.*, oscal.x.*, okf.*).
+  - id: catchall-index
+    url: examples/docx_catchall/INDEX.md
+    type: businessDefinition
+    description: >
+      Routing-decision review surface with per-heading proposed destination
+      and an empty Decision column for confirmation.
+  - id: fedramp-template
+    url: https://www.fedramp.gov/assets/resources/templates/SSP-Azure-FedRAMP-High-Baseline-Template.docx
+    type: businessDefinition
+    description: FedRAMP SSP rev5 template (source of canonical heading names).
+
+customProperties:
+  - property: sourceFormat
+    value: docx
+  - property: intermediateFormat
+    value: markdown
+    description: >
+      The catchall dumper emits a markdown blob; the parser operates on that
+      blob. Decoupling lets us re-run extraction with a new contract without
+      re-parsing the .docx.
+  - property: targetTaxonomy
+    value: fedramp-vault
+  - property: primaryParserScope
+    value: chapter-13-control-tables
+    description: >
+      The primary fismatic parser handles Chapter 13 control implementation
+      tables only. This contract covers everything else.
+  - property: reviewSurface
+    value: examples/docx_catchall/INDEX.md
+
+# ---------------------------------------------------------------------------
+# Schema: one synthetic source object + N destination objects
+# ---------------------------------------------------------------------------
+schema:
+  # --- SOURCE ----------------------------------------------------------------
+  - id: fedramp_ssp_docx
+    name: fedramp_ssp_docx
+    logicalType: object
+    physicalType: file
+    physicalName: "*.docx"
+    description: >
+      Synthetic source object representing the FedRAMP SSP .docx. Its
+      properties enumerate the source headings the secondary parser can
+      route from. Every destination property's `transformSourceObjects`
+      references this object.
+    tags: [source, docx]
+    customProperties:
+      - property: isSource
+        value: true
+      - property: sourceFormat
+        value: docx
+      - property: sourcePath
+        value: fismatic/*.docx
+    properties:
+      - name: title
+        logicalType: string
+        description: Title-style paragraph at the top of the SSP (agency name).
+        customProperties:
+          - property: sourceHeading
+            value: ""
+          - property: sourceKind
+            value: paragraph
+          - property: note
+            value: The first paragraph with style=Title in the document.
+      - name: information_system_name
+        logicalType: string
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Name"
+          - property: sourceKind
+            value: table
+      - name: information_system_owner
+        logicalType: object
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Owner"
+          - property: sourceKind
+            value: table
+      - name: authorizing_official
+        logicalType: object
+        customProperties:
+          - property: sourceHeading
+            value: "Authorizing Official"
+          - property: sourceKind
+            value: table
+      - name: other_designated_contacts
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "Other Designated Contacts"
+          - property: sourceKind
+            value: table
+      - name: assignment_of_security_responsibility
+        logicalType: object
+        customProperties:
+          - property: sourceHeading
+            value: "Assignment of Security Responsibility"
+          - property: sourceKind
+            value: table
+      - name: information_system_categorization
+        logicalType: object
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Categorization"
+          - property: sourceKind
+            value: section
+      - name: information_system_operational_status
+        logicalType: object
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Operational Status"
+          - property: sourceKind
+            value: table
+      - name: information_system_type
+        logicalType: object
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Type"
+          - property: sourceKind
+            value: table
+      - name: general_system_description
+        logicalType: string
+        customProperties:
+          - property: sourceHeading
+            value: "General System Description"
+          - property: sourceKind
+            value: paragraph
+      - name: information_system_locations
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Locations"
+          - property: sourceKind
+            value: table
+      - name: information_system_components_and_boundaries
+        logicalType: string
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Components and Boundaries"
+          - property: sourceKind
+            value: paragraph
+      - name: information_system_web_site_urls
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Web Site URL Addresses"
+          - property: sourceKind
+            value: table
+      - name: types_of_users
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "Types of Users"
+          - property: sourceKind
+            value: table
+      - name: network_architecture
+        logicalType: string
+        customProperties:
+          - property: sourceHeading
+            value: "Network Architecture"
+          - property: sourceKind
+            value: paragraph
+      - name: common_integrations
+        logicalType: string
+        customProperties:
+          - property: sourceHeading
+            value: "Common Integrations:"
+          - property: sourceKind
+            value: paragraph
+      - name: system_environment
+        logicalType: string
+        customProperties:
+          - property: sourceHeading
+            value: "System Environment"
+          - property: sourceKind
+            value: paragraph
+      - name: asset_inventory
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "Asset Inventory"
+          - property: sourceKind
+            value: table
+      - name: external_services
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "External Services"
+          - property: sourceKind
+            value: table
+      - name: software_inventory
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "regex:.*Software Inventory"
+          - property: sourceKind
+            value: table
+      - name: data_flow
+        logicalType: string
+        customProperties:
+          - property: sourceHeading
+            value: "Data Flow"
+          - property: sourceKind
+            value: section
+      - name: ports_protocols_and_services
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "Ports, Protocols and Services"
+          - property: sourceKind
+            value: table
+      - name: transition_to_ipv6
+        logicalType: string
+        customProperties:
+          - property: sourceHeading
+            value: "Transition to IPv6"
+          - property: sourceKind
+            value: paragraph
+      - name: devops_devsecops_management
+        logicalType: string
+        customProperties:
+          - property: sourceHeading
+            value: "DevOps/DevSecOps Management"
+          - property: sourceKind
+            value: paragraph
+      - name: container_based_workload_management
+        logicalType: string
+        customProperties:
+          - property: sourceHeading
+            value: "Container-Based Workload Management"
+          - property: sourceKind
+            value: paragraph
+      - name: aws_management
+        logicalType: string
+        customProperties:
+          - property: sourceHeading
+            value: "AWS Management"
+          - property: sourceKind
+            value: paragraph
+      - name: systems_providing_controls
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "regex:^Systems Providing Controls"
+          - property: sourceKind
+            value: table
+      - name: systems_receiving_controls
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "regex:^Systems Receiving Controls"
+          - property: sourceKind
+            value: table
+      - name: system_interconnections
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "System Interconnections"
+          - property: sourceKind
+            value: table
+      - name: applicable_laws_and_regulations
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "Applicable Laws and Regulations"
+          - property: sourceKind
+            value: table
+      - name: acronyms_terms_and_definitions
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "regex:APPENDIX A.*Acronyms"
+          - property: sourceKind
+            value: table
+      - name: references
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "regex:APPENDIX B.*References"
+          - property: sourceKind
+            value: table
+      - name: hosted_subsystems
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "regex:APPENDIX C.*Hosted Subsystems"
+          - property: sourceKind
+            value: table
+      - name: attachments
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "Attachments"
+          - property: sourceKind
+            value: table
+      - name: minimum_security_controls_showstoppers
+        logicalType: array
+        customProperties:
+          - property: sourceHeading
+            value: "Minimum Security Controls"
+          - property: sourceKind
+            value: table
+
+  # --- DESTINATION: oscal.ssp (system + plan identity) -----------------------
+  - id: oscal_ssp_system
+    name: oscal_ssp
+    logicalType: object
+    physicalType: file
+    physicalName: "Systems/<system>.md"
+    description: >
+      The system-level oscal.ssp note. Holds system identity, FIPS 199
+      categorization, description, operational status, and FKs to parties.
+      Currently the primary parser hardcodes system-name="System Name" and
+      description="System Description" — this destination replaces those
+      placeholders with real extracted values.
+    tags: [destination, oscal, ssp]
+    customProperties:
+      - property: oscalType
+        value: oscal.ssp
+      - property: oscalModel
+        value: system-security-plan
+      - property: noteType
+        value: system
+      - property: destinationFolder
+        value: Systems/
+      - property: required
+        value: true
+    properties:
+      - name: uuid
+        logicalType: string
+        description: OSCAL UUID for the system-security-plan.
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+          - property: oscalPath
+            value: system-security-plan.uuid
+          - property: note
+            value: Generated UUID (parser hook).
+      - name: title
+        logicalType: string
+        description: System name (currently hardcoded "System Name" by fismatic).
+        required: true
+        transformSourceObjects: [fedramp_ssp_docx]
+        transformDescription: "Take the system name from the Information System Name heading (first table, first data row)."
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Name"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.metadata.title
+          - property: provenance
+            value: "INDEX.md > Front matter & system identity"
+      - name: description
+        logicalType: string
+        description: General system description (currently hardcoded "System Description").
+        required: true
+        transformSourceObjects: [fedramp_ssp_docx]
+        transformDescription: "Concatenate paragraph text under the General System Description heading."
+        customProperties:
+          - property: sourceHeading
+            value: "General System Description"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: system-security-plan.system-characteristics.description
+          - property: provenance
+            value: "INDEX.md > Front matter & system identity"
+      - name: security_sensitivity_level
+        logicalType: string
+        description: FIPS 199 categorization (low | moderate | high).
+        required: true
+        transformSourceObjects: [fedramp_ssp_docx]
+        transformDescription: "Read from the document title block ('FIPS 199 Low' etc.) or the Information System Categorization section."
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Categorization"
+          - property: sourceKind
+            value: section
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: oscalPath
+            value: system-security-plan.system-characteristics.security-sensitivity-level
+          - property: note
+            value: Map FIPS 199 text to one of low/moderate/high.
+          - property: provenance
+            value: "INDEX.md > Front matter & system identity"
+      - name: security_objective_confidentiality
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Potential Impacts of Security Objectives"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.system-characteristics.security-impact-level.security-objective-confidentiality
+          - property: provenance
+            value: "INDEX.md > Front matter & system identity"
+      - name: security_objective_integrity
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Potential Impacts of Security Objectives"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.system-characteristics.security-impact-level.security-objective-integrity
+          - property: provenance
+            value: "INDEX.md > Front matter & system identity"
+      - name: security_objective_availability
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Potential Impacts of Security Objectives"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.system-characteristics.security-impact-level.security-objective-availability
+          - property: provenance
+            value: "INDEX.md > Front matter & system identity"
+      - name: status_state
+        logicalType: string
+        description: Operational status (currently hardcoded "operational").
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Operational Status"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.system-characteristics.status.state
+          - property: provenance
+            value: "INDEX.md > Front matter & system identity"
+      - name: system_information_types
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Information Types"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: oscalPath
+            value: system-security-plan.system-characteristics.system-information.information-types
+          - property: provenance
+            value: "INDEX.md > Front matter & system identity"
+      - name: authorization_boundary_description
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Components and Boundaries"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: system-security-plan.system-characteristics.authorization-boundary.description
+          - property: provenance
+            value: "INDEX.md > Architecture & boundary"
+      - name: digital_identity_acceptance
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Digital Identity Acceptance Statement"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: oscalPath
+            value: system-security-plan.props
+          - property: note
+            value: No native OSCAL field; capture as a prop for now.
+          - property: provenance
+            value: "INDEX.md > Front matter & system identity"
+      - name: information_system_type
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Type"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: system-security-plan.props
+          - property: note
+            value: Capture system type (e.g. Major Information System).
+          - property: provenance
+            value: "INDEX.md > Front matter & system identity"
+      - name: system_owner_party_uuid
+        logicalType: string
+        description: FK to oscal.party (the system owner).
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Owner"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.responsible-parties[system-owner].party-uuid
+          - property: provenance
+            value: "INDEX.md > People & roles"
+      - name: authorizing_official_party_uuid
+        logicalType: string
+        description: FK to oscal.party (the AO).
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Authorizing Official"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.responsible-parties[authorizing-official].party-uuid
+          - property: provenance
+            value: "INDEX.md > People & roles"
+      - name: security_responsibility_party_uuid
+        logicalType: string
+        description: FK to oscal.party (the security officer).
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Assignment of Security Responsibility"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.responsible-parties[security-responsible-officer].party-uuid
+          - property: provenance
+            value: "INDEX.md > People & roles"
+      - name: system_environment_description
+        logicalType: string
+        description: >
+          Narrative description of the system environment (hosting, OS,
+          runtime, services). R14 addition to close 9/10 SSPs × ~14
+          paragraphs gap flagged in inaugural report §4.
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "System Environment"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: system-security-plan.system-characteristics.description
+          - property: appendToExistingDescription
+            value: true
+          - property: provenance
+            value: "R14 closing-gaps (inaugural report §4)"
+      - name: system_data_nature
+        logicalType: string
+        description: >
+          Description of the system's data types and handling. R14 addition
+          to close 6/10 SSPs × ~4 paragraphs gap.
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "System Data Nature"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: system-security-plan.system-characteristics.props[data-nature]
+          - property: provenance
+            value: "R14 closing-gaps (inaugural report §4)"
+      - name: cloud_service_model
+        logicalType: string
+        description: >
+          Cloud service model (SaaS, PaaS, IaaS, FaaS, hybrid). R14 addition
+          for 2/10 SSPs.
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Cloud Service Models"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: system-security-plan.system-characteristics.props[cloud-service-model]
+          - property: provenance
+            value: "R14 closing-gaps (inaugural report §4)"
+      - name: cloud_deployment_model
+        logicalType: string
+        description: >
+          Cloud deployment model (public, private, community, hybrid).
+          R14 addition for 2/10 SSPs.
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Cloud Deployment Models"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: system-security-plan.system-characteristics.props[cloud-deployment-model]
+          - property: provenance
+            value: "R14 closing-gaps (inaugural report §4)"
+    relationships:
+      - type: foreignKey
+        from: oscal_ssp.system_owner_party_uuid
+        to: oscal_party.uuid
+        customProperties:
+          - property: label
+            value: system-owner
+      - type: foreignKey
+        from: oscal_ssp.authorizing_official_party_uuid
+        to: oscal_party_ao.uuid
+        customProperties:
+          - property: label
+            value: authorizing-official
+      - type: foreignKey
+        from: oscal_ssp.security_responsibility_party_uuid
+        to: oscal_party_security.uuid
+        customProperties:
+          - property: label
+            value: security-responsible-officer
+
+  # --- DESTINATION: oscal.ssp.system environment & data (R14 closing-gaps) ---
+  # R14: Added 3 new properties on oscal_ssp_system to capture the
+  # high-frequency FedRAMP SSP sections that the inaugural report
+  # flagged as unrouted (343 total across 10 docs):
+  #   - System Environment        (9/10 SSPs, 123 paragraphs)
+  #   - System Data Nature        (6/10 SSPs,  22 paragraphs)
+  #   - Cloud Service Models      (2/10 SSPs,   4 paragraphs)
+  #   - Cloud Deployment Models   (2/10 SSPs,   4 paragraphs)
+  # These ride the same oscal.system-characteristics.oscalPath so they
+  # land alongside the existing system description; the heading_text
+  # is preserved as the property value (not body) for the model fields.
+  # Existing properties (title, description, security_sensitivity_level)
+  # are unchanged.
+
+  # --- DESTINATION: oscal.party (people + organizations) ---------------------
+  - id: oscal_party
+    name: oscal_party
+    logicalType: object
+    physicalType: file
+    physicalName: "Organizations/<party>.md"
+    description: >
+      One note per person or organization mentioned in the SSP front matter
+      (System Owner, Authorizing Official, Other Designated Contacts,
+      Assignment of Security Responsibility, Document Prepared By).
+    tags: [destination, oscal, party]
+    customProperties:
+      - property: oscalType
+        value: oscal.party
+      - property: oscalModel
+        value: party
+      - property: destinationFolder
+        value: Organizations/
+      - property: required
+        value: true
+      - property: multiple
+        value: true
+      - property: mappingClass
+        value: native_core
+      - property: mappingStatus
+        value: active
+      - property: exportAdapter
+        value: party
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+          - property: oscalPath
+            value: system-security-plan.metadata.parties[].uuid
+          - property: note
+            value: Generated UUID.
+      - name: type
+        logicalType: string
+        required: true
+        customProperties:
+          - property: captureStrategy
+            value: constant
+          - property: oscalPath
+            value: system-security-plan.metadata.parties[].type
+        examples: ["person"]
+      - name: name
+        logicalType: string
+        required: true
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Owner"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.metadata.parties[].name
+          - property: note
+            value: One record per role-heading table (System Owner, AO, etc.).
+          - property: provenance
+            value: "INDEX.md > People & roles"
+      - name: role_ids
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Owner"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: constant
+          - property: oscalPath
+            value: system-security-plan.metadata.responsible-parties[].role-id
+          - property: mappingClass
+            value: native_core
+          - property: mappingStatus
+            value: active
+          - property: exportAdapter
+            value: party
+        examples: [["system-owner"]]
+      - name: email_address
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Owner"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.metadata.parties[].email-addresses[0]
+          - property: mappingClass
+            value: native_core
+          - property: mappingStatus
+            value: active
+          - property: exportAdapter
+            value: party
+      - name: phone
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Owner"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.metadata.parties[].telephone-numbers[0].number
+          - property: mappingClass
+            value: native_core
+          - property: mappingStatus
+            value: active
+          - property: exportAdapter
+            value: party
+  # --- DESTINATION: oscal_party_ao --------------------------------------------
+  - id: oscal_party_ao
+    name: oscal_party_ao
+    logicalType: object
+    physicalType: file
+    physicalName: "Organizations/<party>.md"
+    description: >
+      Authorizing Official party record.
+    tags: [destination, oscal, party]
+    customProperties:
+      - property: oscalType
+        value: oscal.party
+      - property: oscalModel
+        value: party
+      - property: destinationFolder
+        value: Organizations/
+      - property: required
+        value: false
+      - property: multiple
+        value: true
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+          - property: oscalPath
+            value: party.uuid
+          - property: note
+            value: Generated UUID.
+      - name: type
+        logicalType: string
+        required: true
+        customProperties:
+          - property: captureStrategy
+            value: constant
+          - property: oscalPath
+            value: party.type
+        examples: ["person"]
+      - name: name
+        logicalType: string
+        required: true
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Authorizing Official"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: party.name
+          - property: note
+            value: Authorizing Official name.
+          - property: provenance
+            value: "INDEX.md > People & roles"
+      - name: role_ids
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Authorizing Official"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: constant
+          - property: oscalPath
+            value: system-security-plan.metadata.responsible-parties[].role-id
+        examples: [["authorizing-official"]]
+      - name: email_address
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Authorizing Official"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.metadata.parties[].email-addresses[0]
+      - name: phone
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Authorizing Official"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.metadata.parties[].telephone-numbers[0].number
+
+  # --- DESTINATION: oscal_party_security --------------------------------------
+  - id: oscal_party_security
+    name: oscal_party_security
+    logicalType: object
+    physicalType: file
+    physicalName: "Organizations/<party>.md"
+    description: >
+      Assignment of Security Responsibility (ISSO/ISSM) party record.
+    tags: [destination, oscal, party]
+    customProperties:
+      - property: oscalType
+        value: oscal.party
+      - property: oscalModel
+        value: party
+      - property: destinationFolder
+        value: Organizations/
+      - property: required
+        value: false
+      - property: multiple
+        value: true
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+          - property: oscalPath
+            value: party.uuid
+          - property: note
+            value: Generated UUID.
+      - name: type
+        logicalType: string
+        required: true
+        customProperties:
+          - property: captureStrategy
+            value: constant
+          - property: oscalPath
+            value: party.type
+        examples: ["person"]
+      - name: name
+        logicalType: string
+        required: true
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Assignment of Security Responsibility"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: party.name
+          - property: note
+            value: Security responsibility contact name.
+          - property: provenance
+            value: "INDEX.md > People & roles"
+      - name: role_ids
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Assignment of Security Responsibility"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: constant
+          - property: oscalPath
+            value: system-security-plan.metadata.responsible-parties[].role-id
+        examples: [["security-responsible-officer"]]
+      - name: email_address
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Assignment of Security Responsibility"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.metadata.parties[].email-addresses[0]
+      - name: phone
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Assignment of Security Responsibility"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.metadata.parties[].telephone-numbers[0].number
+
+  # --- DESTINATION: oscal_party_contact ---------------------------------------
+  - id: oscal_party_contact
+    name: oscal_party_contact
+    logicalType: object
+    physicalType: file
+    physicalName: "Organizations/<party>.md"
+    description: >
+      Other Designated Contacts party record.
+    tags: [destination, oscal, party]
+    customProperties:
+      - property: oscalType
+        value: oscal.party
+      - property: oscalModel
+        value: party
+      - property: destinationFolder
+        value: Organizations/
+      - property: required
+        value: false
+      - property: multiple
+        value: true
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+          - property: oscalPath
+            value: party.uuid
+          - property: note
+            value: Generated UUID.
+      - name: type
+        logicalType: string
+        required: true
+        customProperties:
+          - property: captureStrategy
+            value: constant
+          - property: oscalPath
+            value: party.type
+        examples: ["person"]
+      - name: name
+        logicalType: string
+        required: true
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Other Designated Contacts"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: party.name
+          - property: note
+            value: Other designated contact name.
+          - property: provenance
+            value: "INDEX.md > People & roles"
+      - name: role_ids
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Other Designated Contacts"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: constant
+          - property: oscalPath
+            value: system-security-plan.metadata.responsible-parties[].role-id
+        examples: [["contact"]]
+      - name: email_address
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Other Designated Contacts"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.metadata.parties[].email-addresses[0]
+      - name: phone
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Other Designated Contacts"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: system-security-plan.metadata.parties[].telephone-numbers[0].number
+
+  # --- DESTINATION: oscal_party_preparer --------------------------------------
+  - id: oscal_party_preparer
+    name: oscal_party_preparer
+    logicalType: object
+    physicalType: file
+    physicalName: "Organizations/<party>.md"
+    description: >
+      Document Prepared By party record.
+    tags: [destination, oscal, party]
+    customProperties:
+      - property: oscalType
+        value: oscal.party
+      - property: oscalModel
+        value: party
+      - property: destinationFolder
+        value: Organizations/
+      - property: required
+        value: false
+      - property: multiple
+        value: true
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+          - property: oscalPath
+            value: party.uuid
+          - property: note
+            value: Generated UUID.
+      - name: type
+        logicalType: string
+        required: true
+        customProperties:
+          - property: captureStrategy
+            value: constant
+          - property: oscalPath
+            value: party.type
+        examples: ["organization"]
+      - name: organization_name
+        logicalType: string
+        required: true
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Document Prepared By"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_first
+          - property: oscalPath
+            value: party.name
+          - property: note
+            value: Organization name.
+          - property: provenance
+            value: "INDEX.md > People & roles"
+      - name: role_ids
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Document Prepared By"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: constant
+          - property: oscalPath
+            value: system-security-plan.metadata.responsible-parties[].role-id
+        examples: [["preparer"]]
+
+  # --- DESTINATION: oscal.component_definition --------------------------------
+  - id: oscal_component_definition
+    name: oscal_component_definition
+    logicalType: object
+    physicalType: file
+    physicalName: "Components/<component>.md"
+    description: >
+      Components and inventory-items extracted from Asset Inventory, External
+      Services, Software Inventory, and AWS Management (services in use).
+    tags: [destination, oscal, component]
+    customProperties:
+      - property: oscalType
+        value: oscal.component_definition
+      - property: oscalModel
+        value: component-definition
+      - property: destinationFolder
+        value: Components/
+      - property: required
+        value: false
+      - property: multiple
+        value: true
+      - property: mappingClass
+        value: native_core
+      - property: mappingStatus
+        value: active
+      - property: exportAdapter
+        value: component-definition
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+          - property: oscalPath
+            value: component-definition.uuid
+      - name: title
+        logicalType: string
+        required: true
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Asset Inventory"
+          - property: aliasSourceHeading
+            value: "regex:^10\\.1 Asset Inventory$"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: oscalPath
+            value: component-definition.components[0].title
+          - property: provenance
+            value: "INDEX.md > System environment & inventory"
+      - name: inventory_items
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Asset Inventory"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: oscalPath
+            value: component-definition.components[0].props
+          - property: provenance
+            value: "INDEX.md > System environment & inventory"
+      - name: software_inventory
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "regex:.*Software Inventory"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: oscalPath
+            value: component-definition.components[0].props
+          - property: provenance
+            value: "INDEX.md > System environment & inventory"
+      - name: external_services
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "External Services"
+          - property: aliasSourceHeading
+            value: "regex:^10\\.2 External Services$"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: oscalPath
+            value: component-definition.components[0].props
+          - property: mappingClass
+            value: native_core
+          - property: mappingStatus
+            value: active
+          - property: provenance
+            value: "INDEX.md > System environment & inventory"
+      - name: aws_services_in_use
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "AWS Management"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: oscalPath
+            value: component-definition.components[0].props
+          - property: note
+            value: "AWS Management > Table 10-5. AWS Services."
+          - property: provenance
+            value: "INDEX.md > System environment & inventory"
+
+  # --- DESTINATION: oscal.x.boundary -----------------------------------------
+  - id: oscal_x_boundary
+    name: oscal_x_boundary
+    logicalType: object
+    physicalType: file
+    physicalName: "Boundaries/<boundary>.md"
+    description: >
+      Authorization boundary description, locations, components-and-boundaries
+      narrative, and the boundary/authority/publication-process paragraphs
+      under Network Architecture.
+    tags: [destination, oscal-extension, boundary]
+    customProperties:
+      - property: oscalType
+        value: oscal.x.boundary
+      - property: extensionModel
+        value: boundary
+      - property: destinationFolder
+        value: Boundaries/
+      - property: required
+        value: false
+      - property: mappingClass
+        value: authoring_extension
+      - property: mappingStatus
+        value: active
+      - property: exportAdapter
+        value: boundary-bridge
+      - property: authoringExtensionType
+        value: oscal.x.boundary
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+          - property: mappingClass
+            value: unimplemented
+          - property: mappingStatus
+            value: documented
+      - name: description
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Network Architecture"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: system-characteristics.network-architecture.description
+          - property: legacyExtensionPath
+            value: extension.boundary.description
+          - property: provenance
+            value: "INDEX.md > Architecture & boundary"
+      - name: locations
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Locations"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: oscalPath
+            value: system-characteristics.network-architecture.description
+          - property: mappingClass
+            value: unimplemented
+          - property: mappingStatus
+            value: documented
+          - property: legacyExtensionPath
+            value: extension.boundary.locations
+          - property: provenance
+            value: "INDEX.md > Architecture & boundary"
+      - name: components_and_boundaries
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Components and Boundaries"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: system-characteristics.network-architecture.description
+          - property: mappingClass
+            value: unimplemented
+          - property: mappingStatus
+            value: documented
+          - property: legacyExtensionPath
+            value: extension.boundary.components
+          - property: provenance
+            value: "INDEX.md > Architecture & boundary"
+      - name: website_urls
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Web Site URL Addresses"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: oscalPath
+            value: system-characteristics.network-architecture.description
+          - property: mappingClass
+            value: unimplemented
+          - property: mappingStatus
+            value: documented
+          - property: legacyExtensionPath
+            value: extension.boundary.urls
+          - property: provenance
+            value: "INDEX.md > Architecture & boundary"
+      - name: types_of_users
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Types of Users"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: oscalPath
+            value: system-implementation.users[].authorized-privileges
+          - property: legacyExtensionPath
+            value: extension.boundary.users
+          - property: provenance
+            value: "INDEX.md > Architecture & boundary"
+      - name: common_integrations
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Common Integrations:"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: system-characteristics.network-architecture.description
+          - property: mappingClass
+            value: unimplemented
+          - property: mappingStatus
+            value: documented
+          - property: legacyExtensionPath
+            value: extension.boundary.integrations
+          - property: provenance
+            value: "INDEX.md > Architecture & boundary"
+
+  # --- DESTINATION: oscal.x.diagram ------------------------------------------
+  - id: oscal_x_diagram
+    name: oscal_x_diagram
+    logicalType: object
+    physicalType: file
+    physicalName: "Diagrams/<diagram>.md"
+    description: >
+      One note per image (network architecture, data flow, figure captions).
+      The image binary is referenced by rId + media part name; the note
+      carries caption, figure number, and the heading it appeared under.
+    tags: [destination, oscal-extension, diagram]
+    customProperties:
+      - property: oscalType
+        value: oscal.x.diagram
+      - property: extensionModel
+        value: diagram
+      - property: destinationFolder
+        value: Diagrams/
+      - property: multiple
+        value: true
+      - property: mappingClass
+        value: unimplemented
+      - property: mappingStatus
+        value: documented
+      - property: authoringExtensionType
+        value: oscal.x.diagram
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+      - name: image_rid
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Network Architecture"
+          - property: sourceKind
+            value: image
+          - property: captureStrategy
+            value: heading_image_all
+          - property: oscalPath
+            value: system-characteristics.authorization-boundary.diagrams
+          - property: nativeOscalPaths
+            value: [system-characteristics.authorization-boundary.diagrams, back-matter.resources]
+          - property: legacyExtensionPath
+            value: extension.diagram.rId
+          - property: provenance
+            value: "INDEX.md > Architecture & boundary"
+      - name: media_part
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Network Architecture"
+          - property: sourceKind
+            value: image
+          - property: captureStrategy
+            value: heading_image_all
+          - property: oscalPath
+            value: back-matter.resources
+          - property: legacyExtensionPath
+            value: extension.diagram.mediaPart
+      - name: caption
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "regex:Figure \\d"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph_first
+          - property: oscalPath
+            value: system-characteristics.authorization-boundary.diagrams.description
+          - property: legacyExtensionPath
+            value: extension.diagram.caption
+          - property: note
+            value: "Figure caption paragraph (e.g. 'Figure 9-1. Network Diagram')."
+          - property: provenance
+            value: "INDEX.md > Architecture & boundary"
+      - name: data_flow_images
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Data Flow"
+          - property: aliasSourceHeading
+            value: "regex:^10\\.4 Data Flow$"
+          - property: sourceKind
+            value: image
+          - property: captureStrategy
+            value: heading_image_all
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: system-characteristics.authorization-boundary.diagrams
+          - property: nativeOscalPaths
+            value: [system-characteristics.authorization-boundary.diagrams, back-matter.resources]
+          - property: legacyExtensionPath
+            value: extension.diagram.rId
+          - property: note
+            value: "Captures DNS / DFD images under Data Flow sub-headings. R14: now also matches 10.4 Data Flow and rolls up child-heading images."
+          - property: provenance
+            value: "INDEX.md > Data flow"
+
+  # --- DESTINATION: oscal.x.inheritance --------------------------------------
+  - id: oscal_x_inheritance
+    name: oscal_x_inheritance
+    logicalType: object
+    physicalType: file
+    physicalName: "Inheritance/<inheritance>.md"
+    description: >
+      Systems Providing Controls to <X> (provided-by) and Systems Receiving
+      Controls from <X> (received-by), plus Hosted Subsystems (appendix C).
+    tags: [destination, oscal-extension, inheritance]
+    customProperties:
+      - property: oscalType
+        value: oscal.x.inheritance
+      - property: extensionModel
+        value: inheritance
+      - property: destinationFolder
+        value: Inheritance/
+      - property: multiple
+        value: true
+      - property: mappingClass
+        value: authoring_extension
+      - property: mappingStatus
+        value: active
+      - property: exportAdapter
+        value: inheritance-bridge
+      - property: authoringExtensionType
+        value: oscal.x.inheritance
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+          - property: mappingClass
+            value: unimplemented
+          - property: mappingStatus
+            value: documented
+      - name: direction
+        logicalType: string
+        required: true
+        customProperties:
+          - property: captureStrategy
+            value: constant
+          - property: mappingClass
+            value: unimplemented
+          - property: mappingStatus
+            value: documented
+        examples: ["provided-by"]
+      - name: provided_by
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "regex:^Systems Providing Controls"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: oscalPath
+            value: system-implementation.leveraged-authorizations
+          - property: legacyExtensionPath
+            value: extension.inheritance.provided-by
+          - property: provenance
+            value: "INDEX.md > Inheritance & interconnections"
+      - name: received_by
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "regex:^Systems Receiving Controls"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: oscalPath
+            value: system-implementation.leveraged-authorizations
+          - property: mappingClass
+            value: unimplemented
+          - property: mappingStatus
+            value: documented
+          - property: legacyExtensionPath
+            value: extension.inheritance.received-by
+          - property: provenance
+            value: "INDEX.md > Inheritance & interconnections"
+      - name: hosted_subsystems
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "regex:APPENDIX C.*Hosted Subsystems"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: oscalPath
+            value: system-implementation.leveraged-authorizations
+          - property: mappingClass
+            value: unimplemented
+          - property: mappingStatus
+            value: documented
+          - property: legacyExtensionPath
+            value: extension.inheritance.hosted-subsystems
+          - property: provenance
+            value: "INDEX.md > Inheritance & interconnections"
+
+  # --- DESTINATION: oscal.x.relationship -------------------------------------
+  - id: oscal_x_relationship
+    name: oscal_x_relationship
+    logicalType: object
+    physicalType: file
+    physicalName: "Relationships/<relationship>.md"
+    description: >
+      System interconnections (Tables 11-1 and 11-2) and ports/protocols/
+      services (Table 10-4). One record per interconnection or one record
+      per ports/protocols table.
+    tags: [destination, oscal-extension, relationship]
+    customProperties:
+      - property: oscalType
+        value: oscal.x.relationship
+      - property: extensionModel
+        value: relationship
+      - property: destinationFolder
+        value: Relationships/
+      - property: multiple
+        value: true
+      - property: mappingClass
+        value: authoring_extension
+      - property: mappingStatus
+        value: active
+      - property: exportAdapter
+        value: relationship-bridge
+      - property: authoringExtensionType
+        value: oscal.x.relationship
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+          - property: mappingClass
+            value: unimplemented
+          - property: mappingStatus
+            value: documented
+      - name: interconnections
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "System Interconnections"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: oscalPath
+            value: system-characteristics.data-flow.description
+          - property: legacyExtensionPath
+            value: extension.relationship.interconnections
+          - property: note
+            value: "Tables 11-1 (system interconnections) + 11-2 (connection details)."
+          - property: provenance
+            value: "INDEX.md > Inheritance & interconnections"
+      - name: ports_protocols_services
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Ports, Protocols and Services"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: oscalPath
+            value: system-implementation.components[].protocols
+          - property: legacyExtensionPath
+            value: extension.relationship.ports-protocols-services
+          - property: provenance
+            value: "INDEX.md > Data flow"
+
+  # --- DESTINATION: oscal.x.runbook ------------------------------------------
+  - id: oscal_x_runbook
+    name: oscal_x_runbook
+    logicalType: object
+    physicalType: file
+    physicalName: "Runbooks/<runbook>.md"
+    description: >
+      Operational runbooks captured from DevOps/DevSecOps Management,
+      Container-Based Workload Management, and AWS Management narratives.
+      One runbook note per discipline.
+    tags: [destination, oscal-extension, runbook]
+    customProperties:
+      - property: oscalType
+        value: oscal.x.runbook
+      - property: extensionModel
+        value: runbook
+      - property: destinationFolder
+        value: Runbooks/
+      - property: multiple
+        value: true
+      - property: mappingClass
+        value: true_extension
+      - property: mappingStatus
+        value: documented
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+      - name: discipline
+        logicalType: string
+        required: true
+        customProperties:
+          - property: captureStrategy
+            value: constant
+        examples: ["devops-devsecops"]
+      - name: devops_devsecops
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "DevOps/DevSecOps Management"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: extension.runbook.steps
+          - property: provenance
+            value: "INDEX.md > System environment & inventory"
+      - name: container_workload
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Container-Based Workload Management"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: extension.runbook.steps
+          - property: provenance
+            value: "INDEX.md > System environment & inventory"
+      - name: aws_management
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "AWS Management"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: extension.runbook.steps
+          - property: provenance
+            value: "INDEX.md > System environment & inventory"
+      - name: cicd_architecture
+        logicalType: string
+        description: >
+          Architecture of the CI/CD processes narrative. R14 addition
+          to close 3/10 SSPs × ~13 paragraphs gap (inaugural report §4).
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Architecture of the CI/CD processes"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: extension.runbook.steps
+          - property: provenance
+            value: "R14 closing-gaps (inaugural report §4)"
+
+  # --- DESTINATION: oscal.x.privacy (R14) ------------------------------------
+  # R14: New schema object to capture the PII / privacy sections that the
+  # inaugural report flagged as unrouted (2/10 SSPs, 110 paragraphs).
+  # The FedRAMP "Personally Identifiable Information Processing and
+  # Transparency" section maps cleanly to a single extension object.
+  - id: oscal_x_privacy
+    name: oscal_x_privacy
+    logicalType: object
+    physicalType: file
+    physicalName: "Privacy/<privacy>.md"
+    description: >
+      Privacy / PII handling narrative captured from the SSP's
+      "Personally Identifiable Information Processing and Transparency"
+      section. R14 addition.
+    tags: [destination, oscal-extension, privacy]
+    customProperties:
+      - property: oscalType
+        value: oscal.x.privacy
+      - property: extensionModel
+        value: privacy
+      - property: destinationFolder
+        value: Privacy/
+      - property: multiple
+        value: true
+      - property: mappingClass
+        value: unimplemented
+      - property: mappingStatus
+        value: documented
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+      - name: pii_processing
+        logicalType: string
+        description: How the system processes PII.
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Personally Identifiable Information Processing and Transparency"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: extension.privacy.processing
+          - property: provenance
+            value: "R14 closing-gaps (inaugural report §4)"
+      - name: transparency
+        logicalType: string
+        description: PII transparency / notice narrative.
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Personally Identifiable Information Processing and Transparency"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: extension.privacy.transparency
+          - property: provenance
+            value: "R14 closing-gaps (inaugural report §4)"
+
+  # --- DESTINATION: oscal.x.decision -----------------------------------------
+  - id: oscal_x_decision
+    name: oscal_x_decision
+    logicalType: object
+    physicalType: file
+    physicalName: "Decisions/<decision>.md"
+    description: >
+      Architectural assumptions and decisions: Digital Identity Acceptance
+      Statement, Transition to IPv6, and Minimum Security Controls / GSA
+      Showstoppers.
+    tags: [destination, oscal-extension, decision]
+    customProperties:
+      - property: oscalType
+        value: oscal.x.decision
+      - property: extensionModel
+        value: decision
+      - property: destinationFolder
+        value: Decisions/
+      - property: multiple
+        value: true
+      - property: mappingClass
+        value: true_extension
+      - property: mappingStatus
+        value: documented
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+      - name: decision_kind
+        logicalType: string
+        required: true
+        customProperties:
+          - property: captureStrategy
+            value: constant
+        examples: ["assumption"]
+      - name: digital_identity_acceptance
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Digital Identity Acceptance Statement"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: oscalPath
+            value: extension.decision.rationale
+          - property: provenance
+            value: "INDEX.md > Front matter & system identity"
+      - name: ipv6_transition
+        logicalType: string
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Transition to IPv6"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: extension.decision.rationale
+          - property: provenance
+            value: "INDEX.md > Data flow"
+      - name: gsa_showstoppers
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Minimum Security Controls"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: oscalPath
+            value: extension.decision.findings
+          - property: note
+            value: "GSA-specific showstoppers table (rows reference control IDs)."
+          - property: provenance
+            value: "INDEX.md > References, attachments, appendices"
+
+  # --- DESTINATION: oscal.x.evidence -----------------------------------------
+  - id: oscal_x_evidence
+    name: oscal_x_evidence
+    logicalType: object
+    physicalType: file
+    physicalName: "Evidence/<evidence>.md"
+    description: >
+      Attachments appendix — one evidence note per attached artifact.
+    tags: [destination, oscal-extension, evidence]
+    customProperties:
+      - property: oscalType
+        value: oscal.x.evidence
+      - property: extensionModel
+        value: evidence
+      - property: destinationFolder
+        value: Evidence/
+      - property: multiple
+        value: true
+      - property: mappingClass
+        value: unimplemented
+      - property: mappingStatus
+        value: documented
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+      - name: attachments
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Attachments"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: oscalPath
+            value: extension.evidence.attachments
+          - property: provenance
+            value: "INDEX.md > References, attachments, appendices"
+
+  # --- DESTINATION: oscal.x.crm (leveraged CRM / customer-responsibility) ----
+  - id: oscal_x_crm
+    name: oscal_x_crm
+    logicalType: object
+    physicalType: file
+    physicalName: "CRM/<crm>.md"
+    description: >
+      Customer Responsibility Matrix (CRM) content captured from a leveraged
+      authorization's "CRM Controls" chapter (e.g. Chapter 14 "CR-N" sections
+      such as "CR-1 Big Query", "CR-2 Looker Studio Pro"). Each CR-N section
+      carries a stack of per-control "Responsibility Summary Information"
+      tables describing the customer's implementation responsibility for an
+      inherited/leveraged service. fismatic keys controls by id into a dict, so
+      these CR tables (which reuse Chapter-13 control ids like AC-3) are
+      overwritten and lost; this destination recovers them as their own notes.
+    tags: [destination, oscal-extension, crm]
+    customProperties:
+      - property: oscalType
+        value: oscal.x.crm
+      - property: extensionModel
+        value: crm
+      - property: destinationFolder
+        value: CRM/
+      - property: multiple
+        value: true
+      - property: mappingClass
+        value: unimplemented
+      - property: mappingStatus
+        value: documented
+      - property: authoringExtensionType
+        value: oscal.x.crm
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+      - name: crm_controls
+        logicalType: array
+        description: >
+          Every table under the "CRM Controls" chapter (14.x CR-N sections),
+          i.e. the per-control Responsibility Summary Information tables that
+          describe customer responsibilities for leveraged services.
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "regex:(?i)\\bCRM Controls\\b"
+          - property: aliasSourceHeading
+            value: "regex:(?i)^\\s*\\d+(?:\\.\\d+)*\\s+CR-\\d+\\b"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: control-implementation.implemented-requirements.by-components.export.responsibilities
+          - property: legacyExtensionPath
+            value: extension.crm.responsibilities
+          - property: provenance
+            value: "batch SSPP diagnosis — leveraged CRM control tables (Analytics CR-1/CR-2)"
+      - name: crm_narrative
+        logicalType: string
+        description: >
+          Narrative paragraphs under the CRM Controls chapter and its CR-N
+          subsections (context preceding/among the responsibility tables).
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "regex:(?i)\\bCRM Controls\\b"
+          - property: aliasSourceHeading
+            value: "regex:(?i)^\\s*\\d+(?:\\.\\d+)*\\s+CR-\\d+\\b"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: captureScope
+            value: until_next_same_or_higher
+          - property: oscalPath
+            value: control-implementation.implemented-requirements.by-components.export
+          - property: nativeOscalPaths
+            value: [control-implementation.implemented-requirements.by-components.export.provided, control-implementation.implemented-requirements.by-components.export.responsibilities]
+          - property: legacyExtensionPath
+            value: extension.crm.narrative
+          - property: provenance
+            value: "batch SSPP diagnosis — leveraged CRM control narrative"
+
+  # --- DESTINATION: okf.mapping (references + laws/regulations) --------------
+  - id: okf_mapping
+    name: okf_mapping
+    logicalType: object
+    physicalType: file
+    physicalName: "Mappings/<mapping>.md"
+    description: >
+      Crosswalk notes: APPENDIX B (References) and Applicable Laws and
+      Regulations. Each entry links a reference to the controls it supports.
+    tags: [destination, okf, mapping]
+    customProperties:
+      - property: oscalType
+        value: okf.mapping
+      - property: destinationFolder
+        value: Mappings/
+      - property: multiple
+        value: true
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+      - name: references
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "regex:APPENDIX B.*References"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: provenance
+            value: "INDEX.md > References, attachments, appendices"
+      - name: applicable_laws_and_regulations
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "Applicable Laws and Regulations"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: provenance
+            value: "INDEX.md > References, attachments, appendices"
+
+  # --- DESTINATION: okf.schema (glossary) ------------------------------------
+  - id: okf_schema_glossary
+    name: okf_schema_glossary
+    logicalType: object
+    physicalType: file
+    physicalName: "governance/glossary.md"
+    description: >
+      APPENDIX A — Acronyms, Terms and Definitions, modeled as an okf.schema
+      note describing the glossary terms used in the vault.
+    tags: [destination, okf, schema]
+    customProperties:
+      - property: oscalType
+        value: okf.schema
+      - property: destinationFolder
+        value: governance/
+    properties:
+      - name: uuid
+        logicalType: string
+        required: true
+        primaryKey: true
+        customProperties:
+          - property: captureStrategy
+            value: derived
+      - name: terms
+        logicalType: array
+        transformSourceObjects: [fedramp_ssp_docx]
+        customProperties:
+          - property: sourceHeading
+            value: "regex:APPENDIX A.*Acronyms"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: heading_table_all
+          - property: provenance
+            value: "INDEX.md > References, attachments, appendices"
+
+  # --- DESTINATION: oscal.control (Chapter 13 control implementation tables) ---
+  - id: oscal_control
+    name: oscal_control
+    logicalType: object
+    physicalType: file
+    physicalName: "Controls/<control>.md"
+    description: >
+      Control implementation records (Chapter 13). Each FedRAMP SSP contains
+      one control-summary table per implemented requirement. The secondary
+      parser (heading_parser.py) can extract these via the `control_table`
+      capture strategy from the catchall blob CONTROL TABLE (CAPTURED) tags.
+      The primary parser (fismatic.SSPConverter) also handles these; set
+      handledByPrimaryParser=false to use the contract-driven path instead.
+    tags: [destination, oscal, control]
+    customProperties:
+      - property: oscalType
+        value: oscal.control
+      - property: oscalModel
+        value: control
+      - property: destinationFolder
+        value: Controls/
+      - property: required
+        value: true
+      - property: multiple
+        value: true
+      - property: handledByPrimaryParser
+        value: true
+        description: >
+          When true, fismatic.SSPConverter + compliance.lib.oscal_source is the
+          authoritative extractor; heading_parser skips re-extraction. Set to
+          false to use the contract-driven secondary parser instead.
+      # -----------------------------------------------------------------------
+      # docx XML structure: Chapter 13 control-summary table layout
+      # -----------------------------------------------------------------------
+      # Every Chapter 13 control is a single 2-column docx table (or a
+      # 2-table block: summary table + one or more continuation tables).
+      # Row layout (standard FedRAMP SSP rev5 Word template):
+      #
+      #  Row 0  | <ControlID> <Title>                   | (merged heading cell)
+      #  Row 1  | Control Summary Information            | (section label, merged)
+      #  Row 2  | Responsible Role:                     | <role text (may be multi-line)>
+      #  Row 3+ | Parameter <P-nn>:                     | <param value>   (0..N rows)
+      #  Row N  | Implementation Status:                | <checkbox block — see below>
+      #  Row M  | Control Origination:                  | <checkbox block — see below>
+      #  Row K+ | Part <letter>: (or Part <number>:)   | <narrative prose>
+      #         (continuation table rows for statement parts — may be in a
+      #          separate adjacent table for long controls)
+      #
+      # Catchall blob TABLE tag format (from docx_catchall_dump.py):
+      #   _[TABLE #N @ heading='<h>' rows=R cols=C class=CONTROL TABLE (CAPTURED) control_id='<ID>']_
+      #   Followed by a markdown grid of the table cells.
+      #
+      # Checkbox encoding variants observed in corpus:
+      #   Checked:   ☒ (U+2612)  ✓ (U+2713)  ⊠ (U+22A0)  [x]  [X]  x  X
+      #   Unchecked: ☐ (U+2610)  [ ]
+      #   Parser:    _is_checked() in fismatic/parser.py
+      #   Pattern:   r'^[☒✓⊠]' | r'^\[[ xX]\]' | r'^[xX]\b'  (re.match after strip)
+      #
+      # Control ID extraction (row 0, col 0 header cell):
+      #   Regex:   r'([a-z]{2})[\s-]*(\d+)(?:\s*\((\d+|[a-z]+)\))?'  (re.search, IGNORECASE)
+      #   Groups:  (1) family  (2) number  (3) enhancement or None
+      #   Normalize: f"{family.upper()}-{number}"  or  f"{family.upper()}-{number}({enhancement})"
+      #   Examples: "AC-1", "AC-2(1)", "SI-4", "ac 1" -> "AC-1"
+      #   Also in catchall blob: control_id='AC-1' attribute on TABLE tag.
+      #
+      # Implementation Status row detection:
+      #   Label column: cells[0].text.strip().lower() contains 'implementation status'
+      #   Value column: cells[-1].text  (full checkbox block as one string)
+      #   Keyword matching (re.match, IGNORECASE, after _strip_checkbox()):
+      #     implemented            -> r'^implemented\b'           -> OSCAL: "implemented"
+      #     partially_implemented  -> r'^partially\s+implemented\b' -> "partially-implemented"
+      #     planned                -> r'^planned\b'               -> "planned"
+      #     alternative_impl       -> r'^alternative\s+implementation\b' -> "alternative-implementation"
+      #     configured_by_customer -> r'^configured\s+by\s+customer\b' -> "customer-configured"
+      #     not_applicable         -> r'^not\s+applicable\b'      -> "not-applicable"
+      #     (no match)                                            -> "not-implemented"
+      #
+      # Control Origination row detection:
+      #   Label column: cells[0].text.strip().lower() contains 'control origination'
+      #   Value column: cells[-1].text  (checkbox block — multiple may be checked)
+      #   Before keyword matching: strip parens via re.sub(r'\([^)]*\)', '', lower)
+      #   Keyword matching (re.search, IGNORECASE):
+      #     inherited              -> r'^inherited\s+from'                    -> "inherited"
+      #     hybrid                 -> r'^(?:hybrid\s+control|service\s+provider\s+hybrid)' -> "hybrid"
+      #     system_specific        -> r'^(?:system\s+specific\s+control|service\s+provider\s+system\s+specific)' -> "system-specific"
+      #     service_provider_corp  -> r'(?:common\s+control|service\s+provider\s+corporate)' -> "service-provider-corporate"
+      #     configured_by_customer -> r'^configured\s+by\s+customer'          -> "customer-configured"
+      #     provided_by_customer   -> r'^provided\s+by\s+customer'             -> "customer-provided"
+      #     shared                 -> r'^shared\b'                             -> "shared"
+      #   Inherited-from name: re.search(r'inherited\s+from:?\s*(.+)', line, IGNORECASE).group(1)
+      #   Hybrid systems: re.search(r'shared\s+between\s+(.+?)(?:;|\)|$)', line, IGNORECASE)
+      #                   then split group(1) on r'\s+and\s+'
+      #
+      # Narrative part rows:
+      #   Label column matches: re.match(r'(?:part|req\.?)\s*([a-z0-9]+)', label, IGNORECASE)
+      #   Part key = group(1); statement-id = f"{control_id_lower}_stmt.{part_key}"
+      #   control_id_lower = re.sub(r'\s+', '', control_id.strip().lower())
+      #
+      # Responsible Role row detection:
+      #   cells[0].text.strip().lower() contains BOTH 'responsible' AND 'role'
+      #   Value: cells[-1].text.strip() (may be multi-paragraph prose)
+      #
+      # Parameter rows (NOT yet extracted by fismatic):
+      #   Label matches: re.match(r'^[Pp]arameter\s+(\S+):?\s*$', cells[0].text.strip())
+      #   Group(1) = parameter ID token (e.g. 'ac-1_prm_1')
+      #   Value: cells[-1].text.strip()
+      - property: docxTableLayout
+        value: "2-col row-per-field: [Row0:heading, Row1:label, Row2+:Responsible-Role/Parameter/Impl-Status/Ctrl-Origination/Part-N]"
+        description: Standard FedRAMP SSP rev5 Chapter 13 table row layout.
+      - property: controlIdRegex
+        value: '([a-z]{2})[\s-]*(\d+)(?:\s*\((\d+|[a-z]+)\))?'
+        description: Applied re.search(IGNORECASE) to row-0 col-0 cell text.
+      - property: checkboxCheckedRegex
+        value: '^[☒☑✓⊠]|^\[[ xX]\]|^[xX]\b'
+        description: re.match after strip(). Unchecked marker is ☐ (U+2610). ☑ (U+2611) is a checked variant seen in some source SSPPs (e.g. FPDF).
+      - property: implStatusRowLabel
+        value: 'implementation status'
+        description: Substring of cells[0].lower() identifying the status row.
+      - property: ctrlOriginationRowLabel
+        value: 'control origination'
+        description: Substring of cells[0].lower() identifying the origination row.
+      - property: responsibleRoleRowLabel
+        value: 'responsible + role'
+        description: Both substrings must appear in cells[0].lower().
+      - property: partRowRegex
+        value: '(?:part|req\.?)\s*([a-z0-9]+)'
+        description: re.match(IGNORECASE) on cells[0].strip(). Group(1) = part key.
+      - property: statementIdFormat
+        value: '{control_id_lower}_stmt.{part_key}'
+        description: >
+          control_id_lower = re.sub(r'\s+','',control_id.strip().lower())
+          Examples: "ac-1_stmt.a", "si-4_stmt.1", "ac-2(1)_stmt.b"
+      - property: parameterRowRegex
+        value: '^[Pp]arameter\s+(\S+):?\s*$'
+        description: >
+          NOT yet extracted by fismatic. Tweak this regex in the contract to
+          enable parameter extraction via heading_parser.py control_table strategy.
+      - property: catchallBlobTag
+        value: 'CONTROL TABLE (CAPTURED)'
+        description: >
+          Class label in the catchall blob TABLE tag for control tables.
+          Full tag: _[TABLE #N @ heading='...' rows=R cols=C class=CONTROL TABLE (CAPTURED) control_id='ID']_
+    properties:
+      - name: control_id
+        logicalType: string
+        required: true
+        primaryKey: true
+        transformSourceObjects: [fedramp_ssp_docx]
+        transformDescription: >
+          Extracted from row 0 col 0 (merged heading cell) of the Chapter 13
+          control-summary table. Regex r'([a-z]{2})[\s-]*(\d+)(?:\s*\((\d+|[a-z]+)\))?'
+          applied re.search(IGNORECASE). Normalized to "AC-1" / "AC-2(1)" form.
+          Also carried in the catchall blob TABLE tag as control_id='ID'.
+        customProperties:
+          - property: sourceHeading
+            value: "regex:^(?:13\\.|Access Control|Awareness and Training|Awareness & Training|Audit and Accountability|Audit & Accountability|Assessment, Authorization, and Monitoring|Assessment, Authorization & Monitoring|Configuration Management|Contingency Planning|Identification and Authentication|Identification & Authentication|Incident Response|Maintenance|Media Protection|Physical and Environmental Protection|Physical & Environmental Protection|Planning|Personnel Security|Risk Assessment|System and Services Acquisition|System & Services Acquisition|System and Communications Protection|System & Communications Protection|System and Information Integrity|System & Information Integrity|Supply Chain Risk Management)"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: control_table
+          - property: oscalPath
+            value: control-implementation.implemented-requirements[].control-id
+          - property: docxLocation
+            value: "table.rows[0].cells[0].text  — merged heading cell"
+          - property: extractionRegex
+            value: '([a-z]{2})[\s-]*(\d+)(?:\s*\((\d+|[a-z]+)\))?'
+          - property: normalization
+            value: >
+              Groups: (1)=family.upper(), (2)=number, (3)=enhancement or None.
+              Result: f"{family}-{number}" or f"{family}-{number}({enhancement})"
+              Prefixes stripped first: "security control", "control", "requirement",
+              "req.", "part"
+          - property: provenance
+            value: "fismatic/parser.py:normalize_control_id(), parse_control_id()"
+      - name: implementation_status
+        logicalType: string
+        required: true
+        transformSourceObjects: [fedramp_ssp_docx]
+        transformDescription: >
+          Single OSCAL state value. Found by scanning the Implementation Status
+          value cell for the first checked checkbox and mapping its label to the
+          OSCAL vocabulary via the keyword map.
+        customProperties:
+          - property: sourceHeading
+            value: "regex:^(?:13\\.|Access Control|Awareness and Training|Awareness & Training|Audit and Accountability|Audit & Accountability|Assessment, Authorization, and Monitoring|Assessment, Authorization & Monitoring|Configuration Management|Contingency Planning|Identification and Authentication|Identification & Authentication|Incident Response|Maintenance|Media Protection|Physical and Environmental Protection|Physical & Environmental Protection|Planning|Personnel Security|Risk Assessment|System and Services Acquisition|System & Services Acquisition|System and Communications Protection|System & Communications Protection|System and Information Integrity|System & Information Integrity|Supply Chain Risk Management)"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: control_table
+          - property: oscalPath
+            value: control-implementation.implemented-requirements[].implementation-status.state
+          - property: docxLocation
+            value: >
+              Row where cells[0].text.strip().lower() contains 'implementation status'.
+              Value cell: cells[-1].text (full checkbox block string).
+          - property: checkboxParsingNote
+            value: >
+              Each line of value-cell text is tested for checked state via
+              _is_checked(): re.match(r'^[☒✓⊠]') | re.match(r'^\[[ xX]\]') |
+              (re.match(r'^[xX]\b') AND NOT re.match(r'^[☐]')).
+              Label = _strip_checkbox(line): lstrip('☒☐✓⊠'), re.sub(r'^\[[ xX]\]\s*',''),
+              re.sub(r'^[xX]\s+',''), then strip().
+          - property: statusKeywordMap
+            value: >
+              implemented            <- re.match(r'^implemented\b',          label_lower)
+              partially_implemented  <- re.match(r'^partially\s+implemented\b', label_lower)
+              planned                <- re.match(r'^planned\b',              label_lower)
+              alternative_impl       <- re.match(r'^alternative\s+implementation\b', label_lower)
+              configured_by_customer <- re.match(r'^configured\s+by\s+customer\b', label_lower)
+              not_applicable         <- re.match(r'^not\s+applicable\b',     label_lower)
+          - property: oscalStateMap
+            value: >
+              implemented            -> "implemented"
+              partially_implemented  -> "partially-implemented"
+              alternative_impl       -> "alternative-implementation"
+              planned                -> "planned"
+              configured_by_customer -> "customer-configured"
+              not_applicable         -> "not-applicable"
+              (none checked/matched) -> "not-implemented"
+          - property: provenance
+            value: "fismatic/parser.py:parse_implementation_status(), _status_to_oscal_state()"
+      - name: control_origination
+        logicalType: array
+        required: false
+        transformSourceObjects: [fedramp_ssp_docx]
+        transformDescription: >
+          List of OSCAL control-origination values; multiple checkboxes may be
+          checked (e.g. inherited + system-specific). The "inherited from" provider
+          name and "hybrid" system names are extracted by companion regexes.
+        customProperties:
+          - property: sourceHeading
+            value: "regex:^(?:13\\.|Access Control|Awareness and Training|Awareness & Training|Audit and Accountability|Audit & Accountability|Assessment, Authorization, and Monitoring|Assessment, Authorization & Monitoring|Configuration Management|Contingency Planning|Identification and Authentication|Identification & Authentication|Incident Response|Maintenance|Media Protection|Physical and Environmental Protection|Physical & Environmental Protection|Planning|Personnel Security|Risk Assessment|System and Services Acquisition|System & Services Acquisition|System and Communications Protection|System & Communications Protection|System and Information Integrity|System & Information Integrity|Supply Chain Risk Management)"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: control_table
+          - property: oscalPath
+            value: control-implementation.implemented-requirements[].control-origination[]
+          - property: docxLocation
+            value: >
+              Row where cells[0].text.strip().lower() contains 'control origination'.
+              Value cell: cells[-1].text.
+          - property: checkboxParsingNote
+            value: >
+              Same checkbox detection as implementation_status. For each checked
+              line: content_lower = label.lower(); without_parens =
+              re.sub(r'\([^)]*\)', '', content_lower).strip(). Keyword patterns
+              (re.search) applied to without_parens.
+          - property: originationKeywordMap
+            value: >
+              inherited              <- re.search(r'^inherited\s+from',        without_parens)
+              hybrid                 <- re.search(r'^(?:hybrid\s+control|service\s+provider\s+hybrid)', without_parens)
+              system_specific        <- re.search(r'^(?:system\s+specific\s+control|service\s+provider\s+system\s+specific)', without_parens)
+              service_provider_corp  <- re.search(r'(?:common\s+control|service\s+provider\s+corporate)', without_parens)
+              configured_by_customer <- re.search(r'^configured\s+by\s+customer', without_parens)
+              provided_by_customer   <- re.search(r'^provided\s+by\s+customer',   without_parens)
+              shared                 <- re.search(r'^shared\b',                   without_parens)
+          - property: oscalOriginationMap
+            value: >
+              inherited              -> "inherited"
+              hybrid                 -> "hybrid"
+              system_specific        -> "system-specific"
+              service_provider_corp  -> "service-provider-corporate"
+              configured_by_customer -> "customer-configured"
+              provided_by_customer   -> "customer-provided"
+              shared                 -> "shared"
+          - property: inheritedFromRegex
+            value: 'inherited\s+from:?\s*(.+)'
+            description: >
+              re.search(IGNORECASE) on original (non-stripped) line when
+              'inherited' flag is set. Group(1) = provider name. Trailing '.'
+              stripped. Example: "Inherited From: cloud.gov" -> "cloud.gov".
+          - property: hybridSystemsRegex
+            value: 'shared\s+between\s+(.+?)(?:;|\)|$)'
+            description: >
+              re.search(IGNORECASE) on original line when 'hybrid' is set.
+              Group(1) split on r'\s+and\s+'. Each element strip().strip(',').
+          - property: provenance
+            value: "fismatic/parser.py:parse_control_origination(), _origination_to_oscal_list()"
+      - name: responsible_role
+        logicalType: string
+        required: false
+        transformSourceObjects: [fedramp_ssp_docx]
+        transformDescription: >
+          Raw text of the Responsible Role cell. May be multi-paragraph prose.
+          vault.py:_clean_role_text() distills to the first short line.
+          _resolve_role_to_org() then resolves to an org wikilink.
+        customProperties:
+          - property: sourceHeading
+            value: "regex:^(?:13\\.|Access Control|Awareness and Training|Awareness & Training|Audit and Accountability|Audit & Accountability|Assessment, Authorization, and Monitoring|Assessment, Authorization & Monitoring|Configuration Management|Contingency Planning|Identification and Authentication|Identification & Authentication|Incident Response|Maintenance|Media Protection|Physical and Environmental Protection|Physical & Environmental Protection|Planning|Personnel Security|Risk Assessment|System and Services Acquisition|System & Services Acquisition|System and Communications Protection|System & Communications Protection|System and Information Integrity|System & Information Integrity|Supply Chain Risk Management)"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: control_table
+          - property: oscalPath
+            value: control-implementation.implemented-requirements[].responsible-roles[].role-id
+          - property: docxLocation
+            value: >
+              Row where cells[0].text.strip().lower() contains BOTH 'responsible'
+              AND 'role'. Value cell: cells[-1].text.strip().
+          - property: cleaningNote
+            value: >
+              vault.py:_clean_role_text(): first = rid.split('\n',1)[0].strip().
+              If len(first)>80: first = first[:77]+'...'. rstrip(':').
+              _resolve_role_to_org() lookup order:
+              (1) exact match in role_index -> org wikilink,
+              (2) substring match (name.lower() in rid_lower) -> org wikilink,
+              (3) cleaned short name -> org wikilink,
+              (4) raw cleaned text as fallback display string.
+          - property: provenance
+            value: "fismatic/parser.py:parse_control_table(), vault.py:_clean_role_text(), _resolve_role_to_org()"
+      - name: statement_parts
+        logicalType: array
+        required: false
+        transformSourceObjects: [fedramp_ssp_docx]
+        transformDescription: >
+          List of {statement-id, description} dicts; one per narrative part row.
+          Also populated from continuation tables that immediately follow the
+          summary table in the docx (handled by DocxParser.get_controls).
+        customProperties:
+          - property: sourceHeading
+            value: "regex:^(?:13\\.|Access Control|Awareness and Training|Awareness & Training|Audit and Accountability|Audit & Accountability|Assessment, Authorization, and Monitoring|Assessment, Authorization & Monitoring|Configuration Management|Contingency Planning|Identification and Authentication|Identification & Authentication|Incident Response|Maintenance|Media Protection|Physical and Environmental Protection|Physical & Environmental Protection|Planning|Personnel Security|Risk Assessment|System and Services Acquisition|System & Services Acquisition|System and Communications Protection|System & Communications Protection|System and Information Integrity|System & Information Integrity|Supply Chain Risk Management)"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: control_table
+          - property: oscalPath
+            value: control-implementation.implemented-requirements[].statements[]
+          - property: docxLocation
+            value: >
+              Part rows: cells[0].text matches re.match(r'(?:part|req\.?)\s*([a-z0-9]+)', IGNORECASE).
+              Continuation tables: separate docx table(s) immediately following
+              the summary table, parsed by DocxParser via elif current_control branch.
+          - property: statementIdFormat
+            value: '{control_id_lower}_stmt.{part_key}'
+            description: >
+              control_id_lower = re.sub(r'\s+', '', control_id.strip().lower())
+              part_key = match.group(1) from part-row regex.
+              Examples: "ac-1_stmt.a", "si-4_stmt.1", "ac-2(1)_stmt.b"
+          - property: narrativeSplittingNote
+            value: >
+              fismatic.parser._split_status_and_origination_blocks() pre-processes
+              the full cell text: lines attributed to 'status'/'origination' mode
+              when headers match _STATUS_HEADER_RE/ORIGIN_HEADER_RE; checkbox lines
+              in those modes go into respective blocks; other lines = narrative.
+              _extract_sections() then groups narrative under any 'Label:' style
+              headers (re.match(r'^[A-Za-z][A-Za-z0-9 .,\'&()/-]{0,80}:$')).
+              Each non-empty section -> a statement.
+          - property: provenance
+            value: "fismatic/parser.py:extract_control_content(), _extract_sections(), generate_statement_id()"
+      - name: parameters
+        logicalType: array
+        required: false
+        transformSourceObjects: [fedramp_ssp_docx]
+        transformDescription: >
+          Control parameter values from rows matching 'Parameter <ID>:' in col-0.
+          NOT currently extracted by fismatic. Documented here to enable future
+          contract-driven extraction by tweaking parameterRowRegex in this contract.
+        customProperties:
+          - property: sourceHeading
+            value: "regex:^(?:13\\.|Access Control|Awareness and Training|Awareness & Training|Audit and Accountability|Audit & Accountability|Assessment, Authorization, and Monitoring|Assessment, Authorization & Monitoring|Configuration Management|Contingency Planning|Identification and Authentication|Identification & Authentication|Incident Response|Maintenance|Media Protection|Physical and Environmental Protection|Physical & Environmental Protection|Planning|Personnel Security|Risk Assessment|System and Services Acquisition|System & Services Acquisition|System and Communications Protection|System & Communications Protection|System and Information Integrity|System & Information Integrity|Supply Chain Risk Management)"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: control_table
+          - property: oscalPath
+            value: control-implementation.implemented-requirements[].set-parameters[]
+          - property: docxLocation
+            value: >
+              Rows where cells[0].text.strip() matches
+              re.match(r'^[Pp]arameter\s+(\S+):?\s*$'). Group(1) = param ID.
+              Value: cells[-1].text.strip().
+          - property: paramRowRegex
+            value: '^[Pp]arameter\s+(\S+):?\s*$'
+            description: >
+              Tweak this regex to handle variations like "Param P-01:" or
+              "Parameter: ac-1_prm_1". Changing this YAML value is sufficient
+              when heading_parser.py control_table strategy reads it.
+          - property: extractionStatus
+            value: not-yet-implemented
+            description: >
+              Parameter rows are currently skipped by fismatic. Enable by
+              setting extractionStatus=active and implementing in heading_parser.py.
+          - property: provenance
+            value: "fismatic/parser.py:parse_control_table() — NOT currently extracted"
+      - name: customer_responsibilities
+        logicalType: array
+        required: false
+        transformSourceObjects: [fedramp_ssp_docx]
+        transformDescription: >
+          Sentences from narrative text that describe obligations (must/shall/
+          required to) borne by the customer agency or site owner.
+        customProperties:
+          - property: sourceHeading
+            value: "regex:^(?:13\\.|Access Control|Awareness and Training|Awareness & Training|Audit and Accountability|Audit & Accountability|Assessment, Authorization, and Monitoring|Assessment, Authorization & Monitoring|Configuration Management|Contingency Planning|Identification and Authentication|Identification & Authentication|Incident Response|Maintenance|Media Protection|Physical and Environmental Protection|Physical & Environmental Protection|Planning|Personnel Security|Risk Assessment|System and Services Acquisition|System & Services Acquisition|System and Communications Protection|System & Communications Protection|System and Information Integrity|System & Information Integrity|Supply Chain Risk Management)"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: control_table
+          - property: oscalPath
+            value: control-implementation.implemented-requirements[].statements[].remarks
+          - property: docxLocation
+            value: "Narrative prose in description/implementation cells, after checkbox blocks."
+          - property: obligationRegex
+            value: '\b(must|shall|required\s+to|responsible\s+for|have\s+to|has\s+to|need(?:s)?\s+to|should)\b'
+            description: >
+              re.search(IGNORECASE) applied to each sentence from the narrative
+              (sentences split on r'(?<=[.!?])\s+'). A sentence matching this
+              regex is classified as a customer responsibility.
+              To broaden: add alternatives like 'is required' or 'will need to'.
+              To narrow: add actor context ('the customer must', 'agency shall').
+          - property: actorRegex
+            value: '\b(the\s+system|the\s+service\s+provider|the\s+organization|provider[s]?)\b.*\b(must|shall|implements?|provides?)\b'
+            description: >
+              Companion pattern for 'implementation requirements' (service provider
+              obligations). Sentences matching this go to _extract_implementation_requirements
+              rather than customer_responsibilities.
+          - property: provenance
+            value: "fismatic/parser.py:extract_customer_responsibilities(), _OBLIGATION_RE, _REQUIREMENT_ACTOR_RE"
+      - name: crm
+        logicalType: object
+        required: false
+        description: >
+          Secondary CRM .ods fields merged into each matching control note by
+          export_obsidian_vault.py; this is distinct from oscal.x.crm narrative
+          notes, which are retained as unimplemented authoring sidecars.
+        customProperties:
+          - property: sourceKind
+            value: sidecar
+          - property: nativeOscalPaths
+            value:
+              - control-implementation.implemented-requirements[].by-components[].export.provided
+              - control-implementation.implemented-requirements[].by-components[].export.responsibilities
+          - property: mappingClass
+            value: native_core
+          - property: mappingStatus
+            value: active
+          - property: exportAdapter
+            value: crm-control-sidecar
+          - property: note
+            value: CRM values are consumed from control frontmatter, not CRM narrative notes.
+      - name: related_controls
+        logicalType: array
+        required: false
+        transformSourceObjects: [fedramp_ssp_docx]
+        transformDescription: >
+          Control IDs referenced in narrative prose (e.g. "See AC-2 for
+          account management"). Heuristically extracted by pattern scan;
+          the current control's own ID is excluded.
+        customProperties:
+          - property: sourceHeading
+            value: "regex:^(?:13\\.|Access Control|Awareness and Training|Awareness & Training|Audit and Accountability|Audit & Accountability|Assessment, Authorization, and Monitoring|Assessment, Authorization & Monitoring|Configuration Management|Contingency Planning|Identification and Authentication|Identification & Authentication|Incident Response|Maintenance|Media Protection|Physical and Environmental Protection|Physical & Environmental Protection|Planning|Personnel Security|Risk Assessment|System and Services Acquisition|System & Services Acquisition|System and Communications Protection|System & Communications Protection|System and Information Integrity|System & Information Integrity|Supply Chain Risk Management)"
+          - property: sourceKind
+            value: table
+          - property: captureStrategy
+            value: control_table
+          - property: oscalPath
+            value: control-implementation.implemented-requirements[].statements[].description
+          - property: docxLocation
+            value: "Narrative text in all statement/description cells of the control table."
+          - property: relatedControlRegex
+            value: '\b([A-Za-z]{2}-\d+(?:\s*\([^)]+\))?)\b'
+            description: >
+              re.finditer applied to each statement description. Matches NIST
+              control IDs like "AC-2", "SI-4(a)", "AC-2 (1)". Results are
+              de-duped; the current control's own normalized ID is excluded.
+              Tweak this regex to handle non-standard IDs (e.g. "NIST AC-2").
+          - property: referenceRegex
+            value: '(?:see\s+also|see|reference[s]?:?)\s+([^\n.;]+)'
+            description: >
+              Secondary regex (fismatic.parser._REFERENCE_RE) for explicit
+              'See also ...' / 'Reference: ...' sentences in narrative.
+          - property: provenance
+            value: "fismatic/parser.py:_REFERENCE_RE, vault.py:_extract_related_controls()"
+    relationships:
+      - type: foreignKey
+        from: oscal_control.responsible_role
+        to: oscal_party.uuid
+        customProperties:
+          - property: label
+            value: responsible-role-to-party
+          - property: resolutionNote
+            value: >
+              vault.py:_resolve_role_to_org() looks up role text against
+              metadata.roles + metadata.parties to find the org wikilink.
+              Match order: exact role-id, substring of party name, _clean_role_text() fallback.

@@ -1,0 +1,78 @@
+[project]
+name = "oscal-vault"
+version = "0.1.0"
+description = "Turn FedRAMP SSP .docx documents into an Obsidian knowledge vault and validated NIST OSCAL JSON"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE.md" }
+dependencies = [
+    "python-docx>=1.1.0",
+    "docxtpl>=0.18.0",
+    "pyyaml>=6.0.1",
+    "jsonschema>=4.23.0",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.6.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.11.0",
+    "cognis-oscalkit @ git+https://github.com/cognis-digital/oscalkit.git",
+]
+# Optional extractor backends for the benchmark harness
+# (compliance/scripts/benchmark_extractors.py). Install with:
+#   uv sync --group benchmark
+#
+# Lean CPU-only install for .docx text/table/image extraction. Each backend is
+# pinned to a subset that avoids ML model bundles:
+#   - docling-slim[format-docx]: text/table extraction only; the [standard]
+#     extra would pull torch + transformers + docling-ibm-models (~2 GB).
+#     NOTE: importing docling.document_converter still transitively imports
+#     torch via the chart_extraction stage. Until that's resolved upstream,
+#     docling availability is reported as False even with this dep set; the
+#     backend is stubbed and skipped in the benchmark. See ADR-016.
+#   - docling-parse: small (~9 MB) PDF parser required at import time
+#     by docling.document_converter.
+#   - rtree: required at import time by docling's base pipeline.
+#   - mineru (no [all]): the [all] extra pulls torch + vllm + the
+#     nvidia-cu12 stack (~4 GB) for VLM/PDF rendering which the SSP benchmark
+#     does not use. The CPU pipeline backend is enough.
+#   - pillow: required by the test suite's image-detection fixture.
+# Python 3.13 required -- mineru and unstructured both cap at <3.14.
+# Use `echo 3.13 > .python-version` to pin. See benchmark/INAUGURAL_REPORT.md
+# "Backend availability" note.
+benchmark = [
+    "docling-slim[format-docx]>=2.0.0",
+    "docling-parse>=7.0.0",
+    "mammoth>=1.10.0",
+    "mineru>=1.3.0",
+    "pillow>=10.0.0",
+    "rtree>=1.0.0",
+    # >=0.24.0 fixes the URL-partitioning SSRF (GHSA-4mvj-m6j5-pmf7, critical).
+    # That floor requires Python >=3.11; the benchmark already needs 3.13
+    # (see the note above), so scope the marker to keep the >=3.10 project
+    # floor resolvable for the core (non-benchmark) install.
+    "unstructured[docx]>=0.24.0 ; python_version >= '3.11'",
+]
+
+[tool.pytest.ini_options]
+# Test sources: the compliance/ pipeline suite and fismatic's own unit tests.
+# (Root-level debug scripts and python-ssp were archived during the
+# oscal-vault minimization; see archive/.)
+testpaths = ["compliance/tests", "fismatic/src/phase_1/fismatic/test"]
+python_files = ["test_*.py"]
+addopts = "-ra"
+markers = [
+    "r11: R11 unified converter acceptance tests (expected to fail until implementation is complete)",
+    "r12: R12 benchmark/parity tests (expected to fail until implementation is complete)",
+    "slow: slow tests (e.g. full-blank docxtpl roundtrip); deselect with -m 'not slow'",
+]
+
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"

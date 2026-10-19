@@ -1,0 +1,160 @@
+# Open Data Contract Standard (ODCS v3.1.0) — Leveraged-SaaS-CRM roundtrip
+#
+# Phase R16.2 — instruction-anchored roundtrip contract for the official
+# GSA FedRAMP **Leveraged-SaaS-CRM** SSP blank template.
+#
+# This template deliberately contrasts with the Low template: it is small
+# (349 body items), uses a different instruction-color palette
+# (#1F497D / #366091 in addition to #0070C0), and centers on CR-* customer
+# responsibility tables rather than the full control catalog. It proves the
+# roundtrip approach generalizes to a different template shape + color scheme.
+#
+# See compliance/datacontracts/low-sspp-roundtrip.yaml for the full
+# customProperties documentation (identical R16 write-extension vocabulary).
+
+apiVersion: v3.1.0
+kind: DataContract
+id: fedramp-leveraged-saas-crm-roundtrip-v1
+name: fedramp_leveraged_saas_crm_roundtrip
+version: 1.0.0
+status: active
+domain: fedramp-ssp
+tenant: GSA
+contractCreatedTs: "2026-07-20T00:00:00Z"
+
+tags:
+  - fedramp
+  - ssp
+  - leveraged-saas
+  - crm
+  - roundtrip
+  - docx
+  - docxtpl
+
+description:
+  purpose: >
+    Instruction-anchored roundtrip contract for the GSA Leveraged-SaaS-CRM SSP
+    blank template. Proves the extract->fill->re-extract loop works on a
+    template with a different instruction-color palette (#1F497D / #366091)
+    and a CR-table-centric structure.
+  usage: >
+    Consumed by compliance/lib/docx_jinjafier.py and compliance/lib/docx_fill.py.
+  limitations: >
+    Scoped to paragraph-slot instructions for the roundtrip demo; several CRM
+    instructions precede a heading (no dedicated writable paragraph) and are
+    intentionally omitted.
+
+servers:
+  - id: local_docx
+    server: local-fedramp-crm-ssp
+    type: local
+    description: Local CRM SSP blank template under fismatic/ (gitignored).
+    environment: dev
+    customProperties:
+      - property: path
+        value: "fismatic/Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx"
+      - property: format
+        value: docx
+
+authoritativeDefinitions:
+  - id: odcs-spec
+    url: https://bitol-io.github.io/open-data-contract-standard/latest/
+    type: businessDefinition
+    description: Open Data Contract Standard (ODCS) v3.1.0 specification.
+  - id: roundtrip-plan
+    url: archive/plans/ROUNDTRIP_TEMPLATE_PLAN.md
+    type: businessDefinition
+    description: Phase R16 roundtrip template plan.
+
+customProperties:
+  - property: sourceFormat
+    value: docx
+  - property: targetTaxonomy
+    value: fedramp-vault
+  - property: roundtripDemo
+    value: "true"
+
+schema:
+  # --- SOURCE ----------------------------------------------------------------
+  - id: crm_sspp_docx
+    name: crm_sspp_docx
+    logicalType: object
+    physicalType: file
+    physicalName: "Leveraged-SaaS-CRM-SSPP-Template-*.docx"
+    description: Synthetic source object representing the CRM SSP blank .docx.
+    tags: [source, docx]
+    customProperties:
+      - property: isSource
+        value: "true"
+      - property: blankTemplatePath
+        value: "fismatic/Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx"
+      - property: instructionColors
+        value: "0070C0,1F497D,366091"
+      - property: instructionTextPrefixes
+        value: "Instruction,Instructions,Note,Example"
+    properties:
+      - name: marker
+        logicalType: string
+        description: Placeholder property (ODCS requires >=1 property).
+        customProperties:
+          - property: sourceKind
+            value: constant
+
+  # --- DESTINATION: system-security-plan narrative slots --------------------
+  - id: oscal_ssp_system
+    name: oscal_ssp
+    logicalType: object
+    physicalType: object
+    description: CRM SSP narrative fields.
+    tags: [oscal, ssp]
+    customProperties:
+      - property: oscalType
+        value: oscal.ssp
+      - property: oscalModel
+        value: system-security-plan
+      - property: noteType
+        value: system
+      - property: destinationFolder
+        value: "Systems/"
+      - property: required
+        value: "true"
+    properties:
+      - name: types_of_users
+        logicalType: string
+        description: >
+          Types-of-users narrative writable slot (paragraph after the
+          #1F497D instruction under "Types of Users").
+        customProperties:
+          - property: sourceHeading
+            value: "Types of Users"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: types_of_users
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instruction: For an External User"
+          - property: writeScope
+            value: append
+
+      - name: crm_requirements_intro
+        logicalType: string
+        description: CR-1 customer responsibility narrative writable slot.
+        customProperties:
+          - property: sourceHeading
+            value: "CR-1 Customer Responsibility"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: crm_requirements_intro
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instruction: Appendices vary on a solution"
+          - property: writeScope
+            value: append

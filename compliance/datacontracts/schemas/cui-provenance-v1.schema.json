@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://github.com/GSA-TTS/oscal-vault/compliance/datacontracts/schemas/cui-provenance-v1.schema.json",
+  "title": "OSCAL Vault CUI Classification + Provenance Sidecar",
+  "description": "Generic schema for a per-system CUI classification and source-document provenance record. See docs/ADR/ADR-024-cui-provenance-datacontract.md. This schema describes the *shape* of a classification record; it does not itself classify any system. A sidecar with cui_category: not_cui is a valid, complete record (a reviewed 'not CUI' determination is a first-class state, not an absence of data).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "system_slug",
+    "classification",
+    "ingestion_approval",
+    "source_documents",
+    "downstream_artifacts",
+    "retention"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "system_slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Must match the vault directory name under examples/vault/."
+    },
+    "classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cui_category", "cui_marking", "authority", "review_cadence"],
+      "properties": {
+        "cui_category": {
+          "type": "string",
+          "pattern": "^(not_cui|[A-Z][A-Z0-9_-]*)$",
+          "description": "A NARA CUI Registry category code (e.g. ISVI, SP-PRIV) or the literal 'not_cui'."
+        },
+        "cui_marking": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Banner marking string (e.g. 'CUI//ISVI'), or 'not_cui' when uncategorized."
+        },
+        "authority": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Citing statute, regulation, or policy memo backing the classification decision."
+        },
+        "review_cadence": {
+          "type": "string",
+          "enum": ["quarterly", "semiannual", "annual", "per-source-update"]
+        }
+      }
+    },
+    "ingestion_approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approved_by_role", "approval_date", "approval_ref"],
+      "properties": {
+        "approved_by_role": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Role of the approver (e.g. 'ISSO', 'data-owner'). A 'TBD-*' prefix is valid and means approval is pending."
+        },
+        "approval_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "approval_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pointer to the approval record (ticket, email thread, ATO memo). May explicitly state that no approval is yet recorded."
+        }
+      }
+    },
+    "source_documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_doc_ref", "sha256", "source_type"],
+        "properties": {
+          "source_doc_ref": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Pointer to the source document (never the file itself; see ADR-009)."
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-fA-F0-9]{64}$",
+            "description": "Content hash of the source document. All-zero is a valid placeholder until the real hash is recorded."
+          },
+          "source_type": {
+            "type": "string",
+            "enum": ["ssp-docx", "poam-xlsx", "control-workbook", "manual-source", "other"]
+          }
+        }
+      }
+    },
+    "downstream_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Repo-relative paths of generated artifacts this classification governs."
+    },
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["retention_period", "decontrol_condition"],
+      "properties": {
+        "retention_period": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decontrol_condition": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

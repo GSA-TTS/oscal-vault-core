@@ -1,0 +1,331 @@
+{
+  "counters": {
+    "active_mappings": 18,
+    "covered_active_mappings": 18,
+    "extension_bridge": 5,
+    "native": 13,
+    "preserved_only": 0
+  },
+  "derivations": [
+    {
+      "adapter": "party",
+      "allowed_operators": [
+        "uuid_derivation"
+      ],
+      "canonical_pointers": [
+        "/uuid"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_party.uuid",
+      "derivation_kind": "mapping",
+      "export_class": "native",
+      "mapping_source": "oscal_party.uuid",
+      "oscal_pointers": [
+        "system-security-plan.metadata.parties[].uuid"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "party",
+      "allowed_operators": [],
+      "canonical_pointers": [
+        "/party_type",
+        "/org_type",
+        "/note_type"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_party.type",
+      "derivation_kind": "mapping",
+      "export_class": "native",
+      "mapping_source": "oscal_party.type",
+      "oscal_pointers": [
+        "system-security-plan.metadata.parties[].type"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "party",
+      "allowed_operators": [],
+      "canonical_pointers": [
+        "/name",
+        "/title"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_party.name",
+      "derivation_kind": "mapping",
+      "export_class": "native",
+      "mapping_source": "oscal_party.name",
+      "oscal_pointers": [
+        "system-security-plan.metadata.parties[].name"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "party",
+      "allowed_operators": [],
+      "canonical_pointers": [
+        "/role_ids"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_party.role_ids",
+      "derivation_kind": "mapping",
+      "export_class": "native",
+      "mapping_source": "oscal_party.role_ids",
+      "oscal_pointers": [
+        "system-security-plan.metadata.responsible-parties[].role-id"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "party",
+      "allowed_operators": [],
+      "canonical_pointers": [
+        "/email_addresses",
+        "/email_address"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_party.email_address",
+      "derivation_kind": "mapping",
+      "export_class": "native",
+      "mapping_source": "oscal_party.email_address",
+      "oscal_pointers": [
+        "system-security-plan.metadata.parties[].email-addresses[0]"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "party",
+      "allowed_operators": [],
+      "canonical_pointers": [
+        "/telephone_numbers",
+        "/phone"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_party.phone",
+      "derivation_kind": "mapping",
+      "export_class": "native",
+      "mapping_source": "oscal_party.phone",
+      "oscal_pointers": [
+        "system-security-plan.metadata.parties[].telephone-numbers[0].number"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "component-definition",
+      "allowed_operators": [
+        "uuid_derivation"
+      ],
+      "canonical_pointers": [
+        "/uuid"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_component_definition.uuid",
+      "derivation_kind": "mapping",
+      "export_class": "native",
+      "mapping_source": "oscal_component_definition.uuid",
+      "oscal_pointers": [
+        "component-definition.uuid"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "component-definition",
+      "allowed_operators": [],
+      "canonical_pointers": [
+        "/name",
+        "/title"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_component_definition.title",
+      "derivation_kind": "mapping",
+      "export_class": "native",
+      "mapping_source": "oscal_component_definition.title",
+      "oscal_pointers": [
+        "component-definition.components[0].title"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "component-definition",
+      "allowed_operators": [],
+      "canonical_pointers": [
+        "/inventory_items"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_component_definition.inventory_items",
+      "derivation_kind": "mapping",
+      "export_class": "native",
+      "mapping_source": "oscal_component_definition.inventory_items",
+      "oscal_pointers": [
+        "component-definition.components[0].props"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "component-definition",
+      "allowed_operators": [],
+      "canonical_pointers": [
+        "/software_inventory"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_component_definition.software_inventory",
+      "derivation_kind": "mapping",
+      "export_class": "native",
+      "mapping_source": "oscal_component_definition.software_inventory",
+      "oscal_pointers": [
+        "component-definition.components[0].props"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "component-definition",
+      "allowed_operators": [],
+      "canonical_pointers": [
+        "/external_services"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_component_definition.external_services",
+      "derivation_kind": "mapping",
+      "export_class": "native",
+      "mapping_source": "oscal_component_definition.external_services",
+      "oscal_pointers": [
+        "component-definition.components[0].props"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "component-definition",
+      "allowed_operators": [],
+      "canonical_pointers": [
+        "/aws_services_in_use"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_component_definition.aws_services_in_use",
+      "derivation_kind": "mapping",
+      "export_class": "native",
+      "mapping_source": "oscal_component_definition.aws_services_in_use",
+      "oscal_pointers": [
+        "component-definition.components[0].props"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "boundary-bridge",
+      "allowed_operators": [
+        "generated_callout_filter"
+      ],
+      "canonical_pointers": [
+        "/body_sections"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_x_boundary.description",
+      "derivation_kind": "mapping",
+      "export_class": "extension_bridge",
+      "mapping_source": "oscal_x_boundary.description",
+      "oscal_pointers": [
+        "system-characteristics.network-architecture.description"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "boundary-bridge",
+      "allowed_operators": [
+        "generated_callout_filter",
+        "gfm_table_parse",
+        "markdown_list_parse",
+        "record_fan_out"
+      ],
+      "canonical_pointers": [
+        "/body_sections"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_x_boundary.types_of_users",
+      "derivation_kind": "mapping",
+      "export_class": "extension_bridge",
+      "mapping_source": "oscal_x_boundary.types_of_users",
+      "oscal_pointers": [
+        "system-implementation.users[].authorized-privileges"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "inheritance-bridge",
+      "allowed_operators": [
+        "generated_callout_filter",
+        "gfm_table_parse"
+      ],
+      "canonical_pointers": [
+        "/body_sections"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_x_inheritance.provided_by",
+      "derivation_kind": "mapping",
+      "export_class": "extension_bridge",
+      "mapping_source": "oscal_x_inheritance.provided_by",
+      "oscal_pointers": [
+        "system-implementation.leveraged-authorizations"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "relationship-bridge",
+      "allowed_operators": [
+        "generated_callout_filter"
+      ],
+      "canonical_pointers": [
+        "/body_sections"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_x_relationship.interconnections",
+      "derivation_kind": "mapping",
+      "export_class": "extension_bridge",
+      "mapping_source": "oscal_x_relationship.interconnections",
+      "oscal_pointers": [
+        "system-characteristics.data-flow.description"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "relationship-bridge",
+      "allowed_operators": [
+        "gfm_table_parse",
+        "port_expression_parse",
+        "record_fan_out"
+      ],
+      "canonical_pointers": [
+        "/body_sections"
+      ],
+      "cardinality": "one_to_one",
+      "derivation_id": "mapping:oscal_x_relationship.ports_protocols_services",
+      "derivation_kind": "mapping",
+      "export_class": "extension_bridge",
+      "mapping_source": "oscal_x_relationship.ports_protocols_services",
+      "oscal_pointers": [
+        "system-implementation.components[].protocols"
+      ],
+      "source_ids": []
+    },
+    {
+      "adapter": "crm-control-sidecar",
+      "allowed_operators": [
+        "record_aggregation"
+      ],
+      "canonical_pointers": [
+        "/crm",
+        "/inherited_from",
+        "/customer_responsibilities"
+      ],
+      "cardinality": "one_to_many",
+      "derivation_id": "mapping:oscal_control.crm",
+      "derivation_kind": "fan_out",
+      "export_class": "native",
+      "mapping_source": "oscal_control.crm",
+      "oscal_pointers": [
+        "control-implementation.implemented-requirements[].by-components[].export.provided",
+        "control-implementation.implemented-requirements[].by-components[].export.responsibilities"
+      ],
+      "source_ids": []
+    }
+  ],
+  "schema_version": 1
+}

@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://raw.githubusercontent.com/bitol-io/open-data-contract-standard/main/schema/odcs-json-schema-v3.1.0.json",
+  "title": "Open Data Contract Standard (ODCS)",
+  "description": "An open data contract specification to establish agreement between data producers and consumers. Cached locally from bitol-io/open-data-contract-standard @ main (v3.1.0).",
+  "type": "object",
+  "properties": {
+    "version": { "type": "string", "description": "Current version of the data contract." },
+    "kind": { "type": "string", "default": "DataContract", "description": "The kind of file this is. Valid value is `DataContract`.", "enum": ["DataContract"] },
+    "apiVersion": { "type": "string", "default": "v3.1.0", "description": "Version of the standard used to build data contract.", "enum": ["v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1", "v2.2.0"] },
+    "id": { "type": "string", "description": "A unique identifier used to reduce the risk of dataset name collisions, such as a UUID." },
+    "name": { "type": "string", "description": "Name of the data contract." },
+    "tenant": { "type": "string", "description": "Indicates the property the data is primarily associated with. Value is case insensitive." },
+    "tags": { "$ref": "#/$defs/Tags" },
+    "status": { "type": "string", "description": "Current status of the dataset.", "examples": ["proposed", "draft", "active", "deprecated", "retired"] },
+    "servers": { "type": "array", "description": "List of servers where the datasets reside.", "items": { "$ref": "#/$defs/Server" } },
+    "dataProduct": { "type": "string", "description": "DEPRECATED since v3.1.0.", "deprecated": true },
+    "description": {
+      "type": "object",
+      "description": "High level description of the dataset.",
+      "properties": {
+        "usage": { "type": "string" },
+        "purpose": { "type": "string" },
+        "limitations": { "type": "string" },
+        "authoritativeDefinitions": { "$ref": "#/$defs/AuthoritativeDefinitions" },
+        "customProperties": { "$ref": "#/$defs/CustomProperties" }
+      }
+    },
+    "domain": { "type": "string", "description": "Name of the logical data domain." },
+    "schema": { "type": "array", "description": "A list of elements within the schema to be cataloged.", "items": { "$ref": "#/$defs/SchemaObject" } },
+    "support": { "$ref": "#/$defs/Support" },
+    "price": { "$ref": "#/$defs/Pricing" },
+    "team": { "oneOf": [ { "$ref": "#/$defs/Team" }, { "type": "array", "description": "DEPRECATED.", "deprecated": true, "items": { "$ref": "#/$defs/TeamMember" } } ] },
+    "roles": { "type": "array", "items": { "$ref": "#/$defs/Role" } },
+    "slaDefaultElement": { "type": "string", "deprecated": true },
+    "slaProperties": { "type": "array", "items": { "$ref": "#/$defs/ServiceLevelAgreementProperty" } },
+    "authoritativeDefinitions": { "$ref": "#/$defs/AuthoritativeDefinitions" },
+    "customProperties": { "$ref": "#/$defs/CustomProperties" },
+    "contractCreatedTs": { "type": "string", "format": "date-time" }
+  },
+  "required": ["version", "apiVersion", "kind", "id", "status"],
+  "additionalProperties": false,
+  "unevaluatedProperties": false,
+  "$defs": {
+    "ShorthandReference": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z_][A-Za-z0-9_]*$" },
+    "FullyQualifiedReference": { "type": "string", "pattern": "^(?:(?:https?:\\/\\/)?[A-Za-z0-9._\\-\\/]+\\.yaml#)?\\/?[A-Za-z_][A-Za-z0-9_]*\\/[A-Za-z0-9_-]+(?:\\/[A-Za-z_][A-Za-z0-9_]*\\/[A-Za-z0-9_-]+)*$" },
+    "StableId": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+    "Server": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/StableId" },
+        "server": { "type": "string" },
+        "type": { "type": "string", "enum": ["api", "athena", "azure", "bigquery", "clickhouse", "databricks", "denodo", "dremio", "duckdb", "glue", "cloudsql", "db2", "hive", "impala", "informix", "kafka", "kinesis", "local", "mysql", "oracle", "postgresql", "postgres", "presto", "pubsub", "redshift", "s3", "sftp", "snowflake", "sqlserver", "synapse", "trino", "vertica", "zen", "custom"] },
+        "description": { "type": "string" },
+        "environment": { "type": "string" },
+        "roles": { "type": "array", "items": { "$ref": "#/$defs/Role" } },
+        "customProperties": { "$ref": "#/$defs/CustomProperties" }
+      },
+      "required": ["server", "type"],
+      "unevaluatedProperties": false
+    },
+    "ServerSource": {
+      "LocalServer": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "format": { "type": "string" }
+        },
+        "required": ["path", "format"]
+      }
+    },
+    "SchemaElement": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/StableId" },
+        "name": { "type": "string" },
+        "physicalType": { "type": "string" },
+        "description": { "type": "string" },
+        "businessName": { "type": "string" },
+        "authoritativeDefinitions": { "$ref": "#/$defs/AuthoritativeDefinitions" },
+        "tags": { "$ref": "#/$defs/Tags" },
+        "customProperties": { "$ref": "#/$defs/CustomProperties" }
+      }
+    },
+    "SchemaObject": {
+      "type": "object",
+      "properties": {
+        "logicalType": { "type": "string", "enum": ["object"] },
+        "physicalName": { "type": "string" },
+        "dataGranularityDescription": { "type": "string" },
+        "properties": { "type": "array", "items": { "$ref": "#/$defs/SchemaProperty" } },
+        "relationships": { "type": "array", "items": { "$ref": "#/$defs/RelationshipSchemaLevel" } },
+        "quality": { "$ref": "#/$defs/DataQualityChecks" }
+      },
+      "allOf": [ { "$ref": "#/$defs/SchemaElement" } ],
+      "required": ["name"],
+      "unevaluatedProperties": false
+    },
+    "SchemaBaseProperty": {
+      "type": "object",
+      "properties": {
+        "primaryKey": { "type": "boolean" },
+        "primaryKeyPosition": { "type": "integer", "default": -1 },
+        "logicalType": { "type": "string", "enum": ["string", "date", "timestamp", "time", "number", "integer", "object", "array", "boolean"] },
+        "logicalTypeOptions": { "type": "object" },
+        "physicalType": { "type": "string" },
+        "physicalName": { "type": "string" },
+        "required": { "type": "boolean", "default": false },
+        "unique": { "type": "boolean", "default": false },
+        "partitioned": { "type": "boolean", "default": false },
+        "partitionKeyPosition": { "type": "integer", "default": -1 },
+        "classification": { "type": "string" },
+        "encryptedName": { "type": "string" },
+        "transformSourceObjects": { "type": "array", "items": { "type": "string" } },
+        "transformLogic": { "type": "string" },
+        "transformDescription": { "type": "string" },
+        "examples": { "type": "array", "items": { "$ref": "#/$defs/AnyType" } },
+        "criticalDataElement": { "type": "boolean", "default": false },
+        "relationships": { "type": "array", "items": { "$ref": "#/$defs/RelationshipPropertyLevel" } },
+        "quality": { "$ref": "#/$defs/DataQualityChecks" }
+      },
+      "allOf": [ { "$ref": "#/$defs/SchemaElement" } ],
+      "unevaluatedProperties": false
+    },
+    "SchemaProperty": { "type": "object", "$ref": "#/$defs/SchemaBaseProperty", "required": ["name"], "unevaluatedProperties": false },
+    "SchemaItemProperty": { "type": "object", "$ref": "#/$defs/SchemaBaseProperty", "unevaluatedProperties": false },
+    "Tags": { "type": "array", "items": { "type": "string" } },
+    "DataQuality": { "type": "object", "properties": { "id": { "$ref": "#/$defs/StableId" }, "description": { "type": "string" }, "dimension": { "type": "string", "enum": ["accuracy", "completeness", "conformity", "consistency", "coverage", "timeliness", "uniqueness"] }, "type": { "type": "string", "enum": ["text", "library", "sql", "custom"], "default": "library" }, "severity": { "type": "string" }, "name": { "type": "string" }, "method": { "type": "string" }, "schedule": { "type": "string" }, "scheduler": { "type": "string" }, "unit": { "type": "string" }, "businessImpact": { "type": "string" }, "tags": { "$ref": "#/$defs/Tags" }, "customProperties": { "type": "array", "items": { "$ref": "#/$defs/CustomProperty" } }, "authoritativeDefinitions": { "$ref": "#/$defs/AuthoritativeDefinitions" } }, "unevaluatedProperties": false },
+    "DataQualityChecks": { "type": "array", "items": { "$ref": "#/$defs/DataQuality" } },
+    "AuthoritativeDefinitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "$ref": "#/$defs/StableId" },
+          "url": { "type": "string" },
+          "type": { "type": "string" },
+          "description": { "type": "string" }
+        },
+        "required": ["url", "type"],
+        "additionalProperties": false
+      }
+    },
+    "Support": { "type": "array", "items": { "$ref": "#/$defs/SupportItem" } },
+    "SupportItem": { "type": "object", "properties": { "id": { "$ref": "#/$defs/StableId" }, "channel": { "type": "string" }, "url": { "type": "string" }, "description": { "type": "string" }, "tool": { "type": "string" }, "scope": { "type": "string" }, "invitationUrl": { "type": "string" }, "customProperties": { "$ref": "#/$defs/CustomProperties" } }, "required": ["channel"], "additionalProperties": false },
+    "Pricing": { "type": "object", "properties": { "id": { "$ref": "#/$defs/StableId" }, "priceAmount": { "type": "number" }, "priceCurrency": { "type": "string" }, "priceUnit": { "type": "string" } }, "additionalProperties": false },
+    "TeamMember": { "type": "object", "additionalProperties": false, "properties": { "id": { "$ref": "#/$defs/StableId" }, "username": { "type": "string" }, "name": { "type": "string" }, "description": { "type": "string" }, "role": { "type": "string" }, "dateIn": { "type": "string", "format": "date" }, "dateOut": { "type": "string", "format": "date" }, "replacedByUsername": { "type": "string" }, "tags": { "$ref": "#/$defs/Tags" }, "customProperties": { "type": "array", "items": { "$ref": "#/$defs/CustomProperty" } }, "authoritativeDefinitions": { "$ref": "#/$defs/AuthoritativeDefinitions" } }, "required": ["username"] },
+    "Team": { "type": "object", "additionalProperties": false, "properties": { "id": { "$ref": "#/$defs/StableId" }, "name": { "type": "string" }, "description": { "type": "string" }, "members": { "type": "array", "items": { "$ref": "#/$defs/TeamMember" } }, "tags": { "$ref": "#/$defs/Tags" }, "customProperties": { "type": "array", "items": { "$ref": "#/$defs/CustomProperty" } }, "authoritativeDefinitions": { "$ref": "#/$defs/AuthoritativeDefinitions" } } },
+    "Role": { "type": "object", "properties": { "id": { "$ref": "#/$defs/StableId" }, "role": { "type": "string" }, "description": { "type": "string" }, "access": { "type": "string" }, "firstLevelApprovers": { "type": "string" }, "secondLevelApprovers": { "type": "string" }, "customProperties": { "$ref": "#/$defs/CustomProperties" } }, "required": ["role"], "additionalProperties": false },
+    "ServiceLevelAgreementProperty": { "type": "object", "properties": { "id": { "$ref": "#/$defs/StableId" }, "property": { "type": "string" }, "value": { "anyOf": [ { "type": "string" }, { "type": "number" }, { "type": "integer" }, { "type": "boolean" }, { "type": "null" } ] }, "valueExt": { "$ref": "#/$defs/AnyNonCollectionType" }, "unit": { "type": "string" }, "element": { "type": "string" }, "driver": { "type": "string" }, "description": { "type": "string" }, "scheduler": { "type": "string" }, "schedule": { "type": "string" } }, "required": ["property", "value"], "additionalProperties": false },
+    "CustomProperties": { "type": "array", "items": { "$ref": "#/$defs/CustomProperty" } },
+    "CustomProperty": { "type": "object", "properties": { "id": { "$ref": "#/$defs/StableId" }, "property": { "type": "string" }, "value": { "$ref": "#/$defs/AnyType" }, "description": { "type": "string" } }, "required": ["property", "value"], "additionalProperties": false },
+    "AnyType": { "anyOf": [ { "type": "string" }, { "type": "number" }, { "type": "integer" }, { "type": "boolean" }, { "type": "null" }, { "type": "array" }, { "type": "object" } ] },
+    "AnyNonCollectionType": { "anyOf": [ { "type": "string" }, { "type": "number" }, { "type": "integer" }, { "type": "boolean" }, { "type": "null" } ] },
+    "RelationshipBase": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "default": "foreignKey", "enum": ["foreignKey"] },
+        "from": { "oneOf": [ { "anyOf": [ { "$ref": "#/$defs/ShorthandReference" }, { "$ref": "#/$defs/FullyQualifiedReference" } ] }, { "type": "array", "items": { "anyOf": [ { "$ref": "#/$defs/ShorthandReference" }, { "$ref": "#/$defs/FullyQualifiedReference" } ] }, "minItems": 1 } ] },
+        "to": { "oneOf": [ { "anyOf": [ { "$ref": "#/$defs/ShorthandReference" }, { "$ref": "#/$defs/FullyQualifiedReference" } ] }, { "type": "array", "items": { "anyOf": [ { "$ref": "#/$defs/ShorthandReference" }, { "$ref": "#/$defs/FullyQualifiedReference" } ] }, "minItems": 1 } ] },
+        "customProperties": { "$ref": "#/$defs/CustomProperties" }
+      }
+    },
+    "RelationshipSchemaLevel": {
+      "type": "object",
+      "allOf": [ { "$ref": "#/$defs/RelationshipBase" }, { "required": ["from", "to"] }, { "oneOf": [ { "properties": { "from": { "type": "string" }, "to": { "type": "string" } } }, { "properties": { "from": { "type": "array", "items": { "type": "string" }, "minItems": 1 }, "to": { "type": "array", "items": { "type": "string" }, "minItems": 1 } } } ] } ],
+      "unevaluatedProperties": false
+    },
+    "RelationshipPropertyLevel": {
+      "type": "object",
+      "allOf": [ { "$ref": "#/$defs/RelationshipBase" }, { "type": "object", "required": ["to"] }, { "not": { "required": ["from"] } } ],
+      "unevaluatedProperties": false
+    },
+    "Relationship": { "oneOf": [ { "$ref": "#/$defs/RelationshipSchemaLevel" }, { "$ref": "#/$defs/RelationshipPropertyLevel" } ] }
+  }
+}

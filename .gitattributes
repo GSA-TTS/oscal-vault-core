@@ -1,0 +1,7 @@
+# Vendored standards and historical upstream documentation are preserved
+# byte-for-byte in the public core; do not reject their inherited whitespace.
+compliance/schemas/**/*.json whitespace=-blank-at-eol
+compliance/datacontracts/*.yaml whitespace=-blank-at-eol,-blank-at-eof
+compliance/datacontracts/**/*.yaml whitespace=-blank-at-eol,-blank-at-eof
+fismatic/docs/** whitespace=-blank-at-eol
+fismatic/README.md whitespace=-blank-at-eol

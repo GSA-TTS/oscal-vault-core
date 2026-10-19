@@ -1,0 +1,64 @@
+# Maps raw implementation-status values produced by
+# fismatic.parser._status_to_oscal_state() (i.e. the values already present in
+# python-ssp / fismatic-generated `implementation-status.state` fields) onto
+# the OSBAPI `ImplementationStatus` enum defined in
+# vault-schemas.json (#/$defs/ImplementationStatus):
+#
+#   operational | under-development | under-testing | planned |
+#   not-applicable | not-implemented
+#
+# Each raw value maps to exactly one `target` enum value. Where the mapping
+# is lossy or involves a judgment call, a `remark` template is supplied; the
+# projection builder attaches it to the resulting ControlSummary.remarks
+# field so the semantic gap stays visible/auditable downstream instead of
+# being silently discarded.
+#
+# This table is data, not code, on purpose: it should be reviewable/editable
+# by compliance/GRC staff without touching parser or projection logic.
+
+version: "1.0"
+
+mapping:
+  implemented:
+    target: operational
+
+  partially-implemented:
+    target: under-development
+    remark: >-
+      Raw FedRAMP status was "Partially Implemented"; mapped to OSBAPI
+      "under-development" as the closest analog. Verify against source SSP
+      narrative before relying on this for a compliance decision.
+
+  alternative-implementation:
+    target: operational
+    remark: >-
+      Raw FedRAMP status was "Alternative Implementation"; the control
+      objective is met via a documented alternative rather than the baseline
+      implementation. Mapped to "operational" because the control is in
+      effect, with this remark preserving the distinction.
+
+  planned:
+    target: planned
+
+  customer-configured:
+    target: not-applicable
+    remark: >-
+      Raw FedRAMP status was "Customer Configured" (a responsibility split,
+      not a CSP implementation gap). Mapped to "not-applicable" from the
+      CSP's implementation-status perspective; see control-origination for
+      the customer-configured signal.
+
+  not-applicable:
+    target: not-applicable
+
+  not-implemented:
+    target: not-implemented
+
+# Fallback used when a raw value is missing or not recognized by this table.
+# Fails loud in strict mode (see compliance/lib/vocab.py); this default is
+# only used when the caller explicitly opts into permissive mode.
+default:
+  target: not-implemented
+  remark: >-
+    No recognized implementation-status value was present in the source
+    control data; defaulted to "not-implemented" pending manual review.

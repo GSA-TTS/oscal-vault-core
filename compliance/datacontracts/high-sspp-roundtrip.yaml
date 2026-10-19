@@ -1,0 +1,229 @@
+# Open Data Contract Standard (ODCS v3.1.0) — High SSP roundtrip fill-back
+#
+# Phase R16.2 — instruction-anchored roundtrip contract for the official
+# GSA FedRAMP rev5 **High** SSP blank template.
+#
+# Unlike compliance/datacontracts/fedramp-ssp-v1.yaml (a large read-only
+# routing contract for the whole document), this contract is scoped to the
+# roundtrip DEMONSTRATION: a representative set of writable slots, each
+# carrying BOTH the read metadata (sourceHeading / captureStrategy) AND the
+# write metadata (templateTag / writeStrategy / instructionAnchor) so a single
+# contract drives extract -> jinjafy -> fill -> re-extract.
+#
+# Consumed by:
+#   - compliance/lib/instruction_anchors.py  (R16.1 — instruction/slot detection)
+#   - compliance/lib/docx_jinjafier.py        (R16.3 — inject {{ tags }})
+#   - compliance/lib/docx_fill.py             (R16.4 — render via docxtpl)
+#   - compliance/lib/heading_parser.py        (existing — read path)
+#
+# Validated against:
+#   compliance/datacontracts/schemas/odcs-json-schema-v3.1.0.json
+#
+# customProperties (R16 write extension, all camelCase per ODCS):
+#   Object-level:
+#     blankTemplatePath        — official blank .docx this contract targets
+#     instructionColors        — hex colors treated as instruction color
+#                                (default ["0070C0"]); text-prefix fallback
+#                                always applies
+#     instructionTextPrefixes  — instruction text prefixes (default
+#                                Instruction/Instructions/Note/Example)
+#   Property-level (in addition to the existing read props):
+#     templateTag        — Jinja variable name for this slot
+#     writeStrategy      — paragraph_after_instruction | table_after_instruction
+#                          | constant
+#     instructionAnchor  — instruction text (prefix/regex) that precedes the
+#                          writable slot; the join key between anchor pass,
+#                          jinjafier, and fill
+#     writeScope         — replace_slot (default) | append
+
+apiVersion: v3.1.0
+kind: DataContract
+id: fedramp-high-sspp-roundtrip-v1
+name: fedramp_high_sspp_roundtrip
+version: 1.0.0
+status: active
+domain: fedramp-ssp
+tenant: GSA
+contractCreatedTs: "2026-07-20T00:00:00Z"
+
+tags:
+  - fedramp
+  - ssp
+  - high
+  - roundtrip
+  - docx
+  - docxtpl
+
+description:
+  purpose: >
+    Instruction-anchored roundtrip contract for the GSA FedRAMP rev5 High SSP
+    blank template. Each destination property declares where its content is
+    read from and where it is written back (the writable slot immediately
+    after the #0070C0 instruction block), enabling a lossless
+    extract->fill->re-extract demonstration via docxtpl.
+  usage: >
+    Consumed by compliance/lib/docx_jinjafier.py to inject Jinja tags into a
+    clone of the blank template, and by compliance/lib/docx_fill.py to render
+    synthetic/sample content back into a filled .docx.
+  limitations: >
+    Scoped to a representative subset of narrative + table slots for the
+    roundtrip demo, not the full document. Add slots by editing this file;
+    no code change required.
+
+servers:
+  - id: local_docx
+    server: local-fedramp-high-ssp
+    type: local
+    description: Local High SSP blank template under fismatic/ (gitignored).
+    environment: dev
+    customProperties:
+      - property: path
+        value: "fismatic/High-SSPP-Template-[Contains-CUI]-10-16-2024.docx"
+      - property: format
+        value: docx
+
+authoritativeDefinitions:
+  - id: odcs-spec
+    url: https://bitol-io.github.io/open-data-contract-standard/latest/
+    type: businessDefinition
+    description: Open Data Contract Standard (ODCS) v3.1.0 specification.
+  - id: roundtrip-plan
+    url: archive/plans/ROUNDTRIP_TEMPLATE_PLAN.md
+    type: businessDefinition
+    description: Phase R16 roundtrip template plan.
+
+customProperties:
+  - property: sourceFormat
+    value: docx
+  - property: targetTaxonomy
+    value: fedramp-vault
+  - property: roundtripDemo
+    value: "true"
+
+schema:
+  # --- SOURCE ----------------------------------------------------------------
+  - id: high_sspp_docx
+    name: high_sspp_docx
+    logicalType: object
+    physicalType: file
+    physicalName: "High-SSPP-Template-*.docx"
+    description: Synthetic source object representing the High SSP blank .docx.
+    tags: [source, docx]
+    customProperties:
+      - property: isSource
+        value: "true"
+      - property: blankTemplatePath
+        value: "fismatic/High-SSPP-Template-[Contains-CUI]-10-16-2024.docx"
+      - property: instructionColors
+        value: "0070C0"
+      - property: instructionTextPrefixes
+        value: "Instruction,Instructions,Note,Example"
+    properties:
+      - name: marker
+        logicalType: string
+        description: Placeholder property (ODCS requires >=1 property).
+        customProperties:
+          - property: sourceKind
+            value: constant
+
+  # --- DESTINATION: system-security-plan narrative slots --------------------
+  - id: oscal_ssp_system
+    name: oscal_ssp
+    logicalType: object
+    physicalType: object
+    description: System Security Plan narrative fields (High template).
+    tags: [oscal, ssp]
+    customProperties:
+      - property: oscalType
+        value: oscal.ssp
+      - property: oscalModel
+        value: system-security-plan
+      - property: noteType
+        value: system
+      - property: destinationFolder
+        value: "Systems/"
+      - property: required
+        value: "true"
+    properties:
+      - name: general_system_description
+        logicalType: string
+        description: >
+          General system description — the writable narrative slot that
+          follows the "Asset Inventory" instruction block in the FedRAMP
+          template (the instruction sits under the Asset Inventory heading,
+          hence sourceHeading below; templateTag is kept as
+          general_system_description because it is baked into the committed
+          *.jinja.docx templates — do NOT rename without regenerating them).
+          (D-16 / #48)
+        customProperties:
+          - property: sourceHeading
+            value: "Asset Inventory"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: general_system_description
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: For addressing the system"
+          - property: writeScope
+            value: append
+
+      - name: components_and_boundaries
+        logicalType: string
+        description: Authorization boundary narrative writable slot.
+        customProperties:
+          - property: sourceHeading
+            value: "Information System Components and Boundaries"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: components_and_boundaries
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: In the space that follows, describe the information system"
+          - property: writeScope
+            value: append
+
+      - name: network_architecture
+        logicalType: string
+        description: Network architecture narrative writable slot.
+        customProperties:
+          - property: sourceHeading
+            value: "Network Architecture"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: network_architecture
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: The architecture diagram must fully and clearly define"
+          - property: writeScope
+            value: append
+
+      - name: data_flow
+        logicalType: string
+        description: Data flow narrative writable slot.
+        customProperties:
+          - property: sourceHeading
+            value: "Data Flow"
+          - property: sourceKind
+            value: paragraph
+          - property: captureStrategy
+            value: heading_paragraph
+          - property: templateTag
+            value: data_flow
+          - property: writeStrategy
+            value: paragraph_after_instruction
+          - property: instructionAnchor
+            value: "Instructions: In this section describe the flow of data"
+          - property: writeScope
+            value: append
