@@ -126,3 +126,10 @@ This project is dedicated to the public domain under
   regex/heuristic control-table parser this project vendors and extends
   (U.S. Census Bureau, public domain). It is the sole live extractor in the
   pipeline.
+
+## Validation
+
+The public core validates its own parser/control-table behavior and renders
+synthetic sentinels through the approved blank Low, Moderate, and High templates
+in GitHub Actions. System repositories validate their own restricted content
+separately; no system content is required by this repository's CI.
