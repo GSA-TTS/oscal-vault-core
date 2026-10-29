@@ -1,0 +1,12 @@
+{
+  "_meta": {
+    "template": "low-sspp",
+    "contract": "compliance/datacontracts/low-sspp-roundtrip.yaml",
+    "content_kind": "synthetic",
+    "note": "Deterministic, obviously-fake values to prove the roundtrip plumbing. No CUI."
+  },
+  "general_system_description": "SYNTHETIC_general_system_description: the Example Cloud System comprises three tiers.",
+  "components_and_boundaries": "SYNTHETIC_components_and_boundaries: the authorization boundary includes the web, app, and data tiers.",
+  "network_architecture": "SYNTHETIC_network_architecture: traffic ingresses through an ALB into private subnets.",
+  "data_flow": "SYNTHETIC_data_flow: user requests flow from the ALB to the app tier to the encrypted datastore."
+}
