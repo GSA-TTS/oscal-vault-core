@@ -1,4 +1,4 @@
-# ADR-001: Generate CycloneDX topology and C4 Mermaid from one parsed topology
+# ADR-027: Generate CycloneDX topology and C4 Mermaid from one parsed topology
 
 **Status:** Proposed (feasibility build)
 **Date:** 2026-10-29
