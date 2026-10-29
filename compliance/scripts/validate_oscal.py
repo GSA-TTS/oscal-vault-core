@@ -53,7 +53,7 @@ def _vault_dirs(args: argparse.Namespace) -> List[Path]:
     if args.vault:
         return [Path(v) for v in args.vault]
     if args.all_exports:
-        examples_vault = _REPO_ROOT / "examples" / "vault"
+        examples_vault = Path.cwd() / "examples" / "vault"
         if examples_vault.is_dir():
             return [
                 d
