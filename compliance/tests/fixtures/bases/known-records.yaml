@@ -1,0 +1,39 @@
+records:
+  - _folder: Controls
+    control_id: AC-01
+    implementation_status: implemented
+    origination: [local]
+  - _folder: Controls
+    control_id: AC-02
+    implementation_status: planned
+    origination: [inherited]
+  - _folder: Controls
+    control_id: AC-03
+    implementation_status: implemented
+    origination: [hybrid]
+  - _folder: Components
+    name: Example component
+    table_record_count: 1
+  - _folder: Systems
+    name: Example system
+  - _folder: Plans
+    plan_id: example-plan
+  - _folder: Organizations
+    name: Example organization
+  - _folder: Relationships
+    title: Example relationship
+    table_record_count: 1
+  - _folder: Inheritance
+    title: Example inheritance
+    table_record_count: 1
+expected_counts:
+  controls.base:All controls: 3
+  controls.base:Requiring attention: 1
+  controls.base:Inherited / hybrid: 2
+  components.base:All components: 1
+  components.base:Typed table coverage: 1
+  systems.base:All systems: 1
+  plans.base:All plans: 1
+  organizations.base:All organizations: 1
+  relationships.base:Typed protocol tables: 1
+  inheritance.base:Typed provider tables: 1
