@@ -14,9 +14,9 @@ included.
 | Document | Controls | % Operational | Notes |
 |---|---|---|---|
 | <SSP> | 159 | 86.2% | Reference baseline; good parsing |
-| Site Scanner_Low-SSPP-Draft | 158 | 11.4% | ~140/158 show not-implemented → checkbox recognition issue |
+| <Low SSPP, draft> | 158 | 11.4% | ~140/158 show not-implemented → checkbox recognition issue |
 | <Moderate SSPP> | 402 | 0.2% | Near-total parse failure; uses ✓ (checkmark) instead of ☒. ✅ **Fixed** in Phase 12 (`49245b2`) -- the parser's `_is_checkbox_line()` now recognizes `✓`, `⊠`, `x`/`X`, and `[x]`/`[X]` in addition to the standard `☒`. Re-run the corpus report to confirm improved coverage. |
-| May2024 USE THIS Working Copy of SSB SSPP | — | — | Uses ⊠ (squared checkmark) and x (plain-x) characters. ✅ Same Phase 12 fix covers these glyphs. |
+| <SSPP working copy> | — | — | Uses ⊠ (squared checkmark) and x (plain-x) characters. ✅ Same Phase 12 fix covers these glyphs. |
 
 ## Known parsing gaps
 

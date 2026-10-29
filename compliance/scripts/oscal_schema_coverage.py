@@ -178,15 +178,19 @@ def _present_paths(node: Any, prefix: str = "") -> Set[str]:
     return present
 
 
-def _export_sample(model: str) -> Dict[str, Any] | None:
-    """Export one representative committed document for the given model."""
+def _export_sample(model: str, vault_root: Path | None = None) -> Dict[str, Any] | None:
+    """Export one representative document for the given model.
+
+    ``vault_root`` is a directory of generated vaults, each with ``.snapshots/current``. It defaults
+    to ``./examples/vault`` in the working directory; the core ships none.
+    """
     from compliance.lib.export_oscal import (
         canonical_to_oscal_component_definition,
         canonical_to_oscal_ssp,
         load_canonical_json,
     )
 
-    vault_root = REPO_ROOT / "examples" / "vault"
+    vault_root = vault_root or Path.cwd() / "examples" / "vault"
     if not vault_root.is_dir():
         return None
 
@@ -243,12 +247,12 @@ def _export_sample(model: str) -> Dict[str, Any] | None:
     return None
 
 
-def compute_coverage(model: str) -> Dict[str, Any]:
+def compute_coverage(model: str, vault_root: Path | None = None) -> Dict[str, Any]:
     spec = _MODELS[model]
     schema = _load_schema(spec["schema"])
     defs = schema["definitions"]
     all_paths = enumerate_fields(defs, spec["root_def"])
-    sample = _export_sample(model)
+    sample = _export_sample(model, vault_root)
     # The exporter returns a wrapper-keyed document ({"system-security-plan":
     # {...}}); unwrap to the root assembly so present paths line up with the
     # schema paths, which are relative to that assembly.
@@ -340,6 +344,12 @@ def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--yaml", type=Path, help="Write/compare the YAML report here.")
     parser.add_argument(
+        "--vaults",
+        type=Path,
+        default=None,
+        help="Directory of generated vaults to sample (default: ./examples/vault).",
+    )
+    parser.add_argument(
         "--check",
         action="store_true",
         help="Exit 2 if the committed --yaml report differs from freshly "
@@ -347,7 +357,7 @@ def main(argv: List[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    reports = [compute_coverage(model) for model in _MODELS]
+    reports = [compute_coverage(model, args.vaults) for model in _MODELS]
 
     if args.yaml:
         rendered = render_yaml(reports)
