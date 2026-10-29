@@ -79,3 +79,12 @@ def test_link_controls_is_idempotent_and_keeps_foreign_entries():
 def test_document_without_nist_references_is_untouched():
     doc = {"controls": [{"satisfies": ["req-x"]}, {}]}
     assert link_controls(doc) == 0 and "definitions" not in doc
+
+
+def test_catalog_covers_every_control_the_catalog_names():
+    from compliance.lib.nist_standard import catalog_control_ids
+
+    ids = catalog_control_ids()
+    assert len(ids) == len(set(ids)) > 1000
+    assert ids[0] == "AC-1" and "AC-2(1)" in ids and "SC-7(24)" in ids
+    assert ids.index("AC-2") < ids.index("AC-2(1)") < ids.index("AC-3")

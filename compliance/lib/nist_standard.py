@@ -103,6 +103,14 @@ def build_nist_standard(control_ids: Iterable[str]) -> dict[str, Any]:
     }
 
 
+def catalog_control_ids() -> list[str]:
+    """Every control and enhancement in the vendored catalog, as printed (``AC-2(1)``)."""
+    keys = set(_load("nist_sp800-53_rev5_control_statements.json")) | set(
+        _load("nist_sp800-53_rev5_control_names.json")
+    )
+    return [r["identifier"] for r in build_nist_standard(keys)["requirements"]]
+
+
 def link_controls(document: dict[str, Any]) -> int:
     """Rewrite object-style ``satisfies`` into requirement ``bom-ref`` strings.
 
