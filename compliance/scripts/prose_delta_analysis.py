@@ -88,7 +88,7 @@ def _iter_block_items(parent: DocxDocument):
 #
 # FedRAMP SSP templates use *named* H1 headings (mostly WITHOUT chapter
 # numbers), in a fixed order that maps to chapters 1-13. A minority of docs
-# (e.g. Data.gov) prefix an explicit number ("10 System Environment"). We
+# (for example, some agency SSPs) prefix an explicit number ("10 System Environment"). We
 # handle both: an explicit leading number wins; otherwise we match the known
 # heading title to its chapter ordinal.
 _CHAPTER_RE = re.compile(r"^\s*(\d{1,2})(?:\.\d+)*\s+\S")

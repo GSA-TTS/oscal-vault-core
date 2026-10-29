@@ -16,7 +16,7 @@ highest-value gaps to close are at the top.
 
 Usage:
     uv run python3 scripts/coverage_gap_analysis.py
-    uv run python3 scripts/coverage_gap_analysis.py --system search-gov-2026
+    uv run python3 compliance/scripts/coverage_gap_analysis.py --system <system>
     uv run python3 scripts/coverage_gap_analysis.py --top 25
 """
 
