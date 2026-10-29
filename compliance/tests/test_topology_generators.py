@@ -189,3 +189,26 @@ def test_evaluator_scores_a_synthetic_system_and_writes_idempotently(tmp_path):
     assert "![[img.png]]" in first and "C4Container" in first
     main(["--vault", str(tmp_path), "--all", "--write-vault"])
     assert note.read_text(encoding="utf-8") == first
+
+
+def test_container_view_never_guesses_technology(topo):
+    text = render_container(topo)
+    assert 'Container(admin_application, "Admin application", "")' in text
+    assert 'ContainerDb(cloud_gov_redis, "Cloud.gov Redis", "Redis")' in text
+
+
+def test_long_edge_labels_are_shortened_on_a_word_boundary():
+    from compliance.lib.topology_c4 import MAX_LABEL, _short
+
+    long = "Outbound via Caddy Proxy Sending application metrics and logs to the vendor"
+    out = _short(long)
+    assert len(out) <= MAX_LABEL and out.endswith("\u2026")
+    assert not out[:-1].endswith(" ") and long.startswith(out[:-1])
+    assert _short("short") == "short"
+
+
+def test_container_view_lists_connected_components_together(topo):
+    ref = parse_c4(render_container(topo))
+    order = list(ref.elements)
+    # The Redis store is used by the admin app; it must not be listed after unrelated ones.
+    assert abs(order.index("admin_application") - order.index("cloud_gov_redis")) <= 3

@@ -48,19 +48,37 @@ def _tech(flow: Flow) -> str:
 
 
 def _rel(source: str, destination: str, label: str, tech: str) -> str:
-    return f'Rel({source}, {destination}, "{_text(label)}", "{_text(tech)}")'
+    return f'Rel({source}, {destination}, "{_short(label)}", "{_text(tech)}")'
+
+
+_STORE_TECH = (
+    (re.compile(r"mysql", re.I), "MySQL"),
+    (re.compile(r"postgres", re.I), "PostgreSQL"),
+    (re.compile(r"redis|elasticache", re.I), "Redis"),
+    (re.compile(r"\bs3\b|bucket", re.I), "Amazon S3"),
+)
+MAX_LABEL = 60
+
+
+def _short(value: str, limit: int = MAX_LABEL) -> str:
+    """Trim to ``limit`` characters on a word boundary; C4 edge labels do not wrap well."""
+    value = _text(value)
+    if len(value) <= limit:
+        return value
+    cut = value[: limit - 1].rsplit(" ", 1)[0] or value[: limit - 1]
+    return cut.rstrip(",;:- ") + "\u2026"
+
+
+def _tech_from_name(name: str) -> str:
+    """Technology only when the component's own name states it; never guessed."""
+    return next((tech for pattern, tech in _STORE_TECH if pattern.search(name)), "")
 
 
 def _element(c: Component, indent: str) -> str:
     alias, name = _alias(c.key), _text(c.name)
-    if c.kind == DATASTORE:
-        tech = {
-            "relational": "Relational DB",
-            "key-value": "Key-value store",
-            "object": "Object store",
-        }.get(c.store_type or "", "Data store")
-        return f'{indent}ContainerDb({alias}, "{name}", "{tech}")'
-    return f'{indent}Container({alias}, "{name}", "{"Platform service" if c.zone == ZONE_PLATFORM else "Application process"}")'
+    tech = _tech_from_name(c.name)
+    kind = "ContainerDb" if c.kind == DATASTORE else "Container"
+    return f'{indent}{kind}({alias}, "{name}", "{tech}")'
 
 
 def render_context(topo: Topology) -> str:
@@ -109,36 +127,57 @@ def render_context(topo: Topology) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _flow_order(topo: Topology) -> dict[str, int]:
+    """Position of each component by first appearance in a flow.
+
+    Mermaid C4 has no auto-layout: shapes are placed in statement order, so listing
+    components that talk to each other next to each other is the main readability lever.
+    """
+    order: dict[str, int] = {}
+    for f in topo.flows:
+        for key in (f.source, f.destination):
+            order.setdefault(key, len(order))
+    return order
+
+
 def render_container(topo: Topology) -> str:
     """C4 Level 2: boundaries, processes, data stores and every flow."""
+    rank = _flow_order(topo)
+
+    def by_flow(c: Component) -> tuple[int, str]:
+        return rank.get(c.key, len(rank)), c.name.lower()
+
     lines = ["C4Container", f"    title {_text(topo.display)} - Containers", ""]
     by_zone: dict[str, list[Component]] = {}
     for c in topo.components:
         by_zone.setdefault(c.zone, []).append(c)
 
-    for c in sorted(by_zone.get("users", []), key=lambda c: c.name.lower()):
+    for c in sorted(by_zone.get("users", []), key=by_flow):
         lines.append(f'    Person({_alias(c.key)}, "{_text(c.name)}")')
-    for c in sorted(by_zone.get("external", []), key=lambda c: c.name.lower()):
+    for c in sorted(by_zone.get("external", []), key=by_flow):
         lines.append(
             f'    System_Ext({_alias(c.key)}, "{_text(c.name)}", "External system")'
         )
     lines.append("")
-    for zone, label, boundary in (
-        (ZONE_PLATFORM, "cloud.gov / AWS platform services", "System_Boundary"),
-        (ZONE_APP, f"{_text(topo.display)} application boundary", "System_Boundary"),
+    for zone, label in (
+        (ZONE_APP, f"{_text(topo.display)} application boundary"),
+        (ZONE_PLATFORM, "cloud.gov / AWS platform services"),
     ):
-        members = sorted(by_zone.get(zone, []), key=lambda c: c.name.lower())
+        members = sorted(by_zone.get(zone, []), key=by_flow)
         if not members:
             continue
-        lines.append(f'    {boundary}({zone}_boundary, "{label}") {{')
+        lines.append(f'    System_Boundary({zone}_boundary, "{label}") {{')
         lines.extend(_element(c, "        ") for c in members)
         lines.append("    }")
         lines.append("")
 
-    rels = [
-        _rel(_alias(f.source), _alias(f.destination), f.purpose or f.label, _tech(f))
-        for f in topo.flows
-    ]
-    lines.extend(f"    {r}" for r in sorted(set(rels)))
-    lines += ["", '    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="2")']
+    seen: set[str] = set()
+    for f in topo.flows:
+        rel = _rel(
+            _alias(f.source), _alias(f.destination), f.purpose or f.label, _tech(f)
+        )
+        if rel not in seen:
+            seen.add(rel)
+            lines.append(f"    {rel}")
+    lines += ["", '    UpdateLayoutConfig($c4ShapeInRow="4", $c4BoundaryInRow="1")']
     return "\n".join(lines) + "\n"
