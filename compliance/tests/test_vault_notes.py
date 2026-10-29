@@ -117,3 +117,24 @@ def test_org_parties_get_a_contact_type_and_skip_other_notes(tmp_path):
     )
     (party,) = parse_org_parties(str(tmp_path))
     assert (party.name, party.contact_type) == ("Example Org", "Security")
+
+
+def test_mappings_fall_back_to_the_cores_tables_and_a_local_copy_overrides_them(
+    tmp_path,
+):
+    from compliance.lib.vault_notes import load_status_and_origination
+
+    status, origination = load_status_and_origination(str(tmp_path))
+    assert status.mapping and origination.mapping
+
+    local = tmp_path / "compliance" / "mappings"
+    local.mkdir(parents=True)
+    (local / "implementation-status-map.yaml").write_text(
+        "mapping:\n  weird: {target: custom}\ndefault: {target: nope}\n",
+        encoding="utf-8",
+    )
+    (local / "control-origination-map.yaml").write_text(
+        "mapping: {}\nprecedence: []\ndefault: {target: x}\n", encoding="utf-8"
+    )
+    overridden, _ = load_status_and_origination(str(tmp_path))
+    assert overridden.lookup("weird")[0] == "custom"

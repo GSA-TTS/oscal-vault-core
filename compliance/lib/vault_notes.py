@@ -310,8 +310,23 @@ def _first_control_id(text: str) -> str:
     return normalize_control_id(raw)
 
 
+CORE_MAPPINGS = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "mappings"
+)
+
+
 def load_status_and_origination(vault_root: str) -> tuple[StatusMap, OriginationMap]:
-    mappings = os.path.join(vault_root, "compliance", "mappings")
+    """Status and origination mapping tables.
+
+    A repository may carry its own ``<vault_root>/compliance/mappings`` (an override); otherwise the
+    core's own tables are used, so a system repository that only holds vaults needs no copy.
+    """
+    local = os.path.join(vault_root, "compliance", "mappings")
+    mappings = (
+        local
+        if os.path.isfile(os.path.join(local, "implementation-status-map.yaml"))
+        else CORE_MAPPINGS
+    )
     return (
         StatusMap.from_yaml(os.path.join(mappings, "implementation-status-map.yaml")),
         OriginationMap.from_yaml(
