@@ -212,3 +212,14 @@ def test_container_view_lists_connected_components_together(topo):
     order = list(ref.elements)
     # The Redis store is used by the admin app; it must not be listed after unrelated ones.
     assert abs(order.index("admin_application") - order.index("cloud_gov_redis")) <= 3
+
+
+def test_structure_check_flags_duplicate_alias_and_unknown_alias():
+    text = (
+        "C4Container\n  title T\n"
+        '  Container(a, "A", "x")\n  Container(a, "A2", "x")\n'
+        '  Rel(a, ghost, "uses")\n'
+    )
+    errors = validate_generated_c4(text)["syntax_errors"]
+    assert "duplicate alias a" in errors
+    assert any("ghost" in e for e in errors)
