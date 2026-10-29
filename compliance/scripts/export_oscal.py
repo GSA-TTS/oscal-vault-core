@@ -10,7 +10,7 @@ Usage:
     python3 compliance/scripts/export_oscal.py
 
     # Export specific vault
-    python3 compliance/scripts/export_oscal.py --vault examples/vault/gsa-pages-ssp-2026/
+    python3 compliance/scripts/export_oscal.py --vault examples/vault/<system>/
 
     # Export as YAML instead of JSON
     python3 compliance/scripts/export_oscal.py --format yaml

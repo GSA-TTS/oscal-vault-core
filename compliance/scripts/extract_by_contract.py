@@ -9,12 +9,12 @@ routes content to destination note types based on the contract at
 Usage:
     # Extract from a markdown catchall blob:
     uv run python3 compliance/scripts/extract_by_contract.py \\
-        --markdown examples/docx_catchall/GSA-Pages_Low-SSPP_3-14-2024_.catchall.md \\
+        --markdown examples/docx_catchall/<ssp>.catchall.md \\
         --output /tmp/routed.json
 
     # Extract from a .docx directly (dumps to markdown first):
     uv run python3 compliance/scripts/extract_by_contract.py \\
-        --docx fismatic/GSA-Pages_Low-SSPP(3-14-2024).docx \\
+        --docx <ssp>.docx \\
         --output /tmp/routed.json
 
     # Use a custom contract:

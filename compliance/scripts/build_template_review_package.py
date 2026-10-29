@@ -11,7 +11,7 @@ submission packages.
 
 Example:
     uv run python compliance/scripts/build_template_review_package.py \\
-      --source fismatic/GSA-Pages_Low-SSPP_(2-13-2026).docx \\
+      --source <ssp>.docx \\
       --template fismatic/Moderate-SSPP-Template-[Contains-CUI]-10-16-2024.docx \\
       --contract compliance/datacontracts/moderate-sspp-roundtrip.yaml \\
       --out-dir review-output/gsa-pages-moderate-review

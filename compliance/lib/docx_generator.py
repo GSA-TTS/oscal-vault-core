@@ -15,7 +15,7 @@ is lost to OSBAPI's coarser enums before regenerating the document.
 
 Table layout, matched to what `fismatic.docx_parser.DocxParser.get_controls`
 / `fismatic.parser.parse_control_table` actually recognize (reverse-engineered
-against `fismatic/GSA-Pages_Low-SSPP_(2-13-2026).docx`):
+against `<ssp>.docx`):
 
   - One "Control Summary Information" (CIS) table per control, 2 columns:
       row 0: control_id | "Control Summary Information"
