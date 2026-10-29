@@ -18,7 +18,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - run: uv sync --frozen
-      - run: uv run ruff check compliance/lib/docx_fill.py compliance/lib/oscal_source.py compliance/tests/test_docx_fill_roundtrip.py
-      - run: uv run ruff format --check compliance/lib/docx_fill.py compliance/lib/oscal_source.py compliance/tests/test_docx_fill_roundtrip.py
-      - run: uv run pytest tests/test_public_core_governance.py tests/test_public_core_oscal_source.py -q
+      - run: uv run ruff check compliance/lib/docx_fill.py compliance/lib/oscal_source.py compliance/tests/test_docx_fill_roundtrip.py compliance/lib/topology*.py compliance/scripts/evaluate_topology_diagrams.py compliance/tests/test_topology_generators.py
+      - run: uv run ruff format --check compliance/lib/docx_fill.py compliance/lib/oscal_source.py compliance/tests/test_docx_fill_roundtrip.py compliance/lib/topology*.py compliance/scripts/evaluate_topology_diagrams.py compliance/tests/test_topology_generators.py
+      - run: uv run pytest tests/test_public_core_governance.py tests/test_public_core_oscal_source.py compliance/tests/test_topology_generators.py -q
       - run: uv run pytest compliance/tests/test_docx_fill_roundtrip.py -q -m slow -k synthetic_contract_sentinel

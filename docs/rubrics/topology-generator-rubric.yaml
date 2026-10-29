@@ -1,0 +1,151 @@
+rubric_id: topology-generator-rubric
+version: 1
+purpose: >
+  Reusable review of the topology generators in oscal-vault-core (CycloneDX blueprint and
+  C4 Mermaid) built from one parsed Ports, Protocols, and Services model. Scores each system
+  on dimensions that tell a maintainer what to improve next, and gives a repeatable way to
+  compare generator versions: re-run, diff the report, and keep a change only if no
+  dimension regresses.
+
+# How to use
+#   1. Run `uv run python compliance/scripts/evaluate_topology_diagrams.py --system <slug> ...`
+#   2. Fill the human-review section of the emitted report (dimensions marked review: human).
+#   3. Save the report; compare with the previous one using --baseline <old.json>.
+# Scores are 0-4. A dimension "regresses" when its score drops against the baseline.
+
+scale:
+  0: unusable, wrong or missing
+  1: weak, major gaps a reviewer would reject
+  2: partial, usable as a draft with edits
+  3: good, minor edits
+  4: matches or exceeds a careful hand-drawn reference
+
+gates:
+  # Hard failures. Any gate failing makes the system "blocked" regardless of score.
+  - id: parses
+    check: every generated Mermaid block parses with the real Mermaid parser
+  - id: refs-resolve
+    check: every CycloneDX flow endpoint and zone reference resolves; bom-refs are unique
+  - id: deterministic
+    check: two runs on identical input produce byte-identical output
+  - id: no-sensitive-values
+    check: output contains no URLs, hostnames, emails or account ids beyond the source note
+
+dimensions:
+  - id: element_coverage
+    weight: 3
+    measures: Does the generated diagram contain the components a reference shows?
+    needs_reference: true
+    metric: element_recall
+    bands: [{min: 0.0, score: 0}, {min: 0.4, score: 1}, {min: 0.6, score: 2}, {min: 0.8, score: 3}, {min: 0.95, score: 4}]
+    improve_when_low: >
+      Components that appear only in SSP prose (proxies, routers, load balancers, split
+      stores) are missing from the PPS table. Add a prose-extraction pass or accept an
+      enrichment file; do not invent them.
+
+  - id: element_precision
+    weight: 1
+    measures: Are generated components ones a reviewer would accept as real?
+    needs_reference: true
+    metric: element_precision
+    bands: [{min: 0.0, score: 0}, {min: 0.4, score: 1}, {min: 0.6, score: 2}, {min: 0.8, score: 3}, {min: 0.95, score: 4}]
+    improve_when_low: Extra elements are often renamings (a platform store vs two app stores); check ambiguous_matches.
+
+  - id: element_typing
+    weight: 2
+    measures: Are people, external systems, containers and data stores classified correctly?
+    needs_reference: true
+    metric: type_agreement
+    bands: [{min: 0.0, score: 0}, {min: 0.6, score: 1}, {min: 0.8, score: 2}, {min: 0.9, score: 3}, {min: 0.98, score: 4}]
+    improve_when_low: Tune classify() name patterns; add a regression case for each miss.
+
+  - id: relationship_coverage
+    weight: 3
+    measures: >
+      Of the reference relationships whose two ends the generator has, how many does it draw?
+    needs_reference: true
+    metric: relationship_recall
+    bands: [{min: 0.0, score: 0}, {min: 0.4, score: 1}, {min: 0.6, score: 2}, {min: 0.8, score: 3}, {min: 0.95, score: 4}]
+    improve_when_low: Direction or aggregation differences; check that bidirectional rows are handled.
+
+  - id: relationship_precision
+    weight: 2
+    measures: Are generated relationships ones the reference also draws?
+    needs_reference: true
+    metric: relationship_precision
+    bands: [{min: 0.0, score: 0}, {min: 0.3, score: 1}, {min: 0.5, score: 2}, {min: 0.75, score: 3}, {min: 0.9, score: 4}]
+    improve_when_low: >
+      Usually an intermediary (egress proxy, router) that the source row mentions only in
+      its purpose text, e.g. "Outbound via Caddy Proxy". Detect "via <component>" and route
+      through that component.
+
+  - id: flow_security_detail
+    weight: 3
+    measures: Does every flow carry protocol, port, encryption, trust-boundary crossing and data classification?
+    needs_reference: false
+    metric: flow_security_attributes
+    bands: [{min: 0.0, score: 0}, {min: 0.5, score: 1}, {min: 0.75, score: 2}, {min: 0.95, score: 3}, {min: 1.0, score: 4}]
+    improve_when_low: Source table columns were not located; fix header matching, not defaults.
+
+  - id: cross_generator_consistency
+    weight: 3
+    measures: Do the CycloneDX blueprint and the C4 diagrams describe the same components and flows?
+    needs_reference: false
+    metric: min(component_agreement, flow_agreement)
+    bands: [{min: 0.0, score: 0}, {min: 0.8, score: 1}, {min: 0.9, score: 2}, {min: 0.97, score: 3}, {min: 1.0, score: 4}]
+    improve_when_low: A renderer is filtering or renaming. Both must read the one Topology.
+
+  - id: readability
+    weight: 2
+    measures: Is the container view reviewable on one page?
+    needs_reference: false
+    metric: container_density
+    # Composite: score 4 if elements <= 20 and longest label <= 80 and max degree <= 8;
+    # drop one point per limit exceeded, to a floor of 0.
+    limits: {elements: 20, longest_label: 80, max_degree: 8}
+
+  - id: c4_level_fit
+    weight: 2
+    measures: Is each C4 level used for what it is for?
+    needs_reference: false
+    review: human
+    prompts:
+      - L1 Context shows only people and external systems around one system box. Pass/fail.
+      - L2 Container shows deployable/runnable units and data stores, grouped by boundary. Pass/fail.
+      - No element appears at a level that is finer than the data supports (L3/L4 are not faked).
+    bands_note: score 4 if all pass, 3 if one fails, 2 if two, else 1
+
+  - id: dfd_c4_complementarity
+    weight: 2
+    measures: Does the pair of diagrams answer different questions without contradicting each other?
+    needs_reference: false
+    review: human
+    prompts:
+      - Can a reviewer find every trust-boundary crossing in the DFD and the matching relationship in the C4?
+      - Are the trust zones in the DFD explained by the boundaries in the C4?
+      - Is anything shown in one and absent from the other that should be in both?
+    bands_note: score 4 if no gaps, 3 minor, 2 several, 1 contradictory
+
+  - id: reviewer_trust
+    weight: 2
+    measures: Would an Authorizing Official or ISSO accept this as a draft to edit rather than redraw?
+    needs_reference: false
+    review: human
+    prompts:
+      - Are there invented components or flows? Any invented element is an automatic 1.
+      - Are unknowns shown as unknown rather than guessed?
+    bands_note: score 4 yes with no edits, 3 minor edits, 2 substantial, 1 redraw, 0 misleading
+
+verdict:
+  # Weighted average of dimension scores (human dimensions use the reviewer's score; when
+  # absent they are excluded and the report says so).
+  accept: {min_average: 3.0, min_each: 2}
+  iterate: {min_average: 2.0}
+  reject: below iterate
+  regression_rule: A change is accepted only if no dimension drops against the baseline and the weighted average does not fall.
+
+reference_policy: >
+  A hand-drawn reference is evidence, not truth: it may be out of date or contain
+  components the SSP does not state. When generated and reference disagree, record the
+  disagreement and who is right (source note, reference, or neither) in the report. Use
+  the reference to find gaps; fix the generator only where the SSP supports the change.
