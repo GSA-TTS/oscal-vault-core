@@ -384,7 +384,7 @@ def render_json(
 def _resolve_vaults(arg_vaults: Optional[List[str]]) -> List[Path]:
     if arg_vaults:
         return [Path(v).resolve() for v in arg_vaults]
-    examples = _REPO_ROOT / "examples" / "vault"
+    examples = Path.cwd() / "examples" / "vault"
     if examples.is_dir():
         return [
             d

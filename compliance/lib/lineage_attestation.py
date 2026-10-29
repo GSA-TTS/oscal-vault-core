@@ -33,6 +33,30 @@ def implementation_digest(operator: str, repo_root: Path) -> str:
     return digest.hexdigest()
 
 
+def build_attestations(
+    repo_root: Path, *, reviewer: str, rationale: str, decision: str = "approved"
+) -> dict[str, Any]:
+    """An attestation document covering every operator at its current digest.
+
+    For tests and for an operator who has actually reviewed the implementation; the reviewer
+    and rationale are supplied by the caller and are never defaulted.
+    """
+    return {
+        "schema_version": 1,
+        "attestations": [
+            {
+                "operator": operator,
+                "decision": decision,
+                "implementation": list(files),
+                "implementation_sha256": implementation_digest(operator, repo_root),
+                "reviewer": reviewer,
+                "rationale": rationale,
+            }
+            for operator, files in _IMPLEMENTATIONS.items()
+        ],
+    }
+
+
 def validate_attestations(path: Path, repo_root: Path) -> list[str]:
     payload: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     findings: list[str] = []

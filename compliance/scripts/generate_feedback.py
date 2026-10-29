@@ -116,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
         import os
         import sys as _sys
 
-        scripts_dir = str(_REPO_ROOT / "scripts")
+        scripts_dir = str(_REPO_ROOT / "compliance" / "scripts")
         if scripts_dir not in _sys.path:
             _sys.path.insert(0, scripts_dir)
         import docx_catchall_dump as dcd  # type: ignore
