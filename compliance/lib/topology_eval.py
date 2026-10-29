@@ -56,6 +56,13 @@ _STOP = {
     "amazon",
     "managed",
 }
+# Words that say what kind of thing a component is. Two names only match when they agree
+# on these, so "Admin application" never matches "Admin Egress Proxy".
+_ROLE = {
+    "proxy", "router", "routers", "gateway", "balancer", "broker", "worker", "scheduler",
+    "redis", "mysql", "postgres", "postgresql", "db", "s3", "queue", "cache", "store",
+    "browser", "cli",
+}  # fmt: skip
 _CALL = re.compile(r"^\s*([A-Za-z_]+)\s*\((.*)\)\s*(\{)?\s*$")
 
 
@@ -169,6 +176,8 @@ def tokens(name: str) -> frozenset[str]:
 def names_match(a: str, b: str) -> bool:
     ta, tb = tokens(a), tokens(b)
     if not ta or not tb:
+        return False
+    if (ta & _ROLE) != (tb & _ROLE):
         return False
     return ta <= tb or tb <= ta
 

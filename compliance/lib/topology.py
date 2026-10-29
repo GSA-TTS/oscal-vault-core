@@ -67,6 +67,12 @@ _STORE_KINDS = (
     (re.compile(r"\bs3\b|bucket|file store", re.I), "object"),
     (re.compile(r"solr", re.I), "search"),
 )
+# "Outbound via Caddy Proxy ..." names an intermediary the source row routes through.
+_VIA = re.compile(
+    r"\bvia\s+(?:the\s+)?"
+    r"([\w.\-]+(?:\s+[\w.\-]+){0,3}?\s+(?:proxy|router|gateway|load balancer))\b",
+    re.I,
+)
 _TABLE_RE = re.compile(r"\|[^\n]+\|\n\|[-: |]+\|\n(?:\|[^\n]+\|\n)+", re.MULTILINE)
 
 
@@ -260,17 +266,41 @@ def load_pps_rows(system_dir: Path) -> list[PpsRow]:
     return rows
 
 
-def build_topology(system_id: str, display: str, rows: list[PpsRow]) -> Topology:
-    """Typed, zoned components and flows from PPS rows."""
+def via_intermediary(row: PpsRow) -> str | None:
+    """The proxy/router/gateway a row says it goes through, only when the text names one."""
+    for text in (row.purpose, row.service):
+        match = _VIA.search(text or "")
+        if match:
+            return re.sub(r"\s+", " ", match.group(1)).strip()
+    return None
+
+
+def build_topology(
+    system_id: str, display: str, rows: list[PpsRow], *, resolve_via: bool = False
+) -> Topology:
+    """Typed, zoned components and flows from PPS rows.
+
+    With ``resolve_via`` (off by default) a row such as "Outbound via Caddy Proxy" becomes two
+    flows, source to the named proxy and proxy to destination. The intermediary exists only
+    because the source row states it, but merging every "Caddy Proxy" mention into one node
+    asserts a single shared instance, which the source may not say (a hand-drawn Notify diagram
+    has one proxy per application). Measured against that diagram it lowered relationship
+    precision, so it stays opt-in until a per-application mapping is supplied.
+    """
     rows = [
         r
         for r in rows
         if not any(_NOT_A_COMPONENT.match(x.strip()) for x in (r.source, r.destination))
     ]
     names: dict[str, str] = {}
-    for row in rows:
+    via_of: dict[int, str] = {}
+    for index, row in enumerate(rows):
         for label in (row.source, row.destination):
             names.setdefault(slug(label), label.strip())
+        middle = via_intermediary(row) if resolve_via else None
+        if middle and slug(middle) not in (slug(row.source), slug(row.destination)):
+            via_of[index] = middle
+            names.setdefault(slug(middle), middle)
     names.pop("", None)
 
     topo = Topology(system_id, display)
@@ -288,10 +318,8 @@ def build_topology(system_id: str, display: str, rows: list[PpsRow]) -> Topology
         )
 
     seen: set[str] = set()
-    for row in rows:
-        src, dst = slug(row.source), slug(row.destination)
-        if src not in names or dst not in names:
-            continue
+
+    def add(src: str, dst: str, row: PpsRow, crosses: bool) -> None:
         port = parse_port(row.port)
         base = f"flow-{system_id}-{src}-to-{dst}" + (f"-{port}" if port else "")
         ref, n = base, 2
@@ -308,8 +336,19 @@ def build_topology(system_id: str, display: str, rows: list[PpsRow]) -> Topology
                 row.protocol,
                 port,
                 row.encrypted,
-                row.boundary_crossing,
+                crosses,
                 row.sensitivity,
             )
         )
+
+    for index, row in enumerate(rows):
+        src, dst = slug(row.source), slug(row.destination)
+        if src not in names or dst not in names:
+            continue
+        if index in via_of:
+            mid = slug(via_of[index])
+            add(src, mid, row, False)
+            add(mid, dst, row, row.boundary_crossing)
+        else:
+            add(src, dst, row, row.boundary_crossing)
     return topo

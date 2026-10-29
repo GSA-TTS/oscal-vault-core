@@ -223,3 +223,48 @@ def test_structure_check_flags_duplicate_alias_and_unknown_alias():
     errors = validate_generated_c4(text)["syntax_errors"]
     assert "duplicate alias a" in errors
     assert any("ghost" in e for e in errors)
+
+
+VIA_TABLE = """
+| Direction | Boundary Crossings (Y/N) | Source | Destination | Ports (T or U) | Protocols | Services | Purpose | Encrypted (Y/N) | Data Sensitivity |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Outbound | Y | Admin application | Login.gov | T/443 | https | Login.gov | Outbound via Caddy Proxy Sending authentication requests | Y | Moderate |
+| Outbound | Y | API Worker | New Relic | T/443 | https | New Relic | Outbound via Caddy Proxy Sending metrics | Y | Moderate |
+| Outbound | N | API Worker | AWS SES | T/443 | https | AWS SES | Sending email | Y | Moderate |
+"""
+
+
+def test_via_names_an_intermediary_only_when_the_row_states_one():
+    from compliance.lib.topology import via_intermediary
+
+    rows = parse_pps_rows(VIA_TABLE)
+    assert [via_intermediary(r) for r in rows] == ["Caddy Proxy", "Caddy Proxy", None]
+
+
+def test_via_splits_the_flow_through_one_shared_proxy():
+    topo = build_topology("demo", "Demo", parse_pps_rows(VIA_TABLE), resolve_via=True)
+    assert [c.name for c in topo.components].count("Caddy Proxy") == 1
+    pairs = {(f.source, f.destination) for f in topo.flows}
+    assert ("admin-application", "caddy-proxy") in pairs
+    assert ("caddy-proxy", "login-gov") in pairs
+    assert ("admin-application", "login-gov") not in pairs
+    first, second = (
+        next(f for f in topo.flows if f.source == "admin-application"),
+        next(f for f in topo.flows if f.destination == "login-gov"),
+    )
+    assert (first.crosses_boundary, second.crosses_boundary) == (False, True)
+    assert first.port == second.port == 443 and first.protocol == second.protocol
+
+
+def test_via_is_off_by_default_and_never_invents_components():
+    topo = build_topology("demo", "Demo", parse_pps_rows(VIA_TABLE))
+    assert "Caddy Proxy" not in {c.name for c in topo.components}
+    plain = build_topology("demo", "Demo", parse_pps_rows(TABLE))
+    assert len(plain.flows) == 3
+
+
+def test_names_do_not_match_across_different_kinds_of_component():
+    assert not names_match("Admin application", "Admin Egress Proxy")
+    assert not names_match("Cloud.gov Redis", "Cloud.gov MySQL")
+    assert names_match("Cloud.gov Redis", "API Redis")
+    assert names_match("Admin application", "US Notify Admin")
