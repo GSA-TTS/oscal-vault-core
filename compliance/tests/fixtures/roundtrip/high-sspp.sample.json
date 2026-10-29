@@ -1,0 +1,12 @@
+{
+  "_meta": {
+    "template": "high-sspp",
+    "contract": "compliance/datacontracts/high-sspp-roundtrip.yaml",
+    "content_kind": "synthetic",
+    "note": "Deterministic, obviously-fake values to prove the roundtrip plumbing. No CUI."
+  },
+  "general_system_description": "SYNTHETIC_general_system_description: the Example High System is a FISMA High multi-region deployment.",
+  "components_and_boundaries": "SYNTHETIC_components_and_boundaries: the boundary encompasses all production tiers across two regions.",
+  "network_architecture": "SYNTHETIC_network_architecture: layered defense with WAF, IDS/IPS, and segmented private subnets.",
+  "data_flow": "SYNTHETIC_data_flow: requests flow through the DMZ to the app tier to the FIPS-encrypted datastore."
+}

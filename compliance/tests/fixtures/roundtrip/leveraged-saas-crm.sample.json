@@ -1,0 +1,10 @@
+{
+  "_meta": {
+    "template": "leveraged-saas-crm",
+    "contract": "compliance/datacontracts/leveraged-saas-crm-roundtrip.yaml",
+    "content_kind": "synthetic",
+    "note": "Deterministic, obviously-fake values to prove the roundtrip plumbing. No CUI."
+  },
+  "types_of_users": "SYNTHETIC_types_of_users: internal administrators and external read-only console users.",
+  "crm_requirements_intro": "SYNTHETIC_crm_requirements_intro: the customer is responsible for configuring MFA and reviewing audit logs."
+}
