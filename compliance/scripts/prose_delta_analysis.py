@@ -16,7 +16,7 @@ For each .docx it counts words in three buckets:
 control_tables), i.e. everything the current extractor drops.
 
 Usage:
-    uv run python3 scripts/prose_delta_analysis.py
+    uv run python3 compliance/scripts/prose_delta_analysis.py
 """
 
 from __future__ import annotations

@@ -15,9 +15,9 @@ Output ranks *uncaptured* headings by word count (descending) so the
 highest-value gaps to close are at the top.
 
 Usage:
-    uv run python3 scripts/coverage_gap_analysis.py
+    uv run python3 compliance/scripts/coverage_gap_analysis.py
     uv run python3 compliance/scripts/coverage_gap_analysis.py --system <system>
-    uv run python3 scripts/coverage_gap_analysis.py --top 25
+    uv run python3 compliance/scripts/coverage_gap_analysis.py --top 25
 """
 
 from __future__ import annotations

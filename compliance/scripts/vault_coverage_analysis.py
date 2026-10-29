@@ -23,7 +23,7 @@ page furniture), so 100% is not the target -- the useful signal is how much the
 recent Chapters 1-12 + image + lossless-table work moved the ratio.
 
 Usage:
-    uv run python3 scripts/vault_coverage_analysis.py
+    uv run python3 compliance/scripts/vault_coverage_analysis.py
 """
 
 from __future__ import annotations
