@@ -7,9 +7,9 @@
 
 ## Context
 
-The downstream SSPP repository parses each system's Ports, Protocols, and Services (PPS)
+A downstream system repository parses each system's Ports, Protocols, and Services (PPS)
 table into a typed, zoned data-flow diagram for Precogly. Separately, people draw C4
-Mermaid diagrams by hand in the vault's `Diagrams/*.md` notes (Notify has two). The two
+Mermaid diagrams by hand in the vault's `Diagrams/*.md` notes. The two
 views answer different questions and drift apart. The parser, the classification rules
 and the CycloneDX shape live in the downstream repo, so every consumer of the vault has to
 reimplement them.
@@ -36,7 +36,7 @@ the rubric checks this as `cross_generator_consistency`.
 
 ## Consequences
 
-- The downstream repo can drop its own parser and import this one (separate change).
+- A downstream repo can drop its own parser and import this one (separate change).
 - A comparison on one real system (kept in its restricted repository) showed the PPS table
   alone reaches about 46% element recall against a hand-drawn container view. Missing items (egress proxies, routers, load balancer,
   per-app Redis and S3 stores, analytics) appear only in SSP prose. Closing that gap needs
