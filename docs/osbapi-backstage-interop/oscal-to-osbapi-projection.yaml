@@ -1,0 +1,200 @@
+# Open Data Contract Standard (ODCS v3.1.0)
+# Recommended OSCAL -> OSBAPI / Backstage projection.
+#
+# This contract documents the STATELESS transform from an oscal-vault OSCAL
+# system-security-plan export (the source-of-truth this project produces) into
+# the downstream catalog shapes defined in ../../vault-schemas.json. It is
+# modeling guidance for future interoperability work: it names, for each
+# destination field, which OSCAL path it derives from and how. There is no live
+# generator wired to it yet (the earlier scripts were archived under
+# archive/osbapi-projection/); build any future projector against this contract
+# + the $defs it references.
+#
+# Validated against: compliance/datacontracts/schemas/odcs-json-schema-v3.1.0.json
+
+apiVersion: v3.1.0
+kind: DataContract
+id: oscal-to-osbapi-projection-v1
+name: oscal_to_osbapi_projection
+version: 0.1.0
+status: draft
+domain: fedramp-ssp
+tenant: GSA
+contractCreatedTs: "2026-07-22T00:00:00Z"
+
+tags:
+  - oscal
+  - osbapi
+  - backstage
+  - projection
+  - interoperability
+
+description:
+  purpose: >
+    Define the recommended, stateless projection of an OSCAL SSP export into an
+    OSBAPI CRM summary, a full CRM document, and a Backstage catalog entity /
+    compliance-adapter response, so downstream service brokers and catalogs can
+    consume oscal-vault output without re-parsing the source .docx.
+  usage: >
+    Reference-only modeling contract. A future projector should read the OSCAL
+    export (compliance/scripts/export_oscal.py output) and emit the destination
+    objects below, validating each against ../../vault-schemas.json.
+  limitations: >
+    Not executed by any committed script. The source OSCAL is the SSP export
+    only; POA&M / assessment models are out of scope. The `sourcePath` values
+    are the OSCAL paths oscal-vault actually emits (see export_oscal.py).
+
+servers: []
+
+authoritativeDefinitions:
+  - type: schema
+    url: ../../vault-schemas.json
+  - type: reference
+    url: ./osbapi-oscal-architecture.md
+  - type: reference
+    url: ./osbapi-oscal-detailed-examples.md
+
+customProperties:
+  - property: sourceModel
+    value: oscal.ssp (system-security-plan)
+  - property: sourceProducer
+    value: compliance/scripts/export_oscal.py
+
+schema:
+  # ---- SOURCE -------------------------------------------------------------
+  - id: oscal_ssp_export
+    name: oscal_ssp_export
+    logicalType: object
+    physicalType: file
+    physicalName: "*-ssp.json"
+    description: The OSCAL system-security-plan JSON emitted by oscal-vault.
+    tags: [source]
+    customProperties:
+      - property: isSource
+        value: "true"
+
+  # ---- DESTINATION: OSBAPI CRM summary ------------------------------------
+  - id: oscal_crm_summary
+    name: oscal_crm_summary
+    logicalType: object
+    physicalType: file
+    physicalName: "<offering>-crm-summary.json"
+    description: >
+      OSBAPI CRM summary attached to a broker provision response
+      (metadata.attributes.oscal_crm). Validates against
+      vault-schemas.json#/$defs/OscalCrmSummary.
+    tags: [destination, osbapi]
+    customProperties:
+      - property: targetSchema
+        value: "vault-schemas.json#/$defs/OscalCrmSummary"
+    properties:
+      - name: profile_uri
+        logicalType: string
+        transformSourceObjects: [oscal_ssp_export]
+        customProperties:
+          - property: sourcePath
+            value: system-security-plan.import-profile.href
+          - property: transform
+            value: passthrough
+      - name: controls
+        logicalType: array
+        transformSourceObjects: [oscal_ssp_export]
+        customProperties:
+          - property: sourcePath
+            value: system-security-plan.control-implementation.implemented-requirements[]
+          - property: transform
+            value: >
+              For each implemented-requirement emit a ControlSummary:
+              control_id <- control-id; status <- props[name=implementation-status].value
+              (already normalized to the OSBAPI ImplementationStatus enum by
+              compliance/lib/vocab.py); origination <- props[name=control-origination]
+              (mapped to the ControlOrigination enum, precedence-picked).
+
+  # ---- DESTINATION: full CRM document -------------------------------------
+  - id: full_crm_document
+    name: full_crm_document
+    logicalType: object
+    physicalType: file
+    physicalName: "<offering>-crm-summary.full.json"
+    description: >
+      The complete CRM document (per-control implementation detail). Validates
+      against vault-schemas.json#/$defs/FullCrmDocument.
+    tags: [destination, osbapi]
+    customProperties:
+      - property: targetSchema
+        value: "vault-schemas.json#/$defs/FullCrmDocument"
+    properties:
+      - name: implemented_requirements
+        logicalType: array
+        transformSourceObjects: [oscal_ssp_export]
+        customProperties:
+          - property: sourcePath
+            value: system-security-plan.control-implementation.implemented-requirements[]
+          - property: transform
+            value: >
+              Project each implemented-requirement (control-id, statements[],
+              by-components[].description, responsible-roles[], set-parameters[])
+              into an OscalImplementedRequirementProjection.
+
+  # ---- DESTINATION: Backstage catalog entity ------------------------------
+  - id: backstage_entity
+    name: backstage_entity
+    logicalType: object
+    physicalType: file
+    physicalName: "<offering>-entity.yaml"
+    description: >
+      A Backstage catalog entity envelope carrying compliance annotations.
+      Validates against vault-schemas.json#/$defs/BackstageEntityComplianceEnvelope.
+    tags: [destination, backstage]
+    customProperties:
+      - property: targetSchema
+        value: "vault-schemas.json#/$defs/BackstageEntityComplianceEnvelope"
+    properties:
+      - name: annotations
+        logicalType: object
+        transformSourceObjects: [oscal_crm_summary]
+        customProperties:
+          - property: sourcePath
+            value: oscal_crm_summary
+          - property: transform
+            value: >
+              Aggregate the CRM summary into BackstageComplianceAnnotations
+              (counts by status/origination + a coarse posture) attached to the
+              entity's metadata.annotations under the compliance namespace.
+
+  # ---- DESTINATION: compliance adapter response ---------------------------
+  - id: adapter_response
+    name: adapter_response
+    logicalType: object
+    physicalType: file
+    physicalName: "<offering>-entity-response.json"
+    description: >
+      The shape a Backstage compliance plugin fetches from the adapter's
+      GET /entities/{entity_ref}. Validates against
+      vault-schemas.json#/$defs/ComplianceAdapterEntityResponse.
+    tags: [destination, backstage]
+    customProperties:
+      - property: targetSchema
+        value: "vault-schemas.json#/$defs/ComplianceAdapterEntityResponse"
+    properties:
+      - name: entity_ref
+        logicalType: string
+        customProperties:
+          - property: transform
+            value: "Supplied by the caller (resource:default/<offering>)."
+      - name: crm_summary
+        logicalType: object
+        transformSourceObjects: [oscal_crm_summary]
+        customProperties:
+          - property: sourcePath
+            value: oscal_crm_summary
+          - property: transform
+            value: passthrough
+      - name: full_crm_document
+        logicalType: object
+        transformSourceObjects: [full_crm_document]
+        customProperties:
+          - property: sourcePath
+            value: full_crm_document
+          - property: transform
+            value: passthrough
