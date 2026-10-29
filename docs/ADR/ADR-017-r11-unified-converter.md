@@ -89,7 +89,7 @@ contract-driven conversion.
 
 ### Performance
 
-End-to-end R11 on Site Scanner SSP (19 destinations, 102 properties):
+End-to-end R11 on a real Low SSP (19 destinations, 102 properties):
 
 | Backend | Total time | Entities | Filled fields | Warnings | Errors |
 |---|---:|---:|---:|---:|---:|

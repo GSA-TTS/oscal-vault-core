@@ -10,7 +10,7 @@ and unstructured extracts only 78 headings total (across 10 SSPs) because
 FedRAMP SSP template uses `Heading 1/2/3` paragraph styles for its body. Without
 equal-footing, the contract-routing comparison is biased.
 
-## 1. Current state (R13 baseline, on Site Scanner SSP)
+## 1. Current state (R13 baseline, on a real Low SSP)
 
 | Backend | headings | ¶ | tables | images | h-levels |
 |---|---:|---:|---:|---:|---|

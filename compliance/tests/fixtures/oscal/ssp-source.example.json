@@ -1,0 +1,129 @@
+{
+  "system-security-plan": {
+    "uuid": "11111111-1111-1111-1111-111111111111",
+    "metadata": {
+      "title": "Sample System Security Plan",
+      "last-modified": "2024-03-14T00:00:00",
+      "version": "1.0",
+      "oscal-version": "1.0.0",
+      "parties": [
+        {
+          "uuid": "22222222-2222-2222-2222-222222222222",
+          "type": "organization",
+          "name": "Example Security Office",
+          "role-ids": [
+            "cloud-service-provider"
+          ]
+        }
+      ],
+      "roles": [
+        {
+          "id": "cloud-service-provider",
+          "title": "Cloud Service Provider",
+          "description": "CSP implementing the controls."
+        }
+      ]
+    },
+    "import-profile": {
+      "href": "https://oscal-project.github.io/osbapi-crm-profile/v1"
+    },
+    "system-characteristics": {
+      "system-ids": [
+        {
+          "id": "sample-system",
+          "identifier-type": "https://fedramp.gov"
+        }
+      ],
+      "system-name": "Sample System",
+      "description": "A small synthetic FedRAMP Low SSP used as a committed, docx-free example input for the vault and CRM projection generators. Three controls cover one of each major origination type (system-specific, inherited, hybrid) so downstream projections and vault output have non-trivial content without depending on any committed .docx file.",
+      "security-sensitivity-level": "low",
+      "system-information": {
+        "information-types": []
+      },
+      "security-impact-level": {
+        "security-objective-confidentiality": "low",
+        "security-objective-integrity": "low",
+        "security-objective-availability": "low"
+      },
+      "status": {
+        "state": "operational"
+      },
+      "authorization-boundary": {
+        "description": "The authorization boundary encompasses the platform service this system runs on, including its supporting CI/CD pipeline and logging infrastructure."
+      }
+    },
+    "control-implementation": {
+      "description": "Implementation of selected FedRAMP Low Baseline controls.",
+      "implemented-requirements": [
+        {
+          "uuid": "30000000-0000-0000-0000-000000000001",
+          "control-id": "AC-1",
+          "implementation-status": {
+            "state": "implemented"
+          },
+          "control-origination": [
+            "service-provider-corporate",
+            "system-specific"
+          ],
+          "statements": [
+            {
+              "statement-id": "ac-1_stmt.a",
+              "uuid": "ac1-a",
+              "description": "The organization develops, documents, and disseminates an access control policy that addresses purpose, scope, roles, responsibilities, and management commitment. See [[Organizations/gsa-ociso]] for the policy owner."
+            },
+            {
+              "statement-id": "ac-1_stmt.b",
+              "uuid": "ac1-b",
+              "description": "The organization reviews and updates the access control policy at least annually, and implements procedures to coordinate with [[Controls/AC-2]] account-management activities."
+            }
+          ],
+          "responsible-roles": [
+            {
+              "role-id": "cloud-service-provider"
+            }
+          ]
+        },
+        {
+          "uuid": "30000000-0000-0000-0000-000000000002",
+          "control-id": "AC-2",
+          "implementation-status": {
+            "state": "partially-implemented"
+          },
+          "control-origination": [
+            "inherited",
+            "hybrid"
+          ],
+          "statements": [
+            {
+              "statement-id": "ac-2_stmt.a",
+              "uuid": "ac2-a",
+              "description": "Account management is partially implemented by the platform; tenant-specific account review procedures remain under development. Inherited from the underlying cloud.gov Pages platform."
+            }
+          ],
+          "responsible-roles": [
+            {
+              "role-id": "cloud-service-provider"
+            }
+          ]
+        },
+        {
+          "uuid": "30000000-0000-0000-0000-000000000003",
+          "control-id": "AU-4",
+          "implementation-status": {
+            "state": "implemented"
+          },
+          "control-origination": [
+            "inherited"
+          ],
+          "statements": [
+            {
+              "statement-id": "au-4_stmt.a",
+              "uuid": "au4-a",
+              "description": "Audit logging is provided by the platform. The system retains logs for a minimum of three years, satisfying AU-4."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

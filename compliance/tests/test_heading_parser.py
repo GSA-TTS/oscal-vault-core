@@ -334,17 +334,17 @@ class TestHeadingMatching:
 
     def test_prefix_match_with_star(self) -> None:
         assert _heading_matches(
-            "Systems Providing Controls to GSA Pages",
+            "Systems Providing Controls to Example System",
             "Systems Providing Controls*",
         )
         assert not _heading_matches(
-            "Systems Receiving Controls from GSA Pages",
+            "Systems Receiving Controls from Example System",
             "Systems Providing Controls*",
         )
 
     def test_regex_match(self) -> None:
         assert _heading_matches(
-            "Systems Receiving Controls from GSA Pages",
+            "Systems Receiving Controls from Example System",
             "regex:^Systems Receiving Controls",
         )
         assert _heading_matches(
