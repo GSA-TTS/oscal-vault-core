@@ -1,0 +1,44 @@
+filters:
+  and:
+    - file.inFolder("Controls")
+properties:
+  control_id:
+    displayName: Control
+  implementation_status:
+    displayName: Status
+  origination:
+    displayName: Origination
+  family:
+    displayName: Family
+views:
+  - type: table
+    name: All controls
+    order:
+      - control_id
+      - implementation_status
+      - origination
+      - family
+    sort:
+      - property: control_id
+        direction: ASC
+  - type: table
+    name: Requiring attention
+    filters:
+      and:
+        - implementation_status != "implemented"
+    order:
+      - control_id
+      - implementation_status
+    sort:
+      - property: implementation_status
+        direction: ASC
+  - type: table
+    name: Inherited / hybrid
+    filters:
+      or:
+        - origination.contains("inherited")
+        - origination.contains("hybrid")
+    order:
+      - control_id
+      - origination
+      - component
