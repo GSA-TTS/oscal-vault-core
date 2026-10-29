@@ -13,7 +13,7 @@ Exit 0 if all validatable notes pass schema checks. Exit 1 if any schema
 violation is found. Exit 2 on runtime errors.
 
 Usage:
-    python3 scripts/validate_frontmatter.py [--vault <dir> ...]
+    python3 compliance/scripts/validate_frontmatter.py [--vault <dir> ...]
 """
 
 from __future__ import annotations

@@ -9,8 +9,8 @@ Exit 1 if broken links found.
 Exit 2 on runtime errors.
 
 Usage:
-    python3 scripts/validate_wikilinks.py [--vault <dir> ...]
-    python3 scripts/validate_wikilinks.py --files file1.md file2.md ...
+    python3 compliance/scripts/validate_wikilinks.py [--vault <dir> ...]
+    python3 compliance/scripts/validate_wikilinks.py --files file1.md file2.md ...
 """
 
 from __future__ import annotations

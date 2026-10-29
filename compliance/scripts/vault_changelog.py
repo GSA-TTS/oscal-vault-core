@@ -26,9 +26,9 @@ ref is extracted once into a temporary directory via ``git archive`` (not
 one ``git show`` per file, which does not scale to 5000+ control notes).
 
 Usage:
-    python3 scripts/vault_changelog.py --from <ref> --to <ref>
-    python3 scripts/vault_changelog.py --from ef7a1021 --to HEAD
-    python3 scripts/vault_changelog.py --from v1.2.0 --to v1.3.0 --out CHANGELOG-slice.md
+    python3 compliance/scripts/vault_changelog.py --from <ref> --to <ref>
+    python3 compliance/scripts/vault_changelog.py --from ef7a1021 --to HEAD
+    python3 compliance/scripts/vault_changelog.py --from v1.2.0 --to v1.3.0 --out CHANGELOG-slice.md
 """
 
 from __future__ import annotations
