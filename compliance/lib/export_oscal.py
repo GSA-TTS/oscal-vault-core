@@ -127,8 +127,10 @@ EXPORTER_MAPPING_ADAPTERS = {
 # keeps exports reproducible for diffing without persisting a UUID map.
 _OSCAL_NS = _uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")  # RFC-4122 DNS ns
 
-# Namespace URI for this project's OSCAL extension props (okf.* / oscal.x.*).
-FEDRAMP_PARSER_NS = "https://github.com/JJediny/oscal-vault/ns/oscal"
+# Namespace for this project's OSCAL extension props (okf.* / oscal.x.*). OSCAL requires a URI with a
+# scheme (a relative path such as "./ns/oscal" fails schema validation), so this is a URN: stable, not
+# tied to any repository or person, and not meant to be dereferenced.
+FEDRAMP_PARSER_NS = "urn:oscal-vault-core:ns:oscal"
 
 _UUID_RE_V4V5 = (
     "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[45][0-9A-Fa-f]{3}-"

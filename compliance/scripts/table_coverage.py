@@ -10,9 +10,11 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-_DEFAULT_VAULTS = _REPO_ROOT / "examples" / "vault"
-_DEFAULT_BASELINE = _REPO_ROOT / "compliance" / "data" / "table_coverage_baseline.json"
+_WORKSPACE = Path.cwd()
+_DEFAULT_VAULTS = _WORKSPACE / "examples" / "vault"
+# The baseline records the debt of *these* vaults, so it lives with them (the system repository),
+# not in the core.
+_DEFAULT_BASELINE = _WORKSPACE / "scripts" / "table_coverage_baseline.json"
 
 
 def _debt_id(relative_sidecar: str, record: dict[str, Any], occurrence: int) -> str:

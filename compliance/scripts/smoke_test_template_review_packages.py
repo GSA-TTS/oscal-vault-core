@@ -25,14 +25,15 @@ import yaml
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _BUILDER = _REPO_ROOT / "compliance" / "scripts" / "build_template_review_package.py"
-_REGISTRY = _REPO_ROOT / "scripts" / "registry.yaml"
+_WORKSPACE = Path.cwd()
+_REGISTRY = _WORKSPACE / "scripts" / "registry.yaml"
 
 _TEMPLATES = {
-    "low": _REPO_ROOT / "fismatic" / "Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
-    "moderate": _REPO_ROOT
+    "low": _WORKSPACE / "fismatic" / "Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
+    "moderate": _WORKSPACE
     / "fismatic"
     / "Moderate-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
-    "high": _REPO_ROOT
+    "high": _WORKSPACE
     / "fismatic"
     / "High-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
 }
@@ -56,7 +57,7 @@ def _registry_sources() -> tuple[list[tuple[str, Path]], list[str]]:
                 duplicates.append(str(slug))
                 continue
             seen.add(str(slug))
-            sources.append((str(slug), _REPO_ROOT / docx))
+            sources.append((str(slug), _WORKSPACE / docx))
     return sources, duplicates
 
 

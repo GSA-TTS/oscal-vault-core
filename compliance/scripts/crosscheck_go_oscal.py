@@ -58,7 +58,7 @@ def _iter_target_files(args: argparse.Namespace) -> List[Path]:
     if args.vault:
         vault_dirs = [Path(v) for v in args.vault]
     elif args.all_exports:
-        examples_vault = _REPO_ROOT / "examples" / "vault"
+        examples_vault = Path.cwd() / "examples" / "vault"
         if examples_vault.is_dir():
             vault_dirs = [
                 d

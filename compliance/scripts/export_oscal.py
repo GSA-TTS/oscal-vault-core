@@ -356,7 +356,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             vault_dirs.append(vd)
     else:
-        examples_vault = _REPO_ROOT / "examples" / "vault"
+        examples_vault = Path.cwd() / "examples" / "vault"
         if examples_vault.is_dir():
             for entry in sorted(examples_vault.iterdir()):
                 if entry.is_dir() and not entry.name.startswith("."):

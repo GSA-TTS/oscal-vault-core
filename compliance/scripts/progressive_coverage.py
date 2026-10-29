@@ -16,10 +16,10 @@ if str(_REPO_ROOT) not in sys.path:
 
 from compliance.scripts.table_coverage import inventory as table_inventory  # noqa: E402
 
-_DEFAULT_BASELINE = (
-    _REPO_ROOT / "compliance" / "data" / "progressive_coverage_baseline.json"
-)
-_VAULT_BASELINE = _REPO_ROOT / "scripts" / "vault_debt_baseline.json"
+_WORKSPACE = Path.cwd()
+# Baselines record the debt of the workspace's own vaults, so they live with them.
+_DEFAULT_BASELINE = _WORKSPACE / "scripts" / "progressive_coverage_baseline.json"
+_VAULT_BASELINE = _WORKSPACE / "scripts" / "vault_debt_baseline.json"
 
 
 def _stable_id(category: str, value: str) -> str:
@@ -50,7 +50,7 @@ def build_report(vaults: Path) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--vaults", type=Path, default=_REPO_ROOT / "examples" / "vault"
+        "--vaults", type=Path, default=_WORKSPACE / "examples" / "vault"
     )
     parser.add_argument("--baseline", type=Path, default=_DEFAULT_BASELINE)
     parser.add_argument("--write-baseline", action="store_true")
