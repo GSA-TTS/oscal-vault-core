@@ -34,7 +34,7 @@ while capabilities come from component-linked controls. Boundary/relationship/
 inheritance properties not actually consumed and standalone CRM narrative notes
 are classified `unimplemented`; CRM `.ods` fields merged into control notes are
 the source consumed by native SSP `by-component.export`.
-See `archive/plans/PROJECT_REFACTORING_PLAN.md` for the full type registry with kind fields.
+See [ADR-001](ADR/ADR-001-dotted-type-taxonomy.md) and [ADR-010](ADR/ADR-010-kind-subtyping.md) for the type registry and its kind fields.
 
 ### Current executable coverage controls
 
@@ -226,7 +226,7 @@ These concepts exist in `fedramp-automation` but have **no equivalent in the sta
 | **`metadata.locations`** (physical addresses) | Physical data center location is irrelevant to most cloud SSPs. |
 | **`system-implementation.data-flow` / `network-architecture`** | Diagrams. Not machine-processable from docx. |
 | **`metadata.props`** (document-level properties) | Key/value metadata. Nice-to-have but not critical. |
-| **Assessment Plan / Assessment Results / POA&M models** | Separate OSCAL models unrelated to the SSP→CRM pipeline. Assessment data would be the next major integration point (see Phase 14 in the now-deleted `archive/plans/NEXT_STEPS_PLAN.md`). |
+| **Assessment Plan / Assessment Results / POA&M models** | Separate OSCAL models unrelated to the SSP→CRM pipeline. Assessment data would be the next major integration point (the phased plan is not exported to the public core). |
 | **Catalog model** | Base control definitions. The pipeline parses control *implementations* (filled-in SSPs), not control *definitions* (catalog). FedRAMP baselines are the catalog layer and exist as imported profiles. |
 | **Profile model** | Baseline profile definitions. Referenced by URI only. |
 

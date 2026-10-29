@@ -279,7 +279,7 @@ flowchart TD
     EXISTS -- no --> SKIP2
     EXISTS -- yes --> VAULT
     VAULT -- yes --> SKIP3
-    VAULT -- no or --force --> GEN --> OUT
+    VAULT -->|"no or --force"| GEN --> OUT
 ```
 
 ## Review Checklist

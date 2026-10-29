@@ -72,4 +72,4 @@ reference controls that don't exist in the standard Controls folder.
 
 - `scripts/validate_wikilinks.py`
 - `.pre-commit-config.yaml` (wikilink hook, no `--strict`)
-- `archive/plans/PROJECT_REFACTORING_PLAN.md` §§ Phase R10
+- the project refactoring plan (not exported to the public core) §§ Phase R10

@@ -146,7 +146,7 @@ one?).
 ## 7. CI workflow (deferred, still open)
 
 **Deferred from earlier phase; now actionable** since Phases 8-10 removed
-the original blockers (see `archive/plans/CI_PLAN.md` for the full plan). Phase 18
+the original blockers (the full CI plan is not exported to the public core). Phase 18
 wires `ruff check` into `scripts/validate_all.sh` and creates the workflow.
 
 ```yaml

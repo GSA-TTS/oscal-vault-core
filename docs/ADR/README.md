@@ -1,10 +1,16 @@
 # Architecture Decision Records (ADRs)
 
-This directory documents the key architectural decisions made in the
-FedRAMP Automation project as of 2026-07-18.
+[← README](../../README.md) · [Documentation](../ARCHITECTURE.md) ·
+[Contributing](../../CONTRIBUTING.md)
+
+This directory documents the key architectural decisions made in this project.
+The README's roadmap board maps its *Shipped* lane back to the records below.
 
 Each ADR captures: the decision, the context that drove it, the
 alternatives considered, and the consequences.
+
+Anything that changes the taxonomy, the datacontract shape, the export target,
+or a validation gate belongs here. Add the file and the index row together.
 
 ## Index
 
@@ -36,3 +42,4 @@ alternatives considered, and the consequences.
 | ADR-024 | CUI Classification + Provenance Datacontract Extension (R20) | Accepted | 2026-09-28 |
 | ADR-025 | Vault Ontology + Graph Optimization (R21) | Accepted | 2026-09-28 |
 | ADR-026 | Derive Control Vocabulary From Raw OSCAL Fields (R21 Increment 2b) | Accepted | 2026-09-28 |
+| ADR-027 | [CycloneDX Topology + C4 Mermaid From One Parsed Topology](ADR-027-topology-generators-cyclonedx-c4.md) | Proposed (feasibility build) | 2026-10-29 |

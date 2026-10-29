@@ -1,73 +1,96 @@
-# Contributing to oscal-vault
+# Contributing to oscal-vault-core
 
 Contributions are welcome. This project uses a standard GitHub fork and pull
 request workflow.
 
+[← README](README.md) · [Architecture](docs/ARCHITECTURE.md) ·
+[ADR index](docs/ADR/README.md) · [Security policy](SECURITY.md)
+
 ## Branch workflow
 
-This project follows a **one-phase-per-branch** convention, established from
-the beginning (see `git log --all --oneline --graph` for the full history):
-
-- Each unit of work gets its own branch (e.g. `phase-8-python-ssp-api-fix`).
-- When the work is complete and tests pass, the branch is merged into `main`
-  via fast-forward (`git merge --ff-only`).
-- Branches are rebased onto `main` before merge if `main` has moved, to
-  keep history linear.
-- Broken out into named phases in `archive/plans/NEXT_STEPS_PLAN.md`; new branches
-  should follow the `phase-N-<short-description>` convention.
+- Each unit of work gets its own branch, named for what it does
+  (`feat/…`, `fix/…`, `docs/…`, `ci/…`, `test/…`).
+- Branches are rebased onto `main` before merge, to keep history linear.
+- Open a pull request describing the change and its motivation. CI
+  (`.github/workflows/validate.yml`) must pass.
 
 ## Getting started
 
-1. Fork the repository to your personal workspace.
-2. Create a feature branch for your changes.
-3. Make your changes, adding or updating tests as appropriate (see
-   `compliance/README.md` and `scripts/validate_all.sh` for how this
-   project is tested).
-4. Run `uv sync && uv run pytest -q` locally before opening a pull request.
-5. If the full end-to-end pipeline is relevant, also run
-   `bash scripts/validate_all.sh` (requires `.docx` fixtures locally).
-6. Open a pull request describing the change and its motivation.
+```bash
+# 1. Fork, then clone your fork and create a branch.
+
+# 2. Install dependencies (creates .venv, resolves against uv.lock).
+uv sync
+
+# 3. Run the gates CI runs, before opening a pull request.
+uv run ruff check compliance tests
+uv run ruff format --check compliance tests
+uv run pytest tests compliance/tests -q -m "not slow"
+```
+
+No `.docx` fixture is required: the suite is 966 passing tests on synthetic
+fixtures, and tests that need a real source document skip gracefully.
+
+If your change touches the `.docx` → OSCAL roundtrip, also run the slow
+sentinel test that renders through the committed blank templates:
+
+```bash
+uv run pytest compliance/tests/test_docx_fill_roundtrip.py -q -m slow \
+  -k synthetic_contract_sentinel
+```
+
+To exercise the full end-to-end pipeline you need a FedRAMP SSP `.docx` of your
+own, or one of the blank baselines under `templates/`. See the README quickstart
+for the three-command vault → sidecar → OSCAL path.
+
+## Running the gates against a system repository
+
+This repository holds no system content. To validate a repository that does,
+run the harness **from that repository**:
+
+```bash
+cd /path/to/my-system-repo
+bash /path/to/oscal-vault-core/compliance/scripts/validate_workspace.sh
+```
+
+A gate whose baseline file is absent reports `SKIPPED` rather than passing
+silently. See [`docs/VAULT_VALIDATION.md`](docs/VAULT_VALIDATION.md) for what
+each gate enforces.
 
 ## A note on `.docx` files
 
-This repo's `.gitignore` excludes all `*.docx` files. Please do not add
-FedRAMP SSP source documents (customer-specific or blank templates) to any
-commit or pull request -- only derived artifacts (JSON/YAML/etc.) belong in
-git history. See README.md's "No source `.docx` files are committed"
-section for details and how tests handle this.
+This repo's `.gitignore` excludes all `*.docx` files. Please do not add FedRAMP
+SSP source documents to any commit or pull request — only derived artifacts
+(JSON/YAML/Markdown) belong in git history. See the README's
+"No source `.docx` files are committed" section and
+[ADR-009](docs/ADR/ADR-009-no-docx-in-git.md).
 
-A local pre-commit hook (`scripts/pre-commit-check.sh`) can also be
-installed to reject accidental `.docx` staging:
-
-```bash
-ln -sf ../../scripts/pre-commit-check.sh .git/hooks/pre-commit
-```
+Two deliberate exceptions are already committed and are **not** CUI: the blank
+GSA Low/Moderate/High templates under `templates/`
+([ADR-021](docs/ADR/ADR-021-commit-blank-templates.md)) and the `*.jinja.docx`
+roundtrip templates under `compliance/templates/`.
 
 ## Code style
 
-- `utils/`-flavored auto-formatting is available via `ruff format`.
-- `ruff check` is used for linting (added as a `uv` dev dependency).
+- `ruff format` for formatting, `ruff check` for linting. Both are `uv` dev
+  dependencies and both run in CI.
+- Ruff is scoped to `compliance/` and `tests/` by design — see
+  [ADR-004](docs/ADR/ADR-004-ruff-scoped-to-compliance.md). The vendored
+  `fismatic/` tree is excluded.
 - New `compliance/` code is typed from the start (`pyright` / `mypy`
   compatible).
 
-## Testing
+## Architecture decisions
 
-Tests use `pytest`, managed through `uv`:
-
-```bash
-uv run pytest -q                       # full suite
-uv run pytest compliance/tests -v      # vault/OSCAL pipeline tests
-uv run pytest fismatic/src/phase_1/fismatic/test -v   # fismatic parser tests
-```
-
-The test suite is designed to run without any `.docx` fixtures present --
-tests that depend on `.docx` files skip gracefully (via `pytest.mark.skipif`
-or `conftest.py` hooks).
+Anything that changes the taxonomy, the datacontract shape, the export target,
+or a validation gate belongs in an ADR. There are 27 of them under
+[`docs/ADR/`](docs/ADR/README.md); follow the existing format and add the row to
+the index table.
 
 ## Licensing
 
-This project is in the public domain within the United States, and
-copyright and related rights in the work worldwide are waived through the
+This project is in the public domain within the United States, and copyright and
+related rights in the work worldwide are waived through the
 [CC0 1.0 Universal public domain](https://creativecommons.org/publicdomain/zero/1.0/)
-dedication (see `LICENSE.md`). By submitting a pull request, you are
-agreeing to comply with this waiver of copyright interest.
+dedication (see [`LICENSE.md`](LICENSE.md)). By submitting a pull request, you
+are agreeing to comply with this waiver of copyright interest.

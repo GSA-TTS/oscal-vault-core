@@ -31,8 +31,7 @@ sequenceDiagram
     participant O as OSCAL Store
     participant T as Backstage Plugin
 
-    P->>B: PUT /v2/service_instances/{id}
-provision request
+    P->>B: PUT /v2/service_instances/{id} (provision request)
     B->>A: Resolve compliance projection for offering/plan
     A->>O: Read component definition / SSP fragments
     O-->>A: OSCAL implementation data

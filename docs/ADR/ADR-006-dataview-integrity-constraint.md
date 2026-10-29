@@ -56,5 +56,5 @@ Additionally:
 ## References
 
 - `scripts/validate_dataview_queries.py`
-- `archive/plans/PROJECT_REFACTORING_PLAN.md` §§ Dataview Integrity Constraint, Constraint Recommendations
+- the project refactoring plan (not exported to the public core) §§ Dataview Integrity Constraint, Constraint Recommendations
 - `examples/vault/*/Index.md` (dashboards per system)

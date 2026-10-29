@@ -348,11 +348,11 @@ Lossless coverage — *every meaningful value in the source `.docx` survives to
 the OSCAL export and back* — is an **explicit, stated goal**, but it is a
 *target*, not a *current guarantee*:
 
-- **Field parity target (100%)** — `archive/plans/PROJECT_REFACTORING_PLAN.md:320-323`
+- **Field parity target (100%)** — the refactoring plan is not exported to the public core
   (Phase R12): "Target 100% field parity (zero-loss) on all extracted values."
   R12 is **planned, not implemented** (no `r12`-marked tests).
 - **Roundtrip parity target (100% of filled slots)** —
-  `archive/plans/ROUNDTRIP_TEMPLATE_PLAN.md:235-241`.
+  the roundtrip template plan, which is not exported to the public core.
 - **Content-ratio is *not* targeted at 100%** —
   `scripts/vault_coverage_analysis.py:18-24` notes the vault legitimately drops
   blank-template instruction boilerplate, "so 100% is not the target."

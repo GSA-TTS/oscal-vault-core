@@ -10,7 +10,7 @@ related_files:
   - "docs/DATA_FLOW.md"
   - "docs/OBSIDIAN_VAULT_SCHEMA.md"
   - "docs/CROSSWALK_COVERAGE.md"
-  - "scripts/validate_all.sh"
+  - "compliance/scripts/validate_workspace.sh"
   - "scripts/registry.yaml"
   - "compliance/datacontracts/fedramp-ssp-v1.yaml"
 ---
@@ -137,11 +137,12 @@ flowchart TB
 ```
 
 > **Note:** only `fismatic` is wired into the live pipeline. `python-ssp` was
-> an independent second reader retained for cross-checking; it has been moved to
-> `archive/python-ssp/`. The OSBAPI/Backstage projection (dashed, right) is the
+> an independent second reader retained for cross-checking; it is not part of
+> this core. The OSBAPI/Backstage projection (dashed, right) is the
 > fork's original purpose and is now **recommended modeling only** — the
-> generator scripts live under `archive/osbapi-projection/` and the projection
-> is documented in `docs/osbapi-backstage-interop/`.
+> generator scripts are not part of this core either, and the projection is
+> documented in `docs/osbapi-backstage-interop/` with its schemas in
+> `vault-schemas.json`.
 
 ---
 
@@ -216,7 +217,7 @@ flowchart TD
         G4["export_oscal.py --validate<br/>JSON -> OSCAL 1.1.3"]
     end
     subgraph VERIFY["Verify"]
-        V1["scripts/validate_all.sh<br/>(master orchestrator)"]
+        V1["compliance/scripts/validate_workspace.sh<br/>(system-repo gate runner)"]
         V2["uv run pytest -q"]
         V3["validate_vault.py --strict"]
     end
@@ -232,9 +233,9 @@ flowchart TD
 |---|---|
 | `uv sync` | Install all dependencies; prepare environment (bootstrap). |
 | `uv run pytest -q` | Full test suite (skips gracefully without `.docx` fixtures). |
-| `bash scripts/validate_all.sh` | Master verify: ruff → pytest → smoke scripts → roundtrip → vault validation → end-to-end generation (if a sample `.docx` is present). |
+| `bash <core>/compliance/scripts/validate_workspace.sh` | Run every gate against a **system repository** (run it from there). A gate whose baseline file is absent reports `SKIPPED`. |
 | `uv run python3 compliance/scripts/export_obsidian_vault.py …` | Build one vault from a `.docx` (or `--oscal-json`). |
-| `uv run python3 scripts/regenerate_all_vaults.py --force` | Rebuild every registered system's vault. |
+| `uv run python3 <core>/compliance/scripts/regenerate_all_vaults.py --force` | Rebuild every registered system's vault. |
 | `uv run python3 compliance/scripts/generate_canonical_json.py [--vault DIR] [--note PATH]` | Emit canonical JSON sidecars; repeat `--note` for targeted, no-clean regeneration. |
 | `uv run python3 compliance/scripts/export_oscal.py --validate [--oscal-version 1.1.3]` | Emit strict NIST OSCAL JSON into `.exports/oscal-json/`. |
 | `uv run python3 compliance/scripts/validate_vault.py [--strict]` | Headless "open in Obsidian" — frontmatter, wikilinks, dataview, orphans, OKF conformance. |
@@ -485,8 +486,11 @@ flowchart TB
 ```
 
 Error-level checks fail closed; structural/ported checks warn unless
-`--strict`. CI (`validate.yml`) runs `uv sync --locked → ruff → pytest →
-validate_all.sh`, with non-blocking `oscal-crosscheck` and `render-check` jobs.
+`--strict`. CI (`.github/workflows/validate.yml`) runs
+`uv sync --frozen → ruff check → ruff format --check → pytest (966 tests) →
+the slow synthetic-sentinel roundtrip`. It needs no system content: the vault
+and OSCAL gates above run in a **system repository** through
+`compliance/scripts/validate_workspace.sh`.
 
 ---
 
@@ -530,15 +534,17 @@ against the contract's `sourceHeading` set.
 | `compliance/scripts/` | Generation CLIs (`export_obsidian_vault.py`, `generate_canonical_json.py`, `export_oscal.py`, `validate_oscal.py`, `benchmark_extractors.py`). |
 | `compliance/datacontracts/` | ODCS routing contract + roundtrip contracts + ODCS schema. |
 | `compliance/mappings/` | Vocabulary crosswalk YAMLs. |
-| `compliance/data/` | NIST Rev 5 control names. |
+| `compliance/data/` | NIST Rev 5 control names, statements, parameter labels, FedRAMP baselines, D3FEND mapping. |
 | `compliance/schemas/` | Vendored NIST OSCAL schemas (1.1.3, 1.0.4). |
 | `compliance/tests/` | pytest suite + fixtures. |
-| `scripts/` | Orchestration (`validate_all.sh`, `regenerate_all_vaults.py`), validators (`validate_*.py`), diagnostics (`docx_catchall_dump.py`, `*_coverage_*.py`), `registry.yaml`. |
-| `examples/` | Committed derived output: `vault/` (9 example vaults) + `oscal/` (synthetic input). |
-| `benchmark/` | Extractor benchmark reports (`INAUGURAL_REPORT.md`, `R13`–`R15`). |
+| `templates/` | The official **blank** GSA Low / Moderate / High SSPP templates (no CUI) — see ADR-021. |
+| `tests/` | Public-core governance and OSCAL-source checks. |
+| `skills/c4-mermaid/` | Agent skill playbook for the C4 topology generator. |
+| `examples/vault/` | Where a **system repository** keeps its generated vault. Nothing is committed here; this repository holds no system content. |
+| `docs/rubrics/`, `docs/plans/` | Generator evaluation rubric and active increment plans. |
 | `docs/` | `ARCHITECTURE.md`, `INTEROPERABILITY.md`, reference docs, `ADR/`, `osbapi-backstage-interop/`. |
 | `vault-schemas.json` | The `$def` schema suite every vault note + projection validates against. |
-| `archive/` | Quarantined legacy material (see repo root `README.md`): `osbapi-projection/`, `python-ssp/`, `fismatic-aux/`, `legacy-vaults/`, `plans/`, `root-smoke-scripts/`. |
+| `compliance/scripts/validate_workspace.sh` | Runs every gate against a system repository, from that repository. |
 
 ---
 

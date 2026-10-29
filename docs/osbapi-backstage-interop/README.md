@@ -9,7 +9,7 @@ It is **documentation, not a live pipeline.** The vault's core output is the
 Obsidian vault + NIST OSCAL JSON (see the repo root `README.md` and
 `docs/ARCHITECTURE.md`). The projection described here is the *recommended*
 future interoperability path; the earlier generator scripts for it were
-archived under `archive/osbapi-projection/` pending a datacontract-driven
+not part of this public core, pending a datacontract-driven
 reimplementation.
 
 ## Why it still lives here

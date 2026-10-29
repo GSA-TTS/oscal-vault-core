@@ -1,11 +1,19 @@
 # `compliance/`
 
+[← README](../README.md) · [Architecture](../docs/ARCHITECTURE.md) ·
+[Data flow](../docs/DATA_FLOW.md) · [Vault schema](../docs/OBSIDIAN_VAULT_SCHEMA.md) ·
+[Validation](../docs/VAULT_VALIDATION.md) · [ADR index](../docs/ADR/README.md)
+
 The core library and CLIs that turn a FedRAMP SSP `.docx` (parsed by
 `fismatic/`) into an Obsidian vault, canonical JSON, and validated NIST OSCAL.
 Vocabulary tables normalize control status/origination into an enum that is
 also OSBAPI-compatible; the OSBAPI/Backstage *projection* itself is documented
-under `docs/osbapi-backstage-interop/` (the earlier generator scripts were
-archived — see the repo root `README.md`).
+under `docs/osbapi-backstage-interop/` (the earlier generator scripts are not
+part of this core — see the repo root `README.md`).
+
+> Paths below that begin with `examples/` or `scripts/registry.yaml` refer to a
+> **system repository**, not this one. These CLIs read them from whichever
+> directory they are run in; this repository holds no system content.
 
 ## Layout
 
