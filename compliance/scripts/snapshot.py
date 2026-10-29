@@ -9,10 +9,10 @@ Usage:
     python3 compliance/scripts/snapshot.py
 
     # Capture for a specific vault
-    python3 compliance/scripts/snapshot.py --vault examples/vault/gsa-pages-ssp-2026/
+    python3 compliance/scripts/snapshot.py --vault examples/vault/<system>/
 
     # Generate SHA-256 manifest (cryptographic signing)
-    python3 compliance/scripts/snapshot.py --release --vault examples/vault/gsa-pages-ssp-2026/
+    python3 compliance/scripts/snapshot.py --release --vault examples/vault/<system>/
 
     # With a custom release tag
     python3 compliance/scripts/snapshot.py --tag v1.2.0

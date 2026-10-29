@@ -60,7 +60,7 @@ Exit code is always 0 — informational, like ``coverage_report.py``.
 Usage::
 
     uv run python compliance/scripts/content_integrity_report.py \\
-        --vault examples/vault/gsa-pages-ssp-2026
+        --vault examples/vault/<system>
 
     # Every vault under examples/vault/, plus a docx-driven section-guidance
     # reachability check for one of them:

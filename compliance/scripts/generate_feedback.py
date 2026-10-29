@@ -15,12 +15,12 @@ to investigate and fix.
 Usage:
     # From a .docx (dumps to markdown first, then extracts + renders):
     uv run python3 compliance/scripts/generate_feedback.py \\
-        --docx fismatic/GSA-Pages_Low-SSPP(3-14-2024).docx \\
+        --docx <ssp>.docx \\
         --output-dir examples/feedback/gsa-pages/
 
     # From an existing catchall markdown blob:
     uv run python3 compliance/scripts/generate_feedback.py \\
-        --markdown examples/docx_catchall/GSA-Pages_Low-SSPP_3-14-2024_.catchall.md \\
+        --markdown examples/docx_catchall/<ssp>.catchall.md \\
         --output-dir examples/feedback/gsa-pages/
 
     # Generate only the markdown skeleton (skip .docx):

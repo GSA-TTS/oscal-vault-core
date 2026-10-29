@@ -24,7 +24,7 @@ Output layout (created under `--vault`):
 Examples:
     python3 compliance/scripts/export_obsidian_vault.py \\
         --oscal-json examples/oscal/ssp-source.example.json \\
-        --plan-id gsa-pages-ssp-2026 \\
+        --plan-id <system> \\
         --vault examples/vault/
 
     python3 compliance/scripts/export_obsidian_vault.py \\

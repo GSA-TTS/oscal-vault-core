@@ -30,7 +30,7 @@ docs/VAULT_VALIDATION.md for full provenance & attribution):
 
 Usage:
     python3 compliance/scripts/validate_vault.py [--vault <dir> ...]
-    python3 compliance/scripts/validate_vault.py --vault examples/vault/gsa-pages-ssp-2026
+    python3 compliance/scripts/validate_vault.py --vault examples/vault/<system>
     python3 compliance/scripts/validate_vault.py --strict   # promote warnings to failures
     python3 compliance/scripts/validate_vault.py --thin-chars 0 --stale-days 90
 

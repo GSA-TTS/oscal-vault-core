@@ -15,10 +15,10 @@ correct for a real system — that determination belongs to the data owner
 and ISSO, never to this validator.
 
 Usage:
-    python3 scripts/validate_cui_contracts.py
-    python3 scripts/validate_cui_contracts.py --vault examples/vault/fpdf-ui-moderate-2026
-    python3 scripts/validate_cui_contracts.py --coverage
-    python3 scripts/validate_cui_contracts.py --coverage --out docs/analyses/45-cui-sidecar-coverage.md
+    python3 compliance/scripts/validate_cui_contracts.py
+    python3 compliance/scripts/validate_cui_contracts.py --vault examples/vault/<system>
+    python3 compliance/scripts/validate_cui_contracts.py --coverage
+    python3 compliance/scripts/validate_cui_contracts.py --coverage --out docs/analyses/45-cui-sidecar-coverage.md
 
 Exit code is non-zero only if a *present* sidecar fails schema validation.
 Missing sidecars are informational (see --coverage).

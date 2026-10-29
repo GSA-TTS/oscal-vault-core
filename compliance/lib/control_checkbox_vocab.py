@@ -118,7 +118,7 @@ ORIGINATION_KEY_PATTERNS = [
 
 #: Checkbox glyphs. ``CHECKED`` is what this pipeline *writes*, matching
 #: ``docx_generator.py``'s prior convention and what real filled FedRAMP
-#: SSPs use (e.g. the GSA-Pages Low SSP corpus fixture). ``UNCHECKED_SET``
+#: SSPs use (for example, a real Low SSP corpus fixture). ``UNCHECKED_SET``
 #: covers every glyph the *read* path (``fismatic.parser``) and the blank
 #: templates themselves are known to use, so a checkbox run can always be
 #: recognized regardless of which unchecked variant is present in the

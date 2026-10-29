@@ -7,13 +7,13 @@ for audit/compliance verification.
 
 Usage:
     # Build bundle for a specific vault
-    python3 compliance/scripts/bundle.py --vault examples/vault/gsa-pages-ssp-2026/
+    python3 compliance/scripts/bundle.py --vault examples/vault/<system>/
 
     # Custom version and description
-    python3 compliance/scripts/bundle.py --vault examples/vault/gsa-pages-ssp-2026/ --version 2.0.0 --description "Q3 compliance snapshot"
+    python3 compliance/scripts/bundle.py --vault examples/vault/<system>/ --version 2.0.0 --description "Q3 compliance snapshot"
 
     # Gzip instead of zstd
-    python3 compliance/scripts/bundle.py --vault examples/vault/gsa-pages-ssp-2026/ --compression gz
+    python3 compliance/scripts/bundle.py --vault examples/vault/<system>/ --compression gz
 """
 
 from __future__ import annotations

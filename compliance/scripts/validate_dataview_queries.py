@@ -12,7 +12,7 @@ Exit 0 if all queries are valid. Exit 1 if any query has issues.
 Exit 2 on runtime errors.
 
 Usage:
-    python3 scripts/validate_dataview_queries.py [--vault <dir> ...]
+    python3 compliance/scripts/validate_dataview_queries.py [--vault <dir> ...]
 """
 
 from __future__ import annotations

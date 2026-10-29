@@ -13,7 +13,7 @@ Usage:
     python3 compliance/scripts/validate_oscal.py --all-exports
 
     # Validate exports under a specific vault (repeatable)
-    python3 compliance/scripts/validate_oscal.py --vault examples/vault/gsa-pages-ssp-2026/
+    python3 compliance/scripts/validate_oscal.py --vault examples/vault/<system>/
 
 Exit status is non-zero if any document fails validation (fail-closed).
 """

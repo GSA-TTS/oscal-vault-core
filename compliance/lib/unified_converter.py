@@ -46,7 +46,7 @@ Usage (planned CLI)
 ::
 
     uv run python3 compliance/scripts/convert_ssp.py \\
-      --docx fismatic/GSA-Pages_Low-SSPP.docx \\
+      --docx <ssp>.docx \\
       --contract compliance/datacontracts/gsa-pages-ssp-2024.yaml \\
       --vault examples/vault/gsa-pages-ssp-2024/ \\
       --snapshots examples/vault/gsa-pages-ssp-2024/.snapshots/current/

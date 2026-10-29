@@ -169,7 +169,7 @@ def extract_parameters(docx_path: Union[str, Path]) -> ParameterExtractionResult
     Two heading conventions are handled:
 
     1. Templates with ``AC-02: Account Management`` heading paragraphs before
-       the catalog statements (e.g. GSA Pages, Challenge.gov). The heading sets
+       the catalog statements (for example, two real agency SSPs). The heading sets
        the current control directly.
     2. Templates that anchor a control only by its Control Summary Information
        (CIS) table (e.g. Data.gov, Notify). Here the bracket paragraphs appear
