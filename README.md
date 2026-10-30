@@ -28,6 +28,50 @@ OSCAL SSP dict  ──►  Obsidian vault (markdown + media)
                      NIST OSCAL 1.1.3 JSON  (schema-validated)
 ```
 
+## What is actually inside an SSP
+
+A FedRAMP SSP is not one kind of content, and that is the whole problem. Four
+categories arrive in the same Word file, and each wants a different
+disposition: capture it, reference it, or decline it. Measuring "how much did
+we extract" without first asking "extract *what*" produces a number nobody can
+act on.
+
+```mermaid
+ishikawa-beta
+What a FedRAMP SSP .docx actually contains
+  Control responses
+    CIS control tables with status and origination
+    Per-part implementation narrative
+    NIST catalog statement text, reprinted
+    Control titles and headings
+  System facts
+    Identity, categorization and impact levels
+    Parties - owner, AO, ISSO, contacts
+    Asset, software and component inventory
+    Ports, protocols and services
+    Interconnections and inherited controls
+  Architecture and operations
+    Boundary and network architecture narrative
+    Data flow description and diagrams
+    DevSecOps and CI/CD runbooks
+    Container and cloud-platform runbooks
+  Template scaffolding
+    Author instructions and guidance boxes
+    Appendix A glossary
+    Appendix B authority citations
+    Signature pages and revision history
+```
+
+**Control responses** and **system facts** are what the pipeline exists to
+capture. **Architecture and operations** is the largest body of genuinely
+system-specific prose and the least evolved part of the extraction.
+**Template scaffolding** is boilerplate: identical across every SSP built from
+the same baseline, and deliberately not carried forward.
+
+The coverage numbers further down are only meaningful against this breakdown —
+see [`docs/DROPPED_CONTENT_DISPOSITION.md`](docs/DROPPED_CONTENT_DISPOSITION.md)
+for the per-class decision.
+
 ## Navigation
 
 | Start here                                                                         | For                                                                      |
@@ -38,6 +82,7 @@ OSCAL SSP dict  ──►  Obsidian vault (markdown + media)
 | [`docs/OBSIDIAN_VAULT_SCHEMA.md`](docs/OBSIDIAN_VAULT_SCHEMA.md)                   | Every note type and its frontmatter contract                             |
 | [`docs/VAULT_VALIDATION.md`](docs/VAULT_VALIDATION.md)                             | What each validator enforces and how debt baselines work                 |
 | [`docs/CROSSWALK_COVERAGE.md`](docs/CROSSWALK_COVERAGE.md)                          | Per-OSCAL-model coverage matrix, including what is *not* covered         |
+| [`docs/DROPPED_CONTENT_DISPOSITION.md`](docs/DROPPED_CONTENT_DISPOSITION.md)        | What the unrouted blocks actually are, and whether to adopt or decline each |
 | [`docs/ADR/README.md`](docs/ADR/README.md)                                          | 27 architecture decision records, with status                             |
 | [`docs/PARSING_ACCURACY_NOTES.md`](docs/PARSING_ACCURACY_NOTES.md)                 | Known extraction failure modes                                            |
 | [`compliance/README.md`](compliance/README.md)                                      | The pipeline package itself                                               |
@@ -69,7 +114,7 @@ component Narrative extraction [0.42, 0.26] (build)
 component Control-table extraction [0.46, 0.46] (build)
 component Routing datacontract [0.36, 0.40] (build)
 component Vault and OSCAL gates [0.50, 0.60] (build)
-component "fismatic parser" [0.30, 0.55] (outsource)
+component "fismatic parser" [0.30, 0.55] (build)
 component "python-docx" [0.18, 0.90] (market)
 component "OSCAL schemas" [0.22, 0.85] (buy)
 
@@ -101,9 +146,13 @@ Reading it as strategy:
   hand-built, and the measured numbers below agree: 28.6% semantic routing.
 - **The OSCAL schemas are a commodity — buy them.** They are vendored from NIST
   and validated against, never re-authored.
-- **`python-docx` and `fismatic` are deliberately not ours.** `fismatic` is
-  vendored from the U.S. Census Bureau's public-domain parser and extended, not
-  reinvented.
+- **The control-table parser is ours.** `fismatic/` began as the U.S. Census
+  Bureau's public-domain parser and has since been substantially rewritten and
+  extended here — 719 lines and 25 functions in `parser.py` alone, covering
+  checkbox-state parsing, control-ID normalization, origination-to-OSCAL
+  mapping, contract-driven configuration, and part-row extraction the original
+  did not have. We own and maintain it. `python-docx` underneath it is the only
+  genuinely off-the-shelf piece.
 - **The gates are the product.** The validators and the canonical-JSON layer are
   what make any of the output reviewable, and they are what this repository
   intends to keep building.
@@ -125,7 +174,7 @@ kanban
     s1[Public core export: lib, scripts, schemas, mappings]@{ priority: 'Very High' }
     s2[Vault note reader, control identity, redaction]@{ ticket: 8, priority: 'High' }
     s3[Vault validators and changelog ported into the core]@{ ticket: 9, priority: 'High' }
-    s4[966-test suite on synthetic fixtures]@{ ticket: 14, priority: 'Very High' }
+    s4[987-test suite on synthetic fixtures]@{ ticket: 14, priority: 'Very High' }
     s5[Architecture, schema, ADR and interop docs]@{ ticket: 11, priority: 'High' }
     s6[Batch and diagnostic scripts via system registry]@{ ticket: 12, priority: 'Low' }
     s7[validate_workspace.sh for system repositories]@{ ticket: 16, priority: 'High' }
@@ -138,11 +187,13 @@ kanban
     p1[Topology generators: CycloneDX and C4 Mermaid]@{ ticket: 6, priority: 'Low' }
     p2[certifi dependency bump]@{ ticket: 7, priority: 'Low' }
   next[Next up - coverage uplift]
-    n1[Raise semantic routing above 28.6 percent]@{ priority: 'Very High' }
-    n2[Route the 839 unrouted prose blocks]@{ priority: 'High' }
-    n3[Fill the 463 empty part-narrative slots]@{ priority: 'High' }
-    n4[R11 unified converter completion]@{ priority: 'Low' }
-    n5[Component abstraction and coverage uplift]@{ priority: 'Low' }
+    n1[Measure runbook narrative capture on a filled SSP]@{ priority: 'Very High' }
+    n2[Adopt the AWS services table and credit contract tables]@{ priority: 'High' }
+    n3[Classify control titles as headings not prose]@{ priority: 'High' }
+    n4[Raise semantic routing above 28.6 percent]@{ priority: 'High' }
+    n5[Merge-aware row projection for user roles]@{ priority: 'Low' }
+    n6[R11 unified converter completion]@{ priority: 'Low' }
+    n7[Component abstraction and coverage uplift]@{ priority: 'Low' }
   backlog[Backlog and deferred]
     b1[OSBAPI and Backstage projection reimplementation]@{ priority: 'Low' }
     b2[Equal-footing extractor benchmark]@{ priority: 'Very Low' }
@@ -158,7 +209,7 @@ cannot carry:
 | Shipped      | [`docs/ADR/README.md`](docs/ADR/README.md)                                           | Why each landed decision was made, and what it superseded    |
 | **Feedback** | [`SECURITY.md`](SECURITY.md) · repository settings                                   | Visibility and protection are human governance decisions     |
 | In progress  | [`docs/ADR/ADR-027-topology-generators-cyclonedx-c4.md`](docs/ADR/ADR-027-topology-generators-cyclonedx-c4.md) · [`docs/rubrics/`](docs/rubrics/) | Topology generators, still `Proposed (feasibility build)` |
-| Next up      | [`docs/CROSSWALK_COVERAGE.md`](docs/CROSSWALK_COVERAGE.md) · [`docs/plans/`](docs/plans/) | Where coverage is missing and in what order to close it  |
+| Next up      | [`docs/DROPPED_CONTENT_DISPOSITION.md`](docs/DROPPED_CONTENT_DISPOSITION.md) · [`docs/CROSSWALK_COVERAGE.md`](docs/CROSSWALK_COVERAGE.md) · [`docs/plans/`](docs/plans/) | Which unrouted content to adopt, which to decline, and in what order |
 | Backlog      | [`docs/SUGGESTIONS_AND_IMPROVEMENTS.md`](docs/SUGGESTIONS_AND_IMPROVEMENTS.md) · [`docs/osbapi-backstage-interop/`](docs/osbapi-backstage-interop/) | Deferred projections and research harnesses |
 
 ## `.docx` → vault → OSCAL — what the transformation actually loses
@@ -186,22 +237,36 @@ sankey
 Moderate SSPP .docx,Routable blocks,1767
 Moderate SSPP .docx,Headings and structure,510
 Routable blocks,Routed,898
-Routable blocks,Dropped,869
+Routable blocks,Unrouted,869
 Routed,CIS control tables,331
 Routed,Instruction anchors,567
-Dropped,Unrouted prose,839
-Dropped,Unrouted tables,30
 CIS control tables,Readback verified,331
-Readback verified,Controls with part rows,155
-Readback verified,Controls without part rows,176
+Unrouted,Reference material,706
+Unrouted,System content,143
+Unrouted,Furniture and artifacts,20
+Reference material,NIST catalog statements,605
+Reference material,Appendix A glossary,70
+Reference material,Appendix B citations,31
+System content,Named inventory tables,30
+System content,Agency narrative,113
 ```
 
 What the widths mean:
 
-- **869 of 1,767 routable blocks are dropped** — 100,893 characters of prose.
-  Structural node coverage is 50.8%; semantic-domain routing is **28.6%**
-  (6 of 21 domains). All 21 domains are *present* in the document; only 6 are
-  reached by an extractor that produces structured output.
+- **The unrouted 869 is not one thing.** Classified by what each block actually
+  is: **706 blocks (89,155 chars, 77%) are reference material** — NIST catalog
+  statement text reprinted into Word, the Appendix A glossary, the Appendix B
+  citation list. All of it is authoritative somewhere this project already
+  vendors. Only **143 blocks (25,620 chars, 22%) are system content**: the named
+  inventory tables and the agency's own prose.
+- **604 of 608 control-section prose blocks — 99.3% — match a NIST catalog
+  statement.** Re-storing them would create a drifting second copy of text the
+  repository validates against. See
+  [`docs/DROPPED_CONTENT_DISPOSITION.md`](docs/DROPPED_CONTENT_DISPOSITION.md)
+  for the per-class adopt / reference / decline proposal.
+- Structural node coverage is 50.8%; semantic-domain routing is **28.6%**
+  (6 of 21 domains). All 21 domains are *present*; only 6 are reached by an
+  extractor that produces structured output.
 - **What does route, routes losslessly.** All 331 detected CIS control tables
   read back without error — 100% readback fidelity — and package-part coverage
   is 100%.
@@ -210,6 +275,9 @@ What the widths mean:
   A real SSP fills far more; the blank template is the floor, not the ceiling.
 - **Headings and structure are not a loss.** Those 510 blocks are document
   scaffolding with no control semantics to carry.
+
+Reproduce the disposition split with
+`compliance/scripts/classify_dropped_blocks.py`.
 
 ### The pipeline as a grammar
 
@@ -266,7 +334,7 @@ Managed with [`uv`](https://docs.astral.sh/uv/):
 # Install dependencies (creates .venv, resolves against uv.lock)
 uv sync
 
-# Run the test suite (966 tests on synthetic fixtures; no .docx required)
+# Run the test suite (987 tests on synthetic fixtures; no .docx required)
 uv run pytest tests compliance/tests -q -m "not slow"
 
 # Lint and format, matching CI
@@ -304,9 +372,10 @@ passing silently, and the exit code is non-zero if any gate that ran failed.
 
 | Path                                  | Purpose                                                                                                     |
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `fismatic/`                           | The primary FedRAMP SSP `.docx` → OSCAL SSP parser (regex/heuristic control-table parsing), vendored.        |
+| `fismatic/`                           | The primary FedRAMP SSP `.docx` → OSCAL SSP control-table parser. Originated as the Census Bureau's FISMAtic; rewritten and maintained here. |
 | `compliance/lib/`                     | Core library (56 modules): vault builders, contract-driven `heading_parser`, OSCAL export, canonical JSON, validators. |
-| `compliance/scripts/`                 | 53 CLIs: `export_obsidian_vault.py`, `generate_canonical_json.py`, `export_oscal.py`, `validate_*.py`, coverage and roundtrip tools. |
+| `compliance/scripts/`                 | 54 CLIs: `export_obsidian_vault.py`, `generate_canonical_json.py`, `export_oscal.py`, `validate_*.py`, coverage and roundtrip tools. |
+| `compliance/scripts/classify_dropped_blocks.py` | Classifies every unrouted block by what it is, so the loss budget can be adopted or declined per class. |
 | `compliance/scripts/validate_workspace.sh` | Runs the core's gates against a system repository (see above).                                         |
 | `compliance/datacontracts/`           | ODCS v3.1.0 routing contract (`fedramp-ssp-v1.yaml`) + roundtrip fill-back contracts.                        |
 | `compliance/mappings/`                | Vocabulary crosswalk tables (raw → normalized status/origination enums), with a built-in fallback.          |
@@ -332,7 +401,7 @@ templates under `compliance/templates/`.
 Consequently:
 
 - Tests that need a real `.docx` fixture **skip gracefully** rather than fail.
-  The suite is 966 passing tests with no source document present.
+  The suite is 987 passing tests with no source document present.
 - CI validates the parser and control-table behaviour, and renders synthetic
   sentinels through the blank Low, Moderate, and High templates.
 - To build a vault from scratch, supply your own SSP `.docx` (or use one of the
@@ -366,7 +435,7 @@ to `main`:
 | `uv sync --frozen`                                              | The lockfile resolves; no undeclared dependency             |
 | `uv run ruff check compliance tests`                            | Lint (ADR-004 scopes ruff to `compliance/`)                 |
 | `uv run ruff format --check compliance tests`                   | Formatting                                                  |
-| `uv run pytest tests compliance/tests -q -m "not slow"`          | 966 tests, no source `.docx` required                       |
+| `uv run pytest tests compliance/tests -q -m "not slow"`          | 987 tests, no source `.docx` required                       |
 | `pytest … -m slow -k synthetic_contract_sentinel`                | Synthetic sentinels render through the blank templates      |
 
 The core validates its own parser and control-table behaviour. System
@@ -381,10 +450,10 @@ This project is dedicated to the public domain under
 
 ## Acknowledgements
 
-`oscal-vault-core` builds on and was inspired by prior open parsers of FedRAMP
-SSPs:
-
-- **[fismatic](https://github.com/uscensusbureau/fismatic)** — the
-  regex/heuristic control-table parser this project vendors and extends
-  (U.S. Census Bureau, public domain). It is the sole live extractor in the
-  pipeline.
+The control-table parser under `fismatic/` originated as
+**[FISMAtic](https://github.com/uscensusbureau/fismatic)** (U.S. Census Bureau,
+public domain) and we are grateful for the starting point. It has since been
+substantially rewritten and extended here and is maintained as part of this
+project — the name is kept for provenance, not to imply the upstream code is
+still what runs. It remains the sole live control-table extractor in the
+pipeline.
