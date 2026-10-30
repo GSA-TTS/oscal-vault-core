@@ -38,6 +38,7 @@ OSCAL SSP dict  ──►  Obsidian vault (markdown + media)
 | [`docs/OBSIDIAN_VAULT_SCHEMA.md`](docs/OBSIDIAN_VAULT_SCHEMA.md)                   | Every note type and its frontmatter contract                             |
 | [`docs/VAULT_VALIDATION.md`](docs/VAULT_VALIDATION.md)                             | What each validator enforces and how debt baselines work                 |
 | [`docs/CROSSWALK_COVERAGE.md`](docs/CROSSWALK_COVERAGE.md)                          | Per-OSCAL-model coverage matrix, including what is *not* covered         |
+| [`docs/DROPPED_CONTENT_DISPOSITION.md`](docs/DROPPED_CONTENT_DISPOSITION.md)        | What the unrouted blocks actually are, and whether to adopt or decline each |
 | [`docs/ADR/README.md`](docs/ADR/README.md)                                          | 27 architecture decision records, with status                             |
 | [`docs/PARSING_ACCURACY_NOTES.md`](docs/PARSING_ACCURACY_NOTES.md)                 | Known extraction failure modes                                            |
 | [`compliance/README.md`](compliance/README.md)                                      | The pipeline package itself                                               |
@@ -125,7 +126,7 @@ kanban
     s1[Public core export: lib, scripts, schemas, mappings]@{ priority: 'Very High' }
     s2[Vault note reader, control identity, redaction]@{ ticket: 8, priority: 'High' }
     s3[Vault validators and changelog ported into the core]@{ ticket: 9, priority: 'High' }
-    s4[966-test suite on synthetic fixtures]@{ ticket: 14, priority: 'Very High' }
+    s4[987-test suite on synthetic fixtures]@{ ticket: 14, priority: 'Very High' }
     s5[Architecture, schema, ADR and interop docs]@{ ticket: 11, priority: 'High' }
     s6[Batch and diagnostic scripts via system registry]@{ ticket: 12, priority: 'Low' }
     s7[validate_workspace.sh for system repositories]@{ ticket: 16, priority: 'High' }
@@ -138,11 +139,13 @@ kanban
     p1[Topology generators: CycloneDX and C4 Mermaid]@{ ticket: 6, priority: 'Low' }
     p2[certifi dependency bump]@{ ticket: 7, priority: 'Low' }
   next[Next up - coverage uplift]
-    n1[Raise semantic routing above 28.6 percent]@{ priority: 'Very High' }
-    n2[Route the 839 unrouted prose blocks]@{ priority: 'High' }
-    n3[Fill the 463 empty part-narrative slots]@{ priority: 'High' }
-    n4[R11 unified converter completion]@{ priority: 'Low' }
-    n5[Component abstraction and coverage uplift]@{ priority: 'Low' }
+    n1[Measure runbook narrative capture on a filled SSP]@{ priority: 'Very High' }
+    n2[Adopt the AWS services table and credit contract tables]@{ priority: 'High' }
+    n3[Classify control titles as headings not prose]@{ priority: 'High' }
+    n4[Raise semantic routing above 28.6 percent]@{ priority: 'High' }
+    n5[Merge-aware row projection for user roles]@{ priority: 'Low' }
+    n6[R11 unified converter completion]@{ priority: 'Low' }
+    n7[Component abstraction and coverage uplift]@{ priority: 'Low' }
   backlog[Backlog and deferred]
     b1[OSBAPI and Backstage projection reimplementation]@{ priority: 'Low' }
     b2[Equal-footing extractor benchmark]@{ priority: 'Very Low' }
@@ -158,7 +161,7 @@ cannot carry:
 | Shipped      | [`docs/ADR/README.md`](docs/ADR/README.md)                                           | Why each landed decision was made, and what it superseded    |
 | **Feedback** | [`SECURITY.md`](SECURITY.md) · repository settings                                   | Visibility and protection are human governance decisions     |
 | In progress  | [`docs/ADR/ADR-027-topology-generators-cyclonedx-c4.md`](docs/ADR/ADR-027-topology-generators-cyclonedx-c4.md) · [`docs/rubrics/`](docs/rubrics/) | Topology generators, still `Proposed (feasibility build)` |
-| Next up      | [`docs/CROSSWALK_COVERAGE.md`](docs/CROSSWALK_COVERAGE.md) · [`docs/plans/`](docs/plans/) | Where coverage is missing and in what order to close it  |
+| Next up      | [`docs/DROPPED_CONTENT_DISPOSITION.md`](docs/DROPPED_CONTENT_DISPOSITION.md) · [`docs/CROSSWALK_COVERAGE.md`](docs/CROSSWALK_COVERAGE.md) · [`docs/plans/`](docs/plans/) | Which unrouted content to adopt, which to decline, and in what order |
 | Backlog      | [`docs/SUGGESTIONS_AND_IMPROVEMENTS.md`](docs/SUGGESTIONS_AND_IMPROVEMENTS.md) · [`docs/osbapi-backstage-interop/`](docs/osbapi-backstage-interop/) | Deferred projections and research harnesses |
 
 ## `.docx` → vault → OSCAL — what the transformation actually loses
@@ -210,6 +213,13 @@ What the widths mean:
   A real SSP fills far more; the blank template is the floor, not the ceiling.
 - **Headings and structure are not a loss.** Those 510 blocks are document
   scaffolding with no control semantics to carry.
+- **Most of the "dropped" 869 is not system content either.** Classified by what
+  each block actually is, **58% of unrouted characters are NIST catalog text
+  reprinted into Word** and a further 19% are the Appendix A glossary and
+  Appendix B citation list. Only **9.7% is the agency's own prose.** See
+  [`docs/DROPPED_CONTENT_DISPOSITION.md`](docs/DROPPED_CONTENT_DISPOSITION.md)
+  for the per-class adopt/reference/decline proposal, and
+  `compliance/scripts/classify_dropped_blocks.py` to reproduce it.
 
 ### The pipeline as a grammar
 
@@ -266,7 +276,7 @@ Managed with [`uv`](https://docs.astral.sh/uv/):
 # Install dependencies (creates .venv, resolves against uv.lock)
 uv sync
 
-# Run the test suite (966 tests on synthetic fixtures; no .docx required)
+# Run the test suite (987 tests on synthetic fixtures; no .docx required)
 uv run pytest tests compliance/tests -q -m "not slow"
 
 # Lint and format, matching CI
@@ -306,7 +316,8 @@ passing silently, and the exit code is non-zero if any gate that ran failed.
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `fismatic/`                           | The primary FedRAMP SSP `.docx` → OSCAL SSP parser (regex/heuristic control-table parsing), vendored.        |
 | `compliance/lib/`                     | Core library (56 modules): vault builders, contract-driven `heading_parser`, OSCAL export, canonical JSON, validators. |
-| `compliance/scripts/`                 | 53 CLIs: `export_obsidian_vault.py`, `generate_canonical_json.py`, `export_oscal.py`, `validate_*.py`, coverage and roundtrip tools. |
+| `compliance/scripts/`                 | 54 CLIs: `export_obsidian_vault.py`, `generate_canonical_json.py`, `export_oscal.py`, `validate_*.py`, coverage and roundtrip tools. |
+| `compliance/scripts/classify_dropped_blocks.py` | Classifies every unrouted block by what it is, so the loss budget can be adopted or declined per class. |
 | `compliance/scripts/validate_workspace.sh` | Runs the core's gates against a system repository (see above).                                         |
 | `compliance/datacontracts/`           | ODCS v3.1.0 routing contract (`fedramp-ssp-v1.yaml`) + roundtrip fill-back contracts.                        |
 | `compliance/mappings/`                | Vocabulary crosswalk tables (raw → normalized status/origination enums), with a built-in fallback.          |
@@ -332,7 +343,7 @@ templates under `compliance/templates/`.
 Consequently:
 
 - Tests that need a real `.docx` fixture **skip gracefully** rather than fail.
-  The suite is 966 passing tests with no source document present.
+  The suite is 987 passing tests with no source document present.
 - CI validates the parser and control-table behaviour, and renders synthetic
   sentinels through the blank Low, Moderate, and High templates.
 - To build a vault from scratch, supply your own SSP `.docx` (or use one of the
@@ -366,7 +377,7 @@ to `main`:
 | `uv sync --frozen`                                              | The lockfile resolves; no undeclared dependency             |
 | `uv run ruff check compliance tests`                            | Lint (ADR-004 scopes ruff to `compliance/`)                 |
 | `uv run ruff format --check compliance tests`                   | Formatting                                                  |
-| `uv run pytest tests compliance/tests -q -m "not slow"`          | 966 tests, no source `.docx` required                       |
+| `uv run pytest tests compliance/tests -q -m "not slow"`          | 987 tests, no source `.docx` required                       |
 | `pytest … -m slow -k synthetic_contract_sentinel`                | Synthetic sentinels render through the blank templates      |
 
 The core validates its own parser and control-table behaviour. System
