@@ -75,8 +75,9 @@ roundtrip templates under `compliance/templates/`.
 - `ruff format` for formatting, `ruff check` for linting. Both are `uv` dev
   dependencies and both run in CI.
 - Ruff is scoped to `compliance/` and `tests/` by design — see
-  [ADR-004](docs/ADR/ADR-004-ruff-scoped-to-compliance.md). The vendored
-  `fismatic/` tree is excluded.
+  [ADR-004](docs/ADR/ADR-004-ruff-scoped-to-compliance.md). The `fismatic/`
+  tree is excluded for historical reasons, not because it is third-party: it
+  is maintained here.
 - New `compliance/` code is typed from the start (`pyright` / `mypy`
   compatible).
 
