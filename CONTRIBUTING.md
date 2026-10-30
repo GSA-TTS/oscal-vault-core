@@ -28,7 +28,7 @@ uv run ruff format --check compliance tests
 uv run pytest tests compliance/tests -q -m "not slow"
 ```
 
-No `.docx` fixture is required: the suite is 966 passing tests on synthetic
+No `.docx` fixture is required: the suite is 987 passing tests on synthetic
 fixtures, and tests that need a real source document skip gracefully.
 
 If your change touches the `.docx` → OSCAL roundtrip, also run the slow
