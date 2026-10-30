@@ -82,4 +82,4 @@ compliance/datacontracts/
 - `compliance/lib/heading_parser.py`
 - `compliance/scripts/extract_by_contract.py`
 - `compliance/datacontracts/schemas/odcs-json-schema-v3.1.0.json`
-- `archive/plans/PROJECT_REFACTORING_PLAN.md` §§ Phase R11
+- the project refactoring plan (not exported to the public core) §§ Phase R11

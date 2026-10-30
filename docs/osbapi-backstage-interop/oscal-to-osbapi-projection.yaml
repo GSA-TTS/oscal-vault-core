@@ -7,7 +7,7 @@
 # modeling guidance for future interoperability work: it names, for each
 # destination field, which OSCAL path it derives from and how. There is no live
 # generator wired to it yet (the earlier scripts were archived under
-# archive/osbapi-projection/); build any future projector against this contract
+# not exported to the public core); build any future projector against this contract
 # + the $defs it references.
 #
 # Validated against: compliance/datacontracts/schemas/odcs-json-schema-v3.1.0.json

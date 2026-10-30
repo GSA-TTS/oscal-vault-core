@@ -22,7 +22,7 @@ is a vault that is:
 
 ## Type Taxonomy
 
-Types use a dotted namespace convention (see `archive/plans/PROJECT_REFACTORING_PLAN.md`):
+Types use a dotted namespace convention (see [ADR-001](ADR/ADR-001-dotted-type-taxonomy.md)):
 - **`oscal.*`** — canonical NIST OSCAL model concepts (`oscall_model` field)
 - **`oscal.x.*`** — project extensions beyond NIST OSCAL (`extension_model` field)
 - **`okf.*`** — vault governance infrastructure types
@@ -744,7 +744,7 @@ tags:
 
 ## Pipeline → Vault generation
 
-The existing `archive/osbapi-projection/build_crm_projection.py (archived)` pipeline already
+The earlier `build_crm_projection.py` pipeline (not exported to the public core) already
 produces OSCAL SSP JSON from which all vault notes can be derived. A future
 generator (`compliance/scripts/export_obsidian_vault.py`) would:
 

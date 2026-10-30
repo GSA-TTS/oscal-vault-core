@@ -1,10 +1,10 @@
-# oscal-vault
+# oscal-vault-core
 
 Turn real-world FedRAMP System Security Plan (SSP) `.docx` documents into a
 navigable **Obsidian knowledge vault** and validated **NIST OSCAL** JSON.
 
-`oscal-vault` parses the messy, human-authored Word tables and narrative of a
-FedRAMP SSP and produces:
+`oscal-vault-core` parses the messy, human-authored Word tables and narrative of
+a FedRAMP SSP and produces:
 
 - an **Obsidian vault** of typed, cross-linked markdown notes
   (`oscal.*` / `oscal.x.*` / `okf.*` — controls, system, components, parties,
@@ -28,12 +28,235 @@ OSCAL SSP dict  ──►  Obsidian vault (markdown + media)
                      NIST OSCAL 1.1.3 JSON  (schema-validated)
 ```
 
-See **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** for a diagram-first tour
-of the whole pipeline, **[`docs/DATA_FLOW.md`](docs/DATA_FLOW.md)** for the
-extraction-to-vault-to-OSCAL artifact flow, and
-**[`docs/INTEROPERABILITY.md`](docs/INTEROPERABILITY.md)** for how the standards
-(FedRAMP SSP ↔ ODCS datacontract ↔ OSCAL) map together and how lossless coverage
-is measured.
+## Navigation
+
+| Start here                                                                         | For                                                                      |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)                                     | Diagram-first tour of the whole pipeline, and every CLI entry point      |
+| [`docs/DATA_FLOW.md`](docs/DATA_FLOW.md)                                           | Artifact-level trace: extraction → vault → sidecars → OSCAL             |
+| [`docs/INTEROPERABILITY.md`](docs/INTEROPERABILITY.md)                             | How FedRAMP SSP ↔ ODCS datacontract ↔ OSCAL map, and how loss is measured |
+| [`docs/OBSIDIAN_VAULT_SCHEMA.md`](docs/OBSIDIAN_VAULT_SCHEMA.md)                   | Every note type and its frontmatter contract                             |
+| [`docs/VAULT_VALIDATION.md`](docs/VAULT_VALIDATION.md)                             | What each validator enforces and how debt baselines work                 |
+| [`docs/CROSSWALK_COVERAGE.md`](docs/CROSSWALK_COVERAGE.md)                          | Per-OSCAL-model coverage matrix, including what is *not* covered         |
+| [`docs/ADR/README.md`](docs/ADR/README.md)                                          | 27 architecture decision records, with status                             |
+| [`docs/PARSING_ACCURACY_NOTES.md`](docs/PARSING_ACCURACY_NOTES.md)                 | Known extraction failure modes                                            |
+| [`compliance/README.md`](compliance/README.md)                                      | The pipeline package itself                                               |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) · [`SECURITY.md`](SECURITY.md)                 | Workflow, and how to report a vulnerability                               |
+
+## Project goals — what is commodity, and what is still bespoke
+
+This repository exists to make compliance evidence *data* rather than prose.
+The strategic question is which parts of that are already solved and which are
+still hand-built. Components to the left are novel and ours to own; to the right
+they are inherited or bought.
+
+```mermaid
+wardley-beta
+title oscal-vault-core - compliance-as-data value chain
+size [1100, 640]
+
+evolution Genesis@0.25 -> Custom@0.5 -> Product@0.75 -> Commodity@1.0
+
+anchor Authorizing Official [0.95, 0.70]
+anchor Compliance analyst [0.90, 0.60]
+anchor Downstream tooling [0.84, 0.52]
+
+component Authorization decision [0.78, 0.42]
+component Obsidian vault review [0.70, 0.55] (build)
+component "NIST OSCAL 1.1.3 JSON" [0.62, 0.78] (buy)
+component Canonical JSON sidecars [0.54, 0.50] (build)
+component Narrative extraction [0.42, 0.26] (build)
+component Control-table extraction [0.46, 0.46] (build)
+component Routing datacontract [0.36, 0.40] (build)
+component Vault and OSCAL gates [0.50, 0.60] (build)
+component "fismatic parser" [0.30, 0.55] (outsource)
+component "python-docx" [0.18, 0.90] (market)
+component "OSCAL schemas" [0.22, 0.85] (buy)
+
+Authorizing Official -> Authorization decision
+Compliance analyst -> Obsidian vault review
+Downstream tooling -> "NIST OSCAL 1.1.3 JSON"
+Authorization decision -> Obsidian vault review
+Obsidian vault review -> Canonical JSON sidecars
+"NIST OSCAL 1.1.3 JSON" -> Canonical JSON sidecars
+"NIST OSCAL 1.1.3 JSON" -> "OSCAL schemas"
+Canonical JSON sidecars -> Control-table extraction
+Canonical JSON sidecars -> Narrative extraction
+Canonical JSON sidecars -> Vault and OSCAL gates
+Narrative extraction -> Routing datacontract
+Control-table extraction -> "fismatic parser"
+"fismatic parser" -> "python-docx"
+
+evolve Narrative extraction 0.56
+evolve Control-table extraction 0.68
+evolve Routing datacontract 0.70
+
+note "Narrative extraction is the least evolved: 28.6% semantic routing" [0.40, 0.14]
+note "Never re-author the catalog or the schema" [0.20, 0.72]
+```
+
+Reading it as strategy:
+
+- **Narrative extraction is the bottleneck.** It is furthest left and most
+  hand-built, and the measured numbers below agree: 28.6% semantic routing.
+- **The OSCAL schemas are a commodity — buy them.** They are vendored from NIST
+  and validated against, never re-authored.
+- **`python-docx` and `fismatic` are deliberately not ours.** `fismatic` is
+  vendored from the U.S. Census Bureau's public-domain parser and extended, not
+  reinvented.
+- **The gates are the product.** The validators and the canonical-JSON layer are
+  what make any of the output reviewable, and they are what this repository
+  intends to keep building.
+
+## Roadmap — milestones by completion status
+
+The **feedback** lane is the important one: it holds work that is implemented
+but cannot advance without a human policy or review decision. Nothing moves out
+of it on a CI result.
+
+```mermaid
+---
+config:
+  kanban:
+    ticketBaseUrl: 'https://github.com/GSA-TTS/oscal-vault-core/issues/#TICKET#'
+---
+kanban
+  shipped[Shipped and gated in CI]
+    s1[Public core export: lib, scripts, schemas, mappings]@{ priority: 'Very High' }
+    s2[Vault note reader, control identity, redaction]@{ ticket: 8, priority: 'High' }
+    s3[Vault validators and changelog ported into the core]@{ ticket: 9, priority: 'High' }
+    s4[966-test suite on synthetic fixtures]@{ ticket: 14, priority: 'Very High' }
+    s5[Architecture, schema, ADR and interop docs]@{ ticket: 11, priority: 'High' }
+    s6[Batch and diagnostic scripts via system registry]@{ ticket: 12, priority: 'Low' }
+    s7[validate_workspace.sh for system repositories]@{ ticket: 16, priority: 'High' }
+    s8[Mapping fallback to the core's own vocabularies]@{ ticket: 15, priority: 'Low' }
+  feedback[Feedback - awaiting human review or policy sign-off]
+    f1[Branch protection policy]@{ ticket: 3, priority: 'High' }
+    f2[Repository administrators policy]@{ ticket: 4, priority: 'High' }
+    f3[Public visibility decision]@{ priority: 'Very High' }
+  progress[In progress]
+    p1[Topology generators: CycloneDX and C4 Mermaid]@{ ticket: 6, priority: 'Low' }
+    p2[certifi dependency bump]@{ ticket: 7, priority: 'Low' }
+  next[Next up - coverage uplift]
+    n1[Raise semantic routing above 28.6 percent]@{ priority: 'Very High' }
+    n2[Route the 839 unrouted prose blocks]@{ priority: 'High' }
+    n3[Fill the 463 empty part-narrative slots]@{ priority: 'High' }
+    n4[R11 unified converter completion]@{ priority: 'Low' }
+    n5[Component abstraction and coverage uplift]@{ priority: 'Low' }
+  backlog[Backlog and deferred]
+    b1[OSBAPI and Backstage projection reimplementation]@{ priority: 'Low' }
+    b2[Equal-footing extractor benchmark]@{ priority: 'Very Low' }
+    b3[docling backend, deferred on torch import]@{ priority: 'Very Low' }
+    b4[Vault ontology graph optimization]@{ priority: 'Very Low' }
+```
+
+Each lane has a governing document. Use these for the detail the card titles
+cannot carry:
+
+| Lane         | Governing document                                                                  | What it decides                                              |
+| ------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Shipped      | [`docs/ADR/README.md`](docs/ADR/README.md)                                           | Why each landed decision was made, and what it superseded    |
+| **Feedback** | [`SECURITY.md`](SECURITY.md) · repository settings                                   | Visibility and protection are human governance decisions     |
+| In progress  | [`docs/ADR/ADR-027-topology-generators-cyclonedx-c4.md`](docs/ADR/ADR-027-topology-generators-cyclonedx-c4.md) · [`docs/rubrics/`](docs/rubrics/) | Topology generators, still `Proposed (feasibility build)` |
+| Next up      | [`docs/CROSSWALK_COVERAGE.md`](docs/CROSSWALK_COVERAGE.md) · [`docs/plans/`](docs/plans/) | Where coverage is missing and in what order to close it  |
+| Backlog      | [`docs/SUGGESTIONS_AND_IMPROVEMENTS.md`](docs/SUGGESTIONS_AND_IMPROVEMENTS.md) · [`docs/osbapi-backstage-interop/`](docs/osbapi-backstage-interop/) | Deferred projections and research harnesses |
+
+## `.docx` → vault → OSCAL — what the transformation actually loses
+
+Most of a FedRAMP SSP `.docx` does **not** reach the vault, and being honest
+about that is the point of the coverage harness. Numbers below are a live run of
+`compliance/scripts/docx_coverage_metrics.py` against the committed blank
+**Moderate** template — reproduce them with:
+
+```bash
+uv run python compliance/scripts/docx_coverage_metrics.py \
+  --docx "templates/Moderate-SSPP-Template-[Contains-CUI]-10-16-2024.docx"
+```
+
+```mermaid
+---
+config:
+  sankey:
+    showValues: true
+    linkColor: gradient
+    nodeAlignment: left
+---
+sankey
+
+Moderate SSPP .docx,Routable blocks,1767
+Moderate SSPP .docx,Headings and structure,510
+Routable blocks,Routed,898
+Routable blocks,Dropped,869
+Routed,CIS control tables,331
+Routed,Instruction anchors,567
+Dropped,Unrouted prose,839
+Dropped,Unrouted tables,30
+CIS control tables,Readback verified,331
+Readback verified,Controls with part rows,155
+Readback verified,Controls without part rows,176
+```
+
+What the widths mean:
+
+- **869 of 1,767 routable blocks are dropped** — 100,893 characters of prose.
+  Structural node coverage is 50.8%; semantic-domain routing is **28.6%**
+  (6 of 21 domains). All 21 domains are *present* in the document; only 6 are
+  reached by an extractor that produces structured output.
+- **What does route, routes losslessly.** All 331 detected CIS control tables
+  read back without error — 100% readback fidelity — and package-part coverage
+  is 100%.
+- **Part narratives are the visible gap.** 155 of 331 controls expose part rows,
+  and only 57 of 520 part-narrative slots are filled in the blank template.
+  A real SSP fills far more; the blank template is the floor, not the ceiling.
+- **Headings and structure are not a loss.** Those 510 blocks are document
+  scaffolding with no control semantics to carry.
+
+### The pipeline as a grammar
+
+The same transformation stated as an ABNF grammar — useful when you need to know
+which stages are optional, which alternate, and where the gates sit. Every
+terminal is a real script, contract, or artifact path in this repository.
+
+```mermaid
+railroad-abnf-beta
+title "oscal-vault-core: .docx to validated OSCAL"
+
+pipeline = intake extract build gate export ;
+
+intake = "FedRAMP SSP .docx" ;
+
+extract = controls narrative ;
+controls = "fismatic.SSPConverter" ;
+narrative = "heading_parser" "compliance/datacontracts/fedramp-ssp-v1.yaml" ;
+
+build = vault sidecars ;
+vault = "export_obsidian_vault.py" ;
+sidecars = "generate_canonical_json.py" ;
+
+gate = 1*check ;
+check = frontmatter / wikilinks / dataview / cui / mappings ;
+frontmatter = "validate_frontmatter.py" ;
+wikilinks = "validate_wikilinks.py" ;
+dataview = "validate_dataview_queries.py" ;
+cui = "validate_cui_contracts.py" ;
+mappings = "validate_oscal_mappings.py" ;
+
+export = "export_oscal.py" [ validate ] [ fillback ] ;
+validate = "validate_oscal.py --semantic --parity" ;
+fillback = "fill_ssp_from_oscal.py" "compliance/templates/*.jinja.docx" ;
+```
+
+Read the grammar as the contract:
+
+- `gate` is **`1*check`** — at least one, and in practice all of them. There is
+  no path from a `.docx` to an exported OSCAL document that skips validation.
+- `extract` is a **concatenation, not a choice**. Control tables and narrative
+  are two different extractors over the same document; dropping either loses a
+  whole class of content.
+- `validate` and `fillback` are optional *only* in the sense that export can
+  emit JSON without them. A reviewed artifact runs both.
+- `intake` has no alternative. This repository holds no system content, so the
+  `.docx` always comes from the caller.
 
 ## Quickstart (uv)
 
@@ -43,14 +266,15 @@ Managed with [`uv`](https://docs.astral.sh/uv/):
 # Install dependencies (creates .venv, resolves against uv.lock)
 uv sync
 
-# Run the test suite
-uv run pytest -q
+# Run the test suite (966 tests on synthetic fixtures; no .docx required)
+uv run pytest tests compliance/tests -q -m "not slow"
 
-# Full local validation (lint + format + tests + roundtrip + vault + OSCAL)
-bash scripts/validate_all.sh
+# Lint and format, matching CI
+uv run ruff check compliance tests
+uv run ruff format --check compliance tests
 
 # Build a vault from a FedRAMP SSP .docx you supply locally
-uv run python3 compliance/scripts/export_obsidian_vault.py \
+uv run python compliance/scripts/export_obsidian_vault.py \
   --docx path/to/your-ssp.docx \
   --plan-id my-system-2026 \
   --system-name "My System" --fips-199 low \
@@ -58,59 +282,96 @@ uv run python3 compliance/scripts/export_obsidian_vault.py \
   --vault examples/vault/my-system-2026/
 
 # Regenerate canonical JSON sidecars, then export + validate OSCAL
-uv run python3 compliance/scripts/generate_canonical_json.py --vault examples/vault/my-system-2026/
-uv run python3 compliance/scripts/export_oscal.py --vault examples/vault/my-system-2026/ --validate
+uv run python compliance/scripts/generate_canonical_json.py --vault examples/vault/my-system-2026/
+uv run python compliance/scripts/export_oscal.py --vault examples/vault/my-system-2026/ --validate
 ```
+
+### Running the gates against a system repository
+
+The core holds no system content. To run its gates over a repository that does,
+run the harness **from that repository**:
+
+```bash
+cd /path/to/my-system-repo
+bash /path/to/oscal-vault-core/compliance/scripts/validate_workspace.sh
+```
+
+It expects `./examples/vault/<system>/` and, optionally, baseline files under
+`./scripts/`. A gate whose baseline is absent reports `SKIPPED` rather than
+passing silently, and the exit code is non-zero if any gate that ran failed.
 
 ## Directory layout
 
-| Path | Purpose |
-| --- | --- |
-| `fismatic/` | The primary FedRAMP SSP `.docx` → OSCAL SSP parser (regex/heuristic control-table parsing). |
-| `compliance/lib/` | Core library: vault builders, contract-driven `heading_parser`, OSCAL export, canonical JSON, validators. |
-| `compliance/scripts/` | CLIs: `export_obsidian_vault.py`, `generate_canonical_json.py`, `export_oscal.py`, `validate_oscal.py`, and the roundtrip/benchmark tools. |
-| `compliance/datacontracts/` | ODCS v3.1.0 routing contract (`fedramp-ssp-v1.yaml`) + roundtrip fill-back contracts. |
-| `compliance/mappings/` | Vocabulary crosswalk tables (raw → normalized status/origination enums). |
-| `compliance/schemas/` | Vendored NIST OSCAL 1.0.4 / 1.1.3 schemas (Layer-1 validation). |
-| `compliance/templates/*.jinja.docx` | Committed docxtpl templates for the OSCAL → `.docx` roundtrip (no CUI). |
-| `scripts/` | Orchestration + vault validators (`validate_frontmatter/wikilinks/dataview/vault.py`), `regenerate_all_vaults.py`, `registry.yaml`. |
-| `examples/vault/` | Committed example vaults generated from real SSPs (derived markdown + JSON only). |
-| `benchmark/` | Extractor-comparison benchmark reports (research harness; optional deps). |
-| `vault-schemas.json` | JSON Schema `$defs` for every vault note's frontmatter (used by the validators). |
-| `docs/` | Architecture, interoperability, vault schema, crosswalk coverage, ADRs. |
-| `docs/osbapi-backstage-interop/` | Recommended OSBAPI / Backstage projection modeling (future interoperability; see below). |
-| `archive/` | Quarantined legacy material kept for provenance (see below). |
+| Path                                  | Purpose                                                                                                     |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `fismatic/`                           | The primary FedRAMP SSP `.docx` → OSCAL SSP parser (regex/heuristic control-table parsing), vendored.        |
+| `compliance/lib/`                     | Core library (56 modules): vault builders, contract-driven `heading_parser`, OSCAL export, canonical JSON, validators. |
+| `compliance/scripts/`                 | 53 CLIs: `export_obsidian_vault.py`, `generate_canonical_json.py`, `export_oscal.py`, `validate_*.py`, coverage and roundtrip tools. |
+| `compliance/scripts/validate_workspace.sh` | Runs the core's gates against a system repository (see above).                                         |
+| `compliance/datacontracts/`           | ODCS v3.1.0 routing contract (`fedramp-ssp-v1.yaml`) + roundtrip fill-back contracts.                        |
+| `compliance/mappings/`                | Vocabulary crosswalk tables (raw → normalized status/origination enums), with a built-in fallback.          |
+| `compliance/schemas/`                 | Vendored NIST OSCAL 1.0.4 / 1.1.3 schemas (Layer-1 validation).                                              |
+| `compliance/data/`                    | NIST 800-53 Rev. 5 control names, statements, parameter labels, FedRAMP baselines, D3FEND mapping.           |
+| `compliance/templates/*.jinja.docx`   | Committed docxtpl templates for the OSCAL → `.docx` roundtrip (no CUI).                                      |
+| `compliance/tests/`                   | 69 test modules covering the pipeline, on synthetic fixtures.                                                |
+| `templates/`                          | The official **blank** GSA Low / Moderate / High SSPP templates (no CUI) — see ADR-021.                      |
+| `tests/`                              | Public-core governance and OSCAL-source checks.                                                              |
+| `vault-schemas.json`                  | JSON Schema `$defs` for every vault note's frontmatter (used by the validators).                             |
+| `skills/c4-mermaid/`                  | Agent skill playbook for the C4 topology generator.                                                          |
+| `docs/`                               | Architecture, data flow, interoperability, vault schema, crosswalk coverage, 27 ADRs, plans, rubrics.        |
+| `docs/osbapi-backstage-interop/`      | OSBAPI / Backstage projection modeling guidance (future interoperability; see below).                        |
 
 ## No source `.docx` files are committed
 
 This repository **never commits FedRAMP SSP `.docx` source files** — they are
 often sensitive, large, and not ours to redistribute. `*.docx` is excluded
-repo-wide via `.gitignore` (the only exception is the CUI-free
-`compliance/templates/*.jinja.docx` roundtrip templates).
+repo-wide via `.gitignore`, with two deliberate exceptions: the CUI-free blank
+GSA templates under `templates/` (ADR-021) and the `*.jinja.docx` roundtrip
+templates under `compliance/templates/`.
 
 Consequently:
 
 - Tests that need a real `.docx` fixture **skip gracefully** rather than fail.
-- `scripts/validate_all.sh` and CI validate the **committed example vaults**
-  and their OSCAL exports, which need no source document.
-- To build a vault from scratch, supply your own SSP `.docx` (or a FedRAMP
-  public blank baseline template) and point the CLI at it.
-- The checked-in `examples/vault/**` markdown + JSON are **derived** output,
-  committed so downstream consumers have a realistic reference.
+  The suite is 966 passing tests with no source document present.
+- CI validates the parser and control-table behaviour, and renders synthetic
+  sentinels through the blank Low, Moderate, and High templates.
+- To build a vault from scratch, supply your own SSP `.docx` (or use one of the
+  committed blank baselines) and point the CLI at it.
+- **No example vault is committed here.** A generated vault belongs to the
+  system repository that owns the content; see
+  `compliance/scripts/validate_workspace.sh` for how the core validates one in
+  place.
 
 ## OSBAPI / Backstage interoperability (recommended projection)
 
 The vault's normalized `normalized_status` / `normalized_origination` control
 vocabulary is deliberately aligned with the
-[OSBAPI](https://oscal-project.github.io/) CRM profile so the exported OSCAL
-can be projected into an Open Service Broker API summary or a Backstage catalog
+[OSBAPI](https://oscal-project.github.io/) CRM profile so the exported OSCAL can
+be projected into an Open Service Broker API summary or a Backstage catalog
 entity. That projection is documented as **modeling guidance** under
 [`docs/osbapi-backstage-interop/`](docs/osbapi-backstage-interop/) and the
 [`vault-schemas.json`](vault-schemas.json) `$defs` (`OscalCrmSummary`,
 `BackstageEntityComplianceEnvelope`, `ComplianceAdapterEntityResponse`). The
-earlier generator scripts for it have been archived (see `archive/`) pending a
-datacontract-driven reimplementation; the schemas and docs remain the
-source of truth for future interoperability work.
+earlier generator scripts for it are not part of this core, pending a
+datacontract-driven reimplementation; the schemas and docs remain the source of
+truth for future interoperability work.
+
+## Validation
+
+CI (`.github/workflows/validate.yml`) runs on every pull request and on pushes
+to `main`:
+
+| Gate                                                            | What it proves                                              |
+| --------------------------------------------------------------- | ----------------------------------------------------------- |
+| `uv sync --frozen`                                              | The lockfile resolves; no undeclared dependency             |
+| `uv run ruff check compliance tests`                            | Lint (ADR-004 scopes ruff to `compliance/`)                 |
+| `uv run ruff format --check compliance tests`                   | Formatting                                                  |
+| `uv run pytest tests compliance/tests -q -m "not slow"`          | 966 tests, no source `.docx` required                       |
+| `pytest … -m slow -k synthetic_contract_sentinel`                | Synthetic sentinels render through the blank templates      |
+
+The core validates its own parser and control-table behaviour. System
+repositories validate their own restricted content separately; **no system
+content is required by this repository's CI.**
 
 ## License
 
@@ -120,16 +381,10 @@ This project is dedicated to the public domain under
 
 ## Acknowledgements
 
-`oscal-vault` builds on and was inspired by prior open parsers of FedRAMP SSPs:
+`oscal-vault-core` builds on and was inspired by prior open parsers of FedRAMP
+SSPs:
 
 - **[fismatic](https://github.com/uscensusbureau/fismatic)** — the
   regex/heuristic control-table parser this project vendors and extends
   (U.S. Census Bureau, public domain). It is the sole live extractor in the
   pipeline.
-
-## Validation
-
-The public core validates its own parser/control-table behavior and renders
-synthetic sentinels through the approved blank Low, Moderate, and High templates
-in GitHub Actions. System repositories validate their own restricted content
-separately; no system content is required by this repository's CI.

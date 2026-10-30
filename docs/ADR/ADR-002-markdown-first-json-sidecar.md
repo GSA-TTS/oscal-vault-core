@@ -61,4 +61,4 @@ JSON with a `sha256` content hash. Generation is triggered by:
 
 - `compliance/lib/canonical_json.py`
 - `compliance/scripts/generate_canonical_json.py`
-- `archive/plans/PROJECT_REFACTORING_PLAN.md` §§ Phase R2, Phase R6
+- the project refactoring plan (not exported to the public core) §§ Phase R2, Phase R6

@@ -56,6 +56,6 @@ Every note also carries:
 
 ## References
 
-- `archive/plans/PROJECT_REFACTORING_PLAN.md` §§ Full Ontology, Appendix: Full Type Registry
+- the project refactoring plan (not exported to the public core) §§ Full Ontology, Appendix: Full Type Registry
 - `docs/OBSIDIAN_VAULT_SCHEMA.md`
 - `vault-schemas.json` (33 `$defs`)

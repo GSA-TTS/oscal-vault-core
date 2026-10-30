@@ -132,6 +132,6 @@ gitignored (ADR-009 unchanged for source documents).
 - `compliance/datacontracts/low-sspp-roundtrip.yaml`
 - `compliance/datacontracts/leveraged-saas-crm-roundtrip.yaml`
 - `compliance/templates/*.jinja.docx`
-- `archive/plans/ROUNDTRIP_TEMPLATE_PLAN.md`
+- the roundtrip template plan (not exported to the public core)
 - ADR-007 (per-file datacontracts), ADR-009 (no .docx in git),
   ADR-011 (ODCS format), ADR-013 (feedback co-location)

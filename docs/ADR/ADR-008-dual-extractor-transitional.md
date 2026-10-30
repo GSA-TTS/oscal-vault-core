@@ -69,4 +69,4 @@ When the unified converter is built:
 - `fismatic/src/phase_1/fismatic/ssp_converter.py` (primary extractor)
 - `compliance/lib/oscal_source.py` (bridge between extractors)
 - `compliance/datacontracts/fedramp-ssp-v1.yaml` (`handledByPrimaryParser` flags)
-- `archive/plans/PROJECT_REFACTORING_PLAN.md` §§ Phase R11
+- the project refactoring plan (not exported to the public core) §§ Phase R11

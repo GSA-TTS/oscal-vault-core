@@ -66,5 +66,5 @@ The rule for introducing a new type:
 ## References
 
 - `vault-schemas.json` (`$defs` with `if/then` kind constraints)
-- `archive/plans/PROJECT_REFACTORING_PLAN.md` §§ Full Ontology
+- the project refactoring plan (not exported to the public core) §§ Full Ontology
 - `examples/vault/*/_meta/templates/` (kind-specific template files)
