@@ -43,3 +43,4 @@ or a validation gate belongs here. Add the file and the index row together.
 | ADR-025 | Vault Ontology + Graph Optimization (R21) | Accepted | 2026-09-28 |
 | ADR-026 | Derive Control Vocabulary From Raw OSCAL Fields (R21 Increment 2b) | Accepted | 2026-09-28 |
 | ADR-027 | [CycloneDX Topology + C4 Mermaid From One Parsed Topology](ADR-027-topology-generators-cyclonedx-c4.md) | Proposed (feasibility build) | 2026-10-29 |
+| ADR-028 | [Workspace-Relative Output and a Guard Against System Content in the Core](ADR-028-workspace-and-system-content-guard.md) | Proposed | 2026-11-02 |

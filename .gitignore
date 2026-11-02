@@ -85,3 +85,13 @@ public-core-inventory.json
 
 # LibreOffice lock files
 .~lock.*#
+
+# --- System content must not live in the upstream core (ADR-028) ---
+# The core is vendored by a system repository; extracted and generated output belongs there.
+# These keep a local experiment from being staged by accident. They do not stop `git add -f`;
+# the guard-system-content workflow and compliance/scripts/check_system_content.py do.
+/examples/
+.exports/
+review-output/
+roundtrip_review/
+.obsidian/
