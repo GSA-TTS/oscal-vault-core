@@ -47,7 +47,6 @@ import json
 import re
 import subprocess
 import sys
-from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
@@ -57,6 +56,7 @@ import sys as _ws_sys  # noqa: E402
 _WS_CORE = Path(__file__).resolve().parents[2]
 if str(_WS_CORE) not in _ws_sys.path:
     _ws_sys.path.insert(0, str(_WS_CORE))
+from compliance.lib import vault_graph  # noqa: E402
 from compliance.lib.workspace import resolve_workspace  # noqa: E402
 
 _WORKSPACE = resolve_workspace()
@@ -187,37 +187,20 @@ def check_template_guidance_invariant(vault: Path) -> List[str]:
 
 
 def check_duplicate_note_names(vault: Path) -> List[str]:
-    """Report duplicate note stems only when they are actually reachable by an
-    *ambiguous* link.
+    """Report a bare link that Obsidian cannot resolve to one note.
 
-    Obsidian resolves ``[[Foo]]`` by shortest unique path. A duplicate stem is
-    only a real problem if some note links to it by the **bare** name
-    (``[[Foo]]``) rather than a path-qualified link (``[[Systems/Foo]]``). This
-    project deliberately gives a System and its Component the same stem but
-    always links them path-qualified, so those are not flagged; a genuine bare
-    ambiguous link still is.
+    ``[[Foo]]`` is ambiguous when more than one note is called ``Foo``. A path-qualified link
+    (``[[Systems/Foo]]``) is not. This project gives a System and its Component the same name but
+    always links them path-qualified, so those are not flagged; a genuine bare ambiguous link is.
+    Resolution is by path, not file stem, so ``Systems/Foo`` and ``Components/Foo`` stay distinct
+    (see ``compliance/lib/vault_graph.py``).
     """
-    by_stem: Dict[str, List[Path]] = defaultdict(list)
-    for p in _find_md_files(vault):
-        by_stem[p.stem].append(p)
-    duplicated = {stem for stem, paths in by_stem.items() if len(paths) > 1}
-    if not duplicated:
-        return []
-
-    # Collect bare (non-path) link targets across the vault.
-    bare_targets: set[str] = set()
-    for p in _find_md_files(vault):
-        text = p.read_text(encoding="utf-8", errors="replace")
-        for m in _WIKILINK_RE.finditer(text):
-            target = m.group(1).strip()
-            if "/" not in target:  # bare name -> ambiguous if stem duplicated
-                bare_targets.add(target)
-
+    graph = vault_graph.build_graph(vault)
     issues: List[str] = []
-    for stem in sorted(duplicated & bare_targets):
-        locs = ", ".join(str(p.relative_to(vault)) for p in by_stem[stem])
+    for target, candidates in sorted(vault_graph.ambiguous_bare_links(graph).items()):
         issues.append(
-            f"ambiguous bare link [[{stem}]] -> duplicate note name in: {locs}"
+            f"ambiguous bare link [[{target}]] -> duplicate note name in: "
+            + ", ".join(candidates)
         )
     return issues
 
@@ -358,56 +341,21 @@ def check_okf_conformance(vault: Path) -> List[str]:
 
 
 def check_orphan_notes(vault: Path) -> List[str]:
-    """A note with zero inbound AND zero outbound wikilinks is an orphan
-    (unreachable in the graph). Notes that link out (hubs/indexes) are not
-    flagged. Ported from vault-triage (MIT).
+    """A note with zero inbound AND zero outbound wikilinks is an orphan (unreachable in the
+    graph). Notes that link out (hubs/indexes) are not flagged. Ported from vault-triage (MIT).
 
-    OKF infrastructure notes (``okf.index``, ``okf.mapping``, ``okf.schema``,
-    ``okf.validation_rule``) are exempt: they are surfaced through Dataview
-    dashboards and tag queries rather than wikilinks, which a static
-    link-graph scan cannot follow (a limitation vault-triage itself notes).
+    OKF infrastructure notes (``okf.index``, ``okf.mapping``, ``okf.schema``, ``okf.validation_rule``
+    and similar) and notes with ``gardener-ignore`` are exempt: they are surfaced through Dataview
+    dashboards and tag queries rather than wikilinks, which a static link-graph scan cannot follow.
+
+    Links are resolved by path, not file stem. Before this, ``Systems/data.gov`` linking made
+    ``Components/data.gov`` look connected too; it no longer does.
     """
-    okf_infra = {
-        "okf.index",
-        "okf.instruction",
-        "okf.mapping",
-        "okf.schema",
-        "okf.table_row",
-        "okf.source_table",
-        "okf.validation_rule",
-    }
-    files = [p for p in _find_md_files(vault) if not _is_template_note(p, vault)]
-    stems = {p.stem for p in files}
-    outbound: Dict[Path, set] = {}
-    inbound_count: Dict[str, int] = defaultdict(int)
-
-    for p in files:
-        text = p.read_text(encoding="utf-8", errors="replace")
-        targets = set()
-        for m in _ANY_WIKILINK_RE.finditer(text):
-            tstem = Path(m.group(1).strip()).stem
-            if tstem and tstem != p.stem:
-                targets.add(tstem)
-        outbound[p] = targets
-        for t in targets:
-            if t in stems:
-                inbound_count[t] += 1
-
-    issues: List[str] = []
-    for p in files:
-        text = p.read_text(encoding="utf-8", errors="replace")
-        fm, _ = _split_frontmatter(text)
-        if _has_ignore_flag(fm):
-            continue
-        if str(fm.get("type") or "") in okf_infra:
-            continue
-        has_out = bool(outbound[p])
-        has_in = inbound_count.get(p.stem, 0) > 0
-        if not has_out and not has_in:
-            issues.append(
-                f"{p.relative_to(vault)}: orphan (no inbound or outbound links)"
-            )
-    return issues
+    graph = vault_graph.build_graph(vault)
+    return [
+        f"{rel}: orphan (no inbound or outbound links)"
+        for rel in vault_graph.orphans(graph)
+    ]
 
 
 def check_thin_notes(vault: Path, min_chars: int) -> List[str]:

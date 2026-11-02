@@ -56,6 +56,27 @@ carry legitimate advisory findings (e.g. a terse Organization note, or a
 narrative citing an out-of-baseline control) that must not break the pipeline —
 and become failures under `--strict`.
 
+## Link graph audit (`audit_vault_graph.py`)
+
+Links are resolved by **path**, as Obsidian does for one vault, not by file stem
+([ADR-029](ADR/ADR-029-path-aware-wikilink-resolution.md)). `Systems/foo` and `Components/foo` are
+different notes, and a bare `[[foo]]` that matches both is reported as ambiguous with its
+candidates, never silently resolved. The orphan and duplicate-name checks above use the same
+resolver.
+
+```bash
+# metrics for every vault in the workspace (or --vault <dir>); --list shows each finding
+python <core>/compliance/scripts/audit_vault_graph.py [--list]
+
+# record a baseline, then fail if any vault gets worse
+python <core>/compliance/scripts/audit_vault_graph.py --out scripts/graph_baseline.json
+python <core>/compliance/scripts/audit_vault_graph.py --baseline scripts/graph_baseline.json
+```
+
+The baseline gate compares `orphans_content`, `unresolved_links` and `ambiguous_links` per vault
+(higher is worse). A vault missing from the baseline is not a regression; an unreadable baseline
+is an error. Open **one system's directory** as the Obsidian vault, not `examples/vault/`.
+
 ## Obsidian Bases validation
 
 `validate_dataview_queries.py` also validates every `_meta/views/*.base` file.
