@@ -21,7 +21,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+
 import yaml
+
+import sys as _ws_sys  # noqa: E402
+
+_WS_CORE = Path(__file__).resolve().parents[2]
+if str(_WS_CORE) not in _ws_sys.path:
+    _ws_sys.path.insert(0, str(_WS_CORE))
+from compliance.lib.workspace import resolve_workspace  # noqa: E402
 
 CORE_ROOT = Path(__file__).resolve().parents[2]
 EXPORTER = CORE_ROOT / "compliance" / "scripts" / "export_obsidian_vault.py"
@@ -61,13 +69,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--registry",
         type=Path,
-        default=Path.cwd() / "scripts" / "registry.yaml",
+        default=resolve_workspace() / "scripts" / "registry.yaml",
         help="Registry YAML (default: ./scripts/registry.yaml).",
     )
     parser.add_argument(
         "--workspace",
         type=Path,
-        default=Path.cwd(),
+        default=resolve_workspace(),
         help="Directory holding examples/vault/ and the source documents (default: cwd).",
     )
     args = parser.parse_args(argv)

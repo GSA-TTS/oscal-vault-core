@@ -30,6 +30,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from compliance.lib.workspace import resolve_workspace  # noqa: E402
 from compliance.lib.validate_oscal import (  # noqa: E402
     DEFAULT_OSCAL_VERSION,
     SchemaNotAvailableError,
@@ -53,7 +54,7 @@ def _vault_dirs(args: argparse.Namespace) -> List[Path]:
     if args.vault:
         return [Path(v) for v in args.vault]
     if args.all_exports:
-        examples_vault = Path.cwd() / "examples" / "vault"
+        examples_vault = resolve_workspace() / "examples" / "vault"
         if examples_vault.is_dir():
             return [
                 d

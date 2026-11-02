@@ -22,6 +22,7 @@ CORE_ROOT = Path(__file__).resolve().parents[2]
 if str(CORE_ROOT) not in sys.path:
     sys.path.insert(0, str(CORE_ROOT))
 
+from compliance.lib.workspace import resolve_workspace  # noqa: E402
 from compliance.lib.lineage_attestation import validate_attestations  # noqa: E402
 
 
@@ -30,7 +31,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--attestations",
         type=Path,
-        default=Path.cwd() / "scripts" / "lineage_operator_attestations_v1.json",
+        default=resolve_workspace()
+        / "scripts"
+        / "lineage_operator_attestations_v1.json",
     )
     args = parser.parse_args(argv)
     if not args.attestations.is_file():

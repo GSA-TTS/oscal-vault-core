@@ -30,6 +30,12 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from compliance.lib.workspace import (  # noqa: E402
+    WorkspaceError,
+    add_workspace_arguments,
+    guard_output,
+    resolve_workspace,
+)
 from compliance.lib.export_oscal import (  # noqa: E402
     DEFAULT_OSCAL_VERSION,
     ExportError,
@@ -341,6 +347,7 @@ def main(argv: list[str] | None = None) -> int:
         help=f"OSCAL version to emit + validate against (default: {DEFAULT_OSCAL_VERSION}). "
         "Older FedRAMP/agency portals may still require a 1.0.x baseline.",
     )
+    add_workspace_arguments(parser)
     args = parser.parse_args(argv)
 
     if args.format == "yaml" and not _HAS_YAML:
@@ -350,13 +357,17 @@ def main(argv: list[str] | None = None) -> int:
     vault_dirs: List[Path] = []
     if args.vault:
         for v in args.vault:
-            vd = Path(v).resolve()
+            try:
+                vd = guard_output(v, allow_in_core=args.allow_write_in_core)
+            except WorkspaceError as exc:
+                print(f"ERROR: {exc}", file=sys.stderr)
+                return 2
             if not vd.is_dir():
                 print(f"ERROR: Vault {vd} does not exist", file=sys.stderr)
                 return 1
             vault_dirs.append(vd)
     else:
-        examples_vault = Path.cwd() / "examples" / "vault"
+        examples_vault = resolve_workspace() / "examples" / "vault"
         if examples_vault.is_dir():
             for entry in sorted(examples_vault.iterdir()):
                 if entry.is_dir() and not entry.name.startswith("."):

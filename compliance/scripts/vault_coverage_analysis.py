@@ -42,7 +42,14 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 
 _CORE_ROOT = Path(__file__).resolve().parents[2]
-_WORKSPACE = Path.cwd()
+import sys as _ws_sys  # noqa: E402
+
+_WS_CORE = Path(__file__).resolve().parents[2]
+if str(_WS_CORE) not in _ws_sys.path:
+    _ws_sys.path.insert(0, str(_WS_CORE))
+from compliance.lib.workspace import resolve_workspace  # noqa: E402
+
+_WORKSPACE = resolve_workspace()
 _VAULT_DIR = _WORKSPACE / "examples" / "vault"
 
 

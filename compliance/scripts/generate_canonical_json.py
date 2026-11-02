@@ -20,6 +20,12 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from compliance.lib.workspace import (  # noqa: E402
+    WorkspaceError,
+    add_workspace_arguments,
+    guard_output,
+    resolve_workspace,
+)
 from compliance.lib.canonical_json import generate_canonical_data, parse_frontmatter  # noqa: E402
 
 
@@ -143,18 +149,23 @@ def main() -> int:
         help="Only process this Markdown path relative to each selected vault "
         "(repeatable). Targeted runs never clean unrelated sidecars.",
     )
+    add_workspace_arguments(parser)
     args = parser.parse_args()
 
     vault_dirs: List[Path] = []
     if args.vault:
         for v in args.vault:
-            vd = Path(v).resolve()
+            try:
+                vd = guard_output(v, allow_in_core=args.allow_write_in_core)
+            except WorkspaceError as exc:
+                print(f"ERROR: {exc}", file=sys.stderr)
+                return 2
             if not vd.is_dir():
                 print(f"ERROR: Vault directory {vd} does not exist", file=sys.stderr)
                 return 1
             vault_dirs.append(vd)
     else:
-        examples_vault = Path.cwd() / "examples" / "vault"
+        examples_vault = resolve_workspace() / "examples" / "vault"
         if examples_vault.is_dir():
             for entry in sorted(examples_vault.iterdir()):
                 if entry.is_dir() and not entry.name.startswith("."):
