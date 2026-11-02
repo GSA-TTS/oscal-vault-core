@@ -1802,7 +1802,35 @@ def build_coverage_note(
     )
 
 
-def build_index_note(index: VaultIndex) -> VaultNote:
+def _navigation_section(
+    index: VaultIndex, extension_notes: Optional[List["VaultNote"]]
+) -> str:
+    """A static ``## Navigate`` list: the system, its plan, and each extension note.
+
+    Dataview dashboards do not create links, so without this the Diagram, Boundary, Relationship,
+    Inheritance, Runbook, Decision, Privacy and CRM notes are reachable only from a file listing.
+    """
+    lines: List[str] = []
+    for link in index.systems.values():
+        lines.append(f"- System: {link}")
+    for link in index.plans.values():
+        lines.append(f"- Plan: {link}")
+    for note in sorted(extension_notes or [], key=lambda n: n.relpath):
+        target = note.relpath[:-3] if note.relpath.endswith(".md") else note.relpath
+        title = str(note.frontmatter.get("title") or target)
+        lines.append(f"- [[{target}|{title}]]")
+    if not lines:
+        return ""
+    return NAV_BEGIN + "\n## Navigate\n\n" + "\n".join(lines) + "\n" + NAV_END + "\n\n"
+
+
+NAV_BEGIN = "<!-- navigate:begin -->"
+NAV_END = "<!-- navigate:end -->"
+
+
+def build_index_note(
+    index: VaultIndex, extension_notes: Optional[List["VaultNote"]] = None
+) -> VaultNote:
     """Build the vault root `Index.md` with Dataview-powered dashboards.
 
     Emits the OKF type taxonomy:
@@ -1826,7 +1854,8 @@ def build_index_note(index: VaultIndex) -> VaultNote:
         f"- Components: {len(index.components)}\n"
         f"- Organizations: {len(index.organizations)}\n"
         f"- Plans: {len(index.plans)}\n\n"
-        "## Dashboards\n\n"
+        + _navigation_section(index, extension_notes)
+        + "## Dashboards\n\n"
         "### Controls by status\n\n"
         "```dataview\n"
         "TABLE implementation_status AS Status, origination AS Origination\n"
@@ -3034,6 +3063,21 @@ def enrich_system_note_from_narrative(
     return note
 
 
+def extension_link_fields(
+    system_link: Optional[str], owner_link: Optional[str]
+) -> Dict[str, Any]:
+    """The graph-bearing frontmatter every extension note carries (ADR-030).
+
+    ``system`` is the owning System note; ``owner`` is the system owner's Organization note, or
+    ``None`` when it is not known (the key is kept so the schema shape does not change).
+    """
+    fields: Dict[str, Any] = {}
+    if system_link:
+        fields["system"] = _Literal(system_link)
+    fields["owner"] = _Literal(owner_link) if owner_link else None
+    return fields
+
+
 def build_narrative_notes(
     narrative: Optional[Dict[str, Any]],
     *,
@@ -3041,6 +3085,7 @@ def build_narrative_notes(
     system_id: str = "",
     media_embeds: Optional[List[str]] = None,
     section_guidance: Optional[Dict[str, Any]] = None,
+    owner_link: Optional[str] = None,
 ) -> List[VaultNote]:
     """Emit `oscal.x.*` extension notes carrying Chapters 1-12 narrative.
 
@@ -3063,6 +3108,10 @@ def build_narrative_notes(
     folded ``> [!note]- Template guidance`` callout so the original template
     prompts travel with the narrative content (R19).
 
+    Every note carries a ``system`` wikilink to the owning System note (and ``owner`` when the
+    system owner is known), so it is connected to the graph instead of identified only by a bare
+    ``system_id`` UUID (ADR-030).
+
     Returns an empty list when ``narrative`` is None/empty so the fismatic-only
     path (and existing tests) are unaffected.
     """
@@ -3071,6 +3120,7 @@ def build_narrative_notes(
     guidance_by_key = _index_section_guidance(section_guidance)
     objs = _narrative_object_index(narrative)
     system_name = next(iter(index.systems), "System")
+    system_link = next(iter(index.systems.values()), None)
     notes: List[VaultNote] = []
 
     for spec in _NARRATIVE_NOTE_SPECS:
@@ -3123,8 +3173,8 @@ def build_narrative_notes(
             "title": title,
             f"{spec['note_type']}_id": f"{spec['id_prefix']}-{slug}",
             "system_id": system_id or "",
+            **extension_link_fields(system_link, owner_link),
             "status": "active",
-            "owner": None,
             "source_chapter": "1-12",
             "provenance": "heading_parser",
             "tags": [spec["tag"], "narrative/chapters-1-12"],
@@ -3583,15 +3633,15 @@ def build_vault(
     media_embeds = [n.relpath.split("/")[-1] for n in media_notes]
     # Chapters 1-12 narrative notes (populated oscal.x.* extension notes) —
     # only emitted when a heading_parser extraction result is supplied.
-    notes.extend(
-        build_narrative_notes(
-            narrative,
-            index=index,
-            system_id=str(system_note.frontmatter.get("system_id") or ""),
-            media_embeds=media_embeds or None,
-            section_guidance=section_guidance or None,
-        )
+    narrative_notes = build_narrative_notes(
+        narrative,
+        index=index,
+        system_id=str(system_note.frontmatter.get("system_id") or ""),
+        media_embeds=media_embeds or None,
+        section_guidance=section_guidance or None,
+        owner_link=str(system_note.frontmatter.get("owner") or "") or None,
     )
+    notes.extend(narrative_notes)
     notes.append(build_okf_schema_note(plan_id, narrative))
     notes.extend(build_okf_validation_rules())
     notes.append(build_meta_tags_index())
@@ -3614,5 +3664,5 @@ def build_vault(
         for cid in [canonical_control_id(req.get("control-id") or "")]
     }
     notes.append(build_coverage_note(controls_fm, fips_199=fips_199))
-    notes.append(build_index_note(index))
+    notes.append(build_index_note(index, narrative_notes))
     return notes

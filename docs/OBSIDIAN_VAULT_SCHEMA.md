@@ -48,6 +48,19 @@ Types use a dotted namespace convention (see [ADR-001](ADR/ADR-001-dotted-type-t
 | `oscal.x.decision` | `decision` | `decisions/` |
 | `oscal.x.relationship` | `relationship` | `relationships/` |
 
+Every generated extension note (all of the above, plus `oscal.x.runbook`, `oscal.x.privacy` and
+`oscal.x.crm`) also carries two graph links, so it is connected rather than identified only by a bare
+`system_id` UUID ([ADR-030](ADR/ADR-030-extension-note-graph-links.md)):
+
+```yaml
+system: "[[Systems/example-system]]"           # the owning System note
+owner: "[[Organizations/example-owner]]"       # the system owner, or null when not known
+```
+
+The root `Index.md` lists the system, its plan, and every extension note under a
+`<!-- navigate:begin -->` ... `<!-- navigate:end -->` block, so they are reachable from the Index as
+well. `system_id` is kept unchanged.
+
 ### OKF infrastructure types
 
 | `type` | Folder |
