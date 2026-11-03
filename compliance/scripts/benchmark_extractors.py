@@ -161,12 +161,6 @@ def compute_contract_coverage(
     The function imports ``heading_parser.extract_from_docx`` lazily so
     that the script remains usable when the contract module is unavailable.
     """
-    import sys as _sys
-
-    repo_root = Path(__file__).resolve().parents[2]
-    if str(repo_root) not in _sys.path:
-        _sys.path.insert(0, str(repo_root))
-
     from compliance.lib.heading_parser import (
         extract_from_docx,
         load_contract,
@@ -185,14 +179,11 @@ def compute_contract_coverage(
     # Build a set of section titles the catchall dumper saw, then mark which
     # were routed (i.e. matched some property's sourceHeading).
     # We rerun parse_catchall_blob on a fresh dump to discover section titles.
-    import contextlib
     import io
     import os
+    import contextlib
 
-    scripts_dir = str(repo_root / "scripts")
-    if scripts_dir not in _sys.path:
-        _sys.path.insert(0, scripts_dir)
-    import docx_catchall_dump as dcd  # type: ignore
+    from compliance.scripts import docx_catchall_dump as dcd
 
     out_md = Path(os.environ.get("TMPDIR", "/tmp")) / (
         f"_coverage_{Path(docx_path).stem}.md"

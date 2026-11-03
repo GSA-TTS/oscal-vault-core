@@ -1170,19 +1170,15 @@ def extract(markdown: str, contract: Contract) -> Dict[str, Any]:
 def extract_from_docx(docx_path: str | Path, contract: Contract) -> Dict[str, Any]:
     """Run the catchall dumper on a .docx, then extract via the contract.
 
-    Requires `scripts.docx_catchall_dump` to be importable (it lives in the
-    repo root `scripts/` directory, not a package).
+    The dumper is imported from the core's ``compliance.scripts`` package so
+    this path works in isolation and does not depend on another test mutating
+    ``sys.path`` first.
     """
-    import io
     import contextlib
-    import sys as _sys
+    import io
     import os as _os
 
-    repo_root = Path(__file__).resolve().parents[2]
-    scripts_dir = str(repo_root / "scripts")
-    if scripts_dir not in _sys.path:
-        _sys.path.insert(0, scripts_dir)
-    import docx_catchall_dump as dcd  # type: ignore
+    from compliance.scripts import docx_catchall_dump as dcd
 
     out_path = (
         Path(_os.environ.get("TMPDIR", "/tmp")) / f"_catchall_{Path(docx_path).stem}.md"
