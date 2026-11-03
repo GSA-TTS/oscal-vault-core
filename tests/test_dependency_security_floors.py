@@ -11,8 +11,8 @@ def test_security_constraints_cover_supported_python_versions():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     constraints = set(project["tool"]["uv"]["constraint-dependencies"])
 
-    assert project["project"]["requires-python"] == ">=3.11"
-    assert project["tool"]["ruff"]["target-version"] == "py311"
+    assert project["project"]["requires-python"] == ">=3.13,<3.14"
+    assert project["tool"]["ruff"]["target-version"] == "py313"
     assert "filelock>=4.2.1" in constraints
     assert "urllib3>=2.8.0" in constraints
 
@@ -21,7 +21,7 @@ def test_benchmark_group_uses_patched_pillow_and_excludes_unstructured():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     benchmark = project["dependency-groups"]["benchmark"]
 
-    assert "pillow>=13.0.0 ; python_version >= '3.13'" in benchmark
+    assert "pillow>=13.0.0" in benchmark
     assert not any(requirement.startswith("unstructured") for requirement in benchmark)
 
     from compliance.lib.extractor_backend import get_backend
