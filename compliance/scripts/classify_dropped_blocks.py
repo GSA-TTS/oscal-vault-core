@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import functools
 import json
 import re
 import sys
@@ -172,6 +173,7 @@ class Report:
         )
 
 
+@functools.lru_cache(maxsize=1)
 def _catalog_statements() -> tuple[set[str], list[str]]:
     data = json.loads(CATALOG.read_text(encoding="utf-8"))
     lines = [normalize(line) for group in data.values() for line in group]
@@ -179,7 +181,54 @@ def _catalog_statements() -> tuple[set[str], list[str]]:
     return set(kept), kept
 
 
-def collect(docx_path: Path) -> Report:
+@functools.lru_cache(maxsize=1)
+def _contract_table_matchers() -> tuple[tuple[str, str | None, str], ...]:
+    try:
+        from compliance.lib import heading_parser
+
+        contract_path = (
+            REPO_ROOT / "compliance" / "datacontracts" / "fedramp-ssp-v1.yaml"
+        )
+        if not contract_path.is_file():
+            return ()
+        contract = heading_parser.load_contract(contract_path)
+        out: list[tuple[str, str | None, str]] = []
+        for obj in contract.destinations():
+            if obj.handled_by_primary_parser:
+                continue
+            for pm in obj.properties:
+                if (
+                    pm.capture_strategy in ("heading_table_first", "heading_table_all")
+                    and pm.source_heading
+                ):
+                    out.append(
+                        (
+                            pm.source_heading,
+                            pm.alias_source_heading,
+                            pm.capture_strategy,
+                        )
+                    )
+        return tuple(out)
+    except Exception:
+        return ()
+
+
+def is_contract_routed_table(heading: str, table_pos_in_section: int) -> bool:
+    from compliance.lib.heading_parser import _heading_matches_any
+
+    for src_h, alias_h, strat in _contract_table_matchers():
+        if _heading_matches_any(heading, src_h, alias_h):
+            if strat == "heading_table_all" or table_pos_in_section == 0:
+                return True
+    return False
+
+
+def collect(
+    docx_path: Path,
+    *,
+    document: Any = None,
+    routed_tables: set[int] | None = None,
+) -> Report:
     """Walk the body in document order and keep only what nothing routes."""
     from docx import Document
     from docx.oxml.table import CT_Tbl
@@ -197,13 +246,11 @@ def collect(docx_path: Path) -> Report:
     )
 
     namespace_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
-    document = Document(str(docx_path))
-    # Hold the anchors for the whole walk. `id()` of an lxml element is only
-    # stable while a proxy for it is alive: let the anchor list fall out of
-    # scope and the proxies are freed, their ids get reused by new proxies, and
-    # routed control tables start matching arbitrary other tables.
-    anchors = find_control_tables(document)
-    routed_tables = {id(anchor.table._tbl) for anchor in anchors}
+    if document is None:
+        document = Document(str(docx_path))
+    if routed_tables is None:
+        anchors = find_control_tables(document)
+        routed_tables = {id(anchor.table._tbl) for anchor in anchors}
 
     def is_instruction(paragraph) -> bool:
         text = (paragraph.text or "").strip()
@@ -215,13 +262,17 @@ def collect(docx_path: Path) -> Report:
 
     report = Report(docx=docx_path.name)
     heading = "(front matter)"
+    section_table_idx = 0
     for child in document.element.body.iterchildren():
         if isinstance(child, CT_P):
             paragraph = Paragraph(child, document)
-            if _heading_level(paragraph) is not None and (paragraph.text or "").strip():
-                heading = " ".join((paragraph.text or "").split()).strip()
-                continue
             text = (paragraph.text or "").strip()
+            if (
+                _heading_level(paragraph) is not None or CONTROL_TITLE.match(text)
+            ) and text:
+                heading = " ".join(text.split()).strip()
+                section_table_idx = 0
+                continue
             images = len(paragraph._p.findall(f".//{{{namespace_a}}}blip"))
             if not text and not images:
                 continue
@@ -233,7 +284,11 @@ def collect(docx_path: Path) -> Report:
                 report.blocks.append(Block("image", heading, "", 0))
         elif isinstance(child, CT_Tbl):
             table = Table(child, document)
-            if id(table._tbl) in routed_tables:
+            cur_tbl_idx = section_table_idx
+            section_table_idx += 1
+            if id(table._tbl) in routed_tables or is_contract_routed_table(
+                heading, cur_tbl_idx
+            ):
                 continue
             rows = list(table.rows)
             header = (

@@ -81,13 +81,22 @@ class ControlTableAnchor:
     blank_answer_cell: _Cell | None = None
 
 
-def _looks_like_status_row(table: Table) -> bool:
+def _status_row_index(table: Table) -> int | None:
     if len(table.rows) < 4:
-        return False
-    try:
-        return table.rows[1].cells[0].text.strip().startswith(_STATUS_ROW_MARKER)
-    except Exception:  # pragma: no cover - defensive (malformed table)
-        return False
+        return None
+    for idx in (1, 2):
+        try:
+            if len(table.rows) >= idx + 4 and table.rows[idx].cells[
+                0
+            ].text.strip().startswith(_STATUS_ROW_MARKER):
+                return idx
+        except Exception:  # pragma: no cover - defensive (malformed table)
+            continue
+    return None
+
+
+def _looks_like_status_row(table: Table) -> bool:
+    return _status_row_index(table) is not None
 
 
 def find_control_tables(
@@ -104,23 +113,28 @@ def find_control_tables(
 
     anchors: list[ControlTableAnchor] = []
     for table_index, table in enumerate(doc.tables):
-        if not _looks_like_status_row(table):
+        status_idx = _status_row_index(table)
+        if status_idx is None:
             continue
 
         control_id = table.rows[0].cells[0].text.strip()
-        status_cell = table.rows[1].cells[0]
-        origination_cell = table.rows[2].cells[0]
+        status_cell = table.rows[status_idx].cells[0]
+        origination_cell = table.rows[status_idx + 1].cells[0]
 
         part_rows: dict[str, _Cell] = {}
         blank_answer_cell: _Cell | None = None
-        for row in table.rows[4:]:
+        for row in table.rows[status_idx + 3 :]:
             label = row.cells[0].text.strip()
             m = _PART_ROW_RE.match(label)
             if m:
                 part_rows[m.group(1).lower()] = row.cells[-1]
-            elif label == "" and blank_answer_cell is None and len(table.rows) == 5:
-                # Only row 4 in a 5-row (no-Part) table is the blank answer
-                # slot; guard against also matching later padding.
+            elif (
+                label == ""
+                and blank_answer_cell is None
+                and len(table.rows) == status_idx + 4
+            ):
+                # Only the single row after Describe-how in a no-Part table is
+                # the blank answer slot; guard against matching later padding.
                 blank_answer_cell = row.cells[0]
 
         anchors.append(

@@ -959,15 +959,23 @@ def _capture(pm: PropertyMapping, sections: List[HeadingSection]) -> Optional[An
     if strat == "heading_table_all":
         out: List[Dict[str, Any]] = []
         for s in matches:
-            for t in s.tables:
-                out.append(
-                    {
-                        "table_index": t.table_index,
-                        "headers": t.headers,
-                        "rows": t.data_rows,
-                        "control_id": t.control_id,
-                    }
-                )
+            target_sections = [s]
+            if scope == "until_next_same_or_higher":
+                idx = sections.index(s)
+                for desc in sections[idx + 1 :]:
+                    if desc.level <= s.level:
+                        break
+                    target_sections.append(desc)
+            for ts in target_sections:
+                for t in ts.tables:
+                    out.append(
+                        {
+                            "table_index": t.table_index,
+                            "headers": t.headers,
+                            "rows": t.data_rows,
+                            "control_id": t.control_id,
+                        }
+                    )
         return out or None
 
     if strat == "heading_image_first":
