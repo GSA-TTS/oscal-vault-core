@@ -193,6 +193,18 @@ class TestRenderMarkdown:
         md = render_markdown(self._metrics())
         assert "CRM-Only Controls" not in md
 
+    def test_baseline_provenance_is_visible(self):
+        md = render_markdown(
+            self._metrics(),
+            fips_level="low",
+            baseline_provenance={
+                "semantics": "GSA Low assessment baseline",
+                "source": {"source_workbook_sha256": "a" * 64},
+            },
+        )
+        assert "Baseline semantics: GSA Low assessment baseline" in md
+        assert f"Baseline source workbook SHA-256: `{'a' * 64}`" in md
+
 
 # ---------------------------------------------------------------------------
 # render_json
@@ -229,6 +241,11 @@ class TestRenderJson:
         assert out["summary"]["baseline_covered"] == 2
         assert out["summary"]["baseline_coverage_pct"] == pytest.approx(66.7, abs=0.1)
 
+    def test_json_carries_baseline_provenance(self):
+        receipt = {"verification_status": "unverified-source-provenance"}
+        out = render_json(self._metrics(), baseline_provenance=receipt)
+        assert out["baseline_provenance"] == receipt
+
 
 # ---------------------------------------------------------------------------
 # get_baseline
@@ -238,7 +255,7 @@ class TestRenderJson:
 class TestGetBaseline:
     def test_low_returns_nonempty_set(self):
         bl = get_baseline("low")
-        assert len(bl) > 50
+        assert len(bl) == 158
         assert "ac-1" in bl
 
     def test_moderate_superset_of_low(self):

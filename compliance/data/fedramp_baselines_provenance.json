@@ -1,0 +1,44 @@
+{
+  "high": {
+    "control_count": 398,
+    "control_ids_sha256": "ab490bf5c5fe5ff760cbaba17f083300d6c89d4873f0a6e85ebe553cf6ab2cbe",
+    "semantics": "Legacy High coverage list carried forward from the original vault data",
+    "verification_status": "unverified-source-provenance"
+  },
+  "low": {
+    "control_count": 158,
+    "control_ids_sha256": "3a0111e4bc919e558261c0766e1b8fa6b949005bac8235f9cb72edcdf281576a",
+    "known_template_alignment": {
+      "duplicate_template_control_ids": [
+        "RA-3"
+      ],
+      "issues": {
+        "reference_without_template_table": 30,
+        "template_table_without_reference": 33
+      },
+      "reference_without_template_table": [
+        "RA-3(1)"
+      ],
+      "template_table_without_reference": [
+        "CA-8(2)"
+      ]
+    },
+    "semantics": "GSA Low assessment baseline used for SSP coverage reconciliation",
+    "source": {
+      "assessment_reference_sha256": "f4f53710ed5160ccfde868b7e331e73509ed168e75b513240a5ce7e7679e2658",
+      "kind": "assessment-reference-derived",
+      "reference_id": "gsa-pages-low-rev5",
+      "reference_schema_version": 1,
+      "source_blob": "b1ac3859bd8579c50ae826824954a817ccba1246",
+      "source_commit": "aa6edfe7227ca45a42243b334ec98afacf0eb14c",
+      "source_workbook_sha256": "28aadb12e16db22e28a9c092c19560ef0d58ab898434476ab0f71e1517a50fa8"
+    }
+  },
+  "moderate": {
+    "control_count": 389,
+    "control_ids_sha256": "3d78ec189850ab888c0977b46eed35da508bf2d719a8377f4d21f0a7da62900a",
+    "semantics": "Legacy Moderate coverage list carried forward from the original vault data",
+    "verification_status": "unverified-source-provenance"
+  },
+  "schema_version": 1
+}

@@ -33,6 +33,9 @@ if str(_REPO_ROOT) not in sys.path:
 from compliance.lib.vault import _oscal_control_key  # noqa: E402
 
 _BASELINES_PATH = _REPO_ROOT / "compliance" / "data" / "fedramp_baselines.json"
+_BASELINES_PROVENANCE_PATH = (
+    _REPO_ROOT / "compliance" / "data" / "fedramp_baselines_provenance.json"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -41,8 +44,20 @@ _BASELINES_PATH = _REPO_ROOT / "compliance" / "data" / "fedramp_baselines.json"
 
 
 def load_baselines() -> Dict[str, List[str]]:
-    """Load FedRAMP baseline control lists from the data file."""
+    """Load coverage baseline control lists from the data file.
+
+    The lists are not interchangeable with NIST catalog profiles. Their exact
+    semantics and source status are recorded in
+    ``fedramp_baselines_provenance.json``. In particular, ``low`` is the
+    158-control GSA Low assessment baseline used for SSP coverage reconciliation.
+    """
     with open(_BASELINES_PATH) as fh:
+        return json.load(fh)
+
+
+def load_baseline_provenance() -> Dict[str, Any]:
+    """Load source receipts and verification status for the coverage lists."""
+    with open(_BASELINES_PROVENANCE_PATH) as fh:
         return json.load(fh)
 
 
@@ -197,6 +212,7 @@ def render_markdown(
     *,
     system_name: str = "System",
     fips_level: str = "moderate",
+    baseline_provenance: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Render a Markdown coverage report from computed *metrics*."""
     ssp_ids = metrics["ssp_ids"]
@@ -222,6 +238,21 @@ def render_markdown(
         f"- Baseline controls (FedRAMP {fips_level}): {n_baseline}",
         f"- Baseline coverage: {n_covered}/{n_baseline} ({pct}%)",
     ]
+    if baseline_provenance:
+        lines.append(
+            f"- Baseline semantics: {baseline_provenance.get('semantics', 'unspecified')}"
+        )
+        if baseline_provenance.get("verification_status"):
+            lines.append(
+                "- Baseline source status: "
+                f"{baseline_provenance['verification_status']}"
+            )
+        source = baseline_provenance.get("source") or {}
+        if source.get("source_workbook_sha256"):
+            lines.append(
+                "- Baseline source workbook SHA-256: "
+                f"`{source['source_workbook_sha256']}`"
+            )
     if crm_only:
         lines.append(f"- CRM-only controls: {len(crm_only)}")
     lines += ["", "## Implementation Status Distribution", ""]
@@ -264,6 +295,7 @@ def render_json(
     *,
     system_name: str = "System",
     fips_level: str = "moderate",
+    baseline_provenance: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Convert *metrics* to a JSON-serializable dict."""
     ssp_ids = metrics["ssp_ids"]
@@ -275,6 +307,7 @@ def render_json(
         "system_name": system_name,
         "fips_level": fips_level,
         "generated": date.today().isoformat(),
+        "baseline_provenance": baseline_provenance or {},
         "summary": {
             "ssp_controls": len(ssp_ids),
             "baseline_controls": n_baseline,
@@ -347,6 +380,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # 3. Load FedRAMP baseline.
     baseline = get_baseline(fips_level)
+    provenance = load_baseline_provenance().get(fips_level, {})
 
     # 4. CRM controls (optional).
     crm_controls: Optional[Set[str]] = None
@@ -378,7 +412,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     metrics = compute_coverage(ssp_controls, baseline, crm_controls=crm_controls)
 
     # 7. Output Markdown to stdout.
-    md = render_markdown(metrics, system_name=system_name, fips_level=fips_level)
+    md = render_markdown(
+        metrics,
+        system_name=system_name,
+        fips_level=fips_level,
+        baseline_provenance=provenance,
+    )
     print(md, end="")
 
     # 8. Optional JSON output.
@@ -387,7 +426,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         with open(out_path, "w") as fh:
             json.dump(
-                render_json(metrics, system_name=system_name, fips_level=fips_level),
+                render_json(
+                    metrics,
+                    system_name=system_name,
+                    fips_level=fips_level,
+                    baseline_provenance=provenance,
+                ),
                 fh,
                 indent=2,
             )
