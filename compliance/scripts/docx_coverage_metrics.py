@@ -260,33 +260,12 @@ def collect(docx_path: Path) -> dict[str, Any]:
         DISPOSITION,
         classify as _classify_dropped,
         collect as _collect_dropped,
+        is_contract_routed_table,
     )
 
     doc = _load_doc(docx_path)
-    doc_tables = list(doc.tables)
     control_tables = find_control_tables(doc)
     routed_table_ids = {id(a.table._tbl) for a in control_tables}
-    try:
-        from compliance.lib import heading_parser
-
-        contract_path = (
-            REPO_ROOT / "compliance" / "datacontracts" / "fedramp-ssp-v1.yaml"
-        )
-        if contract_path.is_file():
-            contract = heading_parser.load_contract(contract_path)
-            extracted = heading_parser.extract_from_docx(docx_path, contract)
-            for obj_rec in extracted.get("objects") or []:
-                for val in (obj_rec.get("properties") or {}).values():
-                    items = val if isinstance(val, list) else [val]
-                    for item in items:
-                        if isinstance(item, dict) and isinstance(
-                            item.get("table_index"), int
-                        ):
-                            t_idx = item["table_index"]
-                            if 0 <= t_idx < len(doc_tables):
-                                routed_table_ids.add(id(doc_tables[t_idx]._tbl))
-    except Exception:
-        pass
 
     def _is_instruction(para) -> bool:
         text = (para.text or "").strip()
@@ -303,6 +282,7 @@ def collect(docx_path: Path) -> dict[str, Any]:
     )
 
     current_heading = "(front matter)"
+    section_table_idx = 0
     for kind, obj in _iter_body_blocks(doc):
         if kind == "paragraph":
             struct.total_paragraphs += 1
@@ -313,6 +293,7 @@ def collect(docx_path: Path) -> dict[str, Any]:
             ) and raw_text:
                 struct.heading_paragraphs += 1
                 current_heading = _normalize_heading(raw_text)
+                section_table_idx = 0
                 continue
             imgs = _count_images(obj)
             if imgs:
@@ -338,7 +319,12 @@ def collect(docx_path: Path) -> dict[str, Any]:
             struct.total_blocks += 1
             struct.total_tables += 1
             heading_seen[current_heading]["tables"] += 1
-            if id(obj._tbl) in routed_table_ids:
+            cur_tbl_idx = section_table_idx
+            section_table_idx += 1
+            if id(obj._tbl) in routed_table_ids or is_contract_routed_table(
+                current_heading, cur_tbl_idx
+            ):
+                routed_table_ids.add(id(obj._tbl))
                 struct.routed_tables += 1
                 struct.routed_blocks += 1
                 heading_seen[current_heading]["routed_tables"] += 1
@@ -429,8 +415,10 @@ def collect(docx_path: Path) -> dict[str, Any]:
     # counts). `cis_readback_fidelity` is reported under its true name.
     unrouted_disposition: dict[str, dict[str, int]] = {}
     try:
-        dropped_rep = _collect_dropped(docx_path)
-        _classify_dropped(dropped_rep, fuzzy=True)
+        dropped_rep = _collect_dropped(
+            docx_path, document=doc, routed_tables=routed_table_ids
+        )
+        _classify_dropped(dropped_rep, fuzzy=False)
         by_cls = dropped_rep.by_class()
         unrouted_disposition = {
             name: {
