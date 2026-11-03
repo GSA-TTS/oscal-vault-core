@@ -3,7 +3,7 @@ name = "oscal-vault"
 version = "0.1.0"
 description = "Turn FedRAMP SSP .docx documents into an Obsidian knowledge vault and validated NIST OSCAL JSON"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13,<3.14"
 license = { file = "LICENSE.md" }
 dependencies = [
     "python-docx>=1.1.0",
@@ -43,14 +43,14 @@ dev = [
 # Use `echo 3.13 > .python-version` to pin. See benchmark/INAUGURAL_REPORT.md
 # "Backend availability" note.
 benchmark = [
-    "docling-slim[format-docx]>=2.0.0 ; python_version >= '3.13'",
-    "docling-parse>=7.0.0 ; python_version >= '3.13'",
-    "mammoth>=1.10.0 ; python_version >= '3.13'",
-    "mineru>=1.3.0 ; python_version >= '3.13'",
+    "docling-slim[format-docx]>=2.0.0",
+    "docling-parse>=7.0.0",
+    "mammoth>=1.10.0",
+    "mineru>=1.3.0",
     # >=13.0.0 remediates the Pillow advisories currently reported against the
     # benchmark dependency closure. Pillow is benchmark-only, not core runtime.
-    "pillow>=13.0.0 ; python_version >= '3.13'",
-    "rtree>=1.0.0 ; python_version >= '3.13'",
+    "pillow>=13.0.0",
+    "rtree>=1.0.0",
     # unstructured is deliberately not locked here. Its current releases require
     # filelock <4, while the security-fixed ReadWriteLock line is >=4.2.1
     # (CVE-2026-112940). The adapter remains fail-soft and reports unavailable;
@@ -83,4 +83,4 @@ constraint-dependencies = [
 
 [tool.ruff]
 line-length = 88
-target-version = "py311"
+target-version = "py313"
