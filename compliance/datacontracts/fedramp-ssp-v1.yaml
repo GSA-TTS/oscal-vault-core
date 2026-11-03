@@ -1388,10 +1388,14 @@ schema:
         customProperties:
           - property: sourceHeading
             value: "AWS Management"
+          - property: aliasSourceHeading
+            value: "List of AWS Services Used"
           - property: sourceKind
             value: table
           - property: captureStrategy
             value: heading_table_all
+          - property: captureScope
+            value: until_next_same_or_higher
           - property: oscalPath
             value: component-definition.components[0].props
           - property: note

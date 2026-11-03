@@ -255,10 +255,38 @@ def collect(docx_path: Path) -> dict[str, Any]:
         instruction_text_kind,
         is_instruction_colored,
     )
+    from compliance.scripts.classify_dropped_blocks import (
+        CONTROL_TITLE,
+        DISPOSITION,
+        classify as _classify_dropped,
+        collect as _collect_dropped,
+    )
 
     doc = _load_doc(docx_path)
+    doc_tables = list(doc.tables)
     control_tables = find_control_tables(doc)
     routed_table_ids = {id(a.table._tbl) for a in control_tables}
+    try:
+        from compliance.lib import heading_parser
+
+        contract_path = (
+            REPO_ROOT / "compliance" / "datacontracts" / "fedramp-ssp-v1.yaml"
+        )
+        if contract_path.is_file():
+            contract = heading_parser.load_contract(contract_path)
+            extracted = heading_parser.extract_from_docx(docx_path, contract)
+            for obj_rec in extracted.get("objects") or []:
+                for val in (obj_rec.get("properties") or {}).values():
+                    items = val if isinstance(val, list) else [val]
+                    for item in items:
+                        if isinstance(item, dict) and isinstance(
+                            item.get("table_index"), int
+                        ):
+                            t_idx = item["table_index"]
+                            if 0 <= t_idx < len(doc_tables):
+                                routed_table_ids.add(id(doc_tables[t_idx]._tbl))
+    except Exception:
+        pass
 
     def _is_instruction(para) -> bool:
         text = (para.text or "").strip()
@@ -279,9 +307,12 @@ def collect(docx_path: Path) -> dict[str, Any]:
         if kind == "paragraph":
             struct.total_paragraphs += 1
             struct.total_blocks += 1
-            if _heading_level(obj) is not None and (obj.text or "").strip():
+            raw_text = (obj.text or "").strip()
+            if (
+                _heading_level(obj) is not None or CONTROL_TITLE.match(raw_text)
+            ) and raw_text:
                 struct.heading_paragraphs += 1
-                current_heading = _normalize_heading(obj.text)
+                current_heading = _normalize_heading(raw_text)
                 continue
             imgs = _count_images(obj)
             if imgs:
@@ -396,6 +427,21 @@ def collect(docx_path: Path) -> dict[str, Any]:
     # as null here and delegated to validate_oscal.py --parity (which has both
     # stages and now also diffs parameter VALUES and per-control statement
     # counts). `cis_readback_fidelity` is reported under its true name.
+    unrouted_disposition: dict[str, dict[str, int]] = {}
+    try:
+        dropped_rep = _collect_dropped(docx_path)
+        _classify_dropped(dropped_rep, fuzzy=True)
+        by_cls = dropped_rep.by_class()
+        unrouted_disposition = {
+            name: {
+                "blocks": sum(by_cls.get(cls, {}).get("blocks", 0) for cls in members),
+                "chars": sum(by_cls.get(cls, {}).get("chars", 0) for cls in members),
+            }
+            for name, members in DISPOSITION.items()
+        }
+    except Exception:
+        unrouted_disposition = {}
+
     progressive_dimensions = {
         "package_part_coverage": pkg_coverage,
         "structural_node_coverage": struct.routable_block_coverage,
@@ -404,6 +450,8 @@ def collect(docx_path: Path) -> dict[str, Any]:
         "canonical_field_parity": None,  # see validate_oscal.py --parity
         "oscal_field_parity": None,  # see validate_oscal.py --parity
         "opaque_preservation_coverage": opaque_preservation,
+        "unrouted_blocks": struct.dropped_blocks,
+        "unrouted_disposition": unrouted_disposition,
         "explicit_loss_budget": struct.dropped_blocks,
     }
 
@@ -544,7 +592,20 @@ def render_markdown(result: dict[str, Any]) -> str:
             f"| canonical field parity | {_opt_pct('canonical_field_parity')} |",
             f"| OSCAL field parity | {_opt_pct('oscal_field_parity')} |",
             f"| opaque preservation coverage | {_pct(prog.get('opaque_preservation_coverage', 0.0))} |",
-            f"| explicit loss budget (unrouted blocks) | {prog.get('explicit_loss_budget', 0)} |",
+            f"| unrouted blocks | {prog.get('unrouted_blocks', prog.get('explicit_loss_budget', 0))} |",
+        ]
+        disp = prog.get("unrouted_disposition") or {}
+        if disp:
+            ref_d = disp.get("reference") or {"blocks": 0, "chars": 0}
+            adopt_d = disp.get("adopt") or {"blocks": 0, "chars": 0}
+            decl_d = disp.get("decline") or {"blocks": 0, "chars": 0}
+            lines += [
+                f"| unrouted: reference material | {ref_d['blocks']} blocks / {ref_d['chars']} chars |",
+                f"| unrouted: system content | {adopt_d['blocks']} blocks / {adopt_d['chars']} chars |",
+                f"| unrouted: furniture and artifacts | {decl_d['blocks']} blocks / {decl_d['chars']} chars |",
+            ]
+        lines += [
+            f"| explicit loss budget (deprecated alias) | {prog.get('explicit_loss_budget', 0)} |",
             "",
         ]
 

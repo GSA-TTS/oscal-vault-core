@@ -203,7 +203,29 @@ def collect(docx_path: Path) -> Report:
     # scope and the proxies are freed, their ids get reused by new proxies, and
     # routed control tables start matching arbitrary other tables.
     anchors = find_control_tables(document)
+    doc_tables = list(document.tables)
     routed_tables = {id(anchor.table._tbl) for anchor in anchors}
+    try:
+        from compliance.lib import heading_parser
+
+        contract_path = (
+            REPO_ROOT / "compliance" / "datacontracts" / "fedramp-ssp-v1.yaml"
+        )
+        if contract_path.is_file():
+            contract = heading_parser.load_contract(contract_path)
+            extracted = heading_parser.extract_from_docx(docx_path, contract)
+            for obj_rec in extracted.get("objects") or []:
+                for val in (obj_rec.get("properties") or {}).values():
+                    items = val if isinstance(val, list) else [val]
+                    for item in items:
+                        if isinstance(item, dict) and isinstance(
+                            item.get("table_index"), int
+                        ):
+                            t_idx = item["table_index"]
+                            if 0 <= t_idx < len(doc_tables):
+                                routed_tables.add(id(doc_tables[t_idx]._tbl))
+    except Exception:
+        pass
 
     def is_instruction(paragraph) -> bool:
         text = (paragraph.text or "").strip()
@@ -218,10 +240,12 @@ def collect(docx_path: Path) -> Report:
     for child in document.element.body.iterchildren():
         if isinstance(child, CT_P):
             paragraph = Paragraph(child, document)
-            if _heading_level(paragraph) is not None and (paragraph.text or "").strip():
-                heading = " ".join((paragraph.text or "").split()).strip()
-                continue
             text = (paragraph.text or "").strip()
+            if (
+                _heading_level(paragraph) is not None or CONTROL_TITLE.match(text)
+            ) and text:
+                heading = " ".join(text.split()).strip()
+                continue
             images = len(paragraph._p.findall(f".//{{{namespace_a}}}blip"))
             if not text and not images:
                 continue
