@@ -16,7 +16,14 @@ if str(_REPO_ROOT) not in sys.path:
 
 from compliance.scripts.table_coverage import inventory as table_inventory  # noqa: E402
 
-_WORKSPACE = Path.cwd()
+import sys as _ws_sys  # noqa: E402
+
+_WS_CORE = Path(__file__).resolve().parents[2]
+if str(_WS_CORE) not in _ws_sys.path:
+    _ws_sys.path.insert(0, str(_WS_CORE))
+from compliance.lib.workspace import resolve_workspace  # noqa: E402
+
+_WORKSPACE = resolve_workspace()
 # Baselines record the debt of the workspace's own vaults, so they live with them.
 _DEFAULT_BASELINE = _WORKSPACE / "scripts" / "progressive_coverage_baseline.json"
 _VAULT_BASELINE = _WORKSPACE / "scripts" / "vault_debt_baseline.json"

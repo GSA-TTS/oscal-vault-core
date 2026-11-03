@@ -48,6 +48,11 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from compliance.lib.docx_feedback import render_feedback_docx  # noqa: E402
+from compliance.lib.workspace import (  # noqa: E402
+    WorkspaceError,
+    add_workspace_arguments,
+    guard_output,
+)
 from compliance.lib.heading_parser import (  # noqa: E402
     extract,
     extract_from_docx,
@@ -98,7 +103,15 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Output basename (default: derived from source).",
     )
+    add_workspace_arguments(p)
     args = p.parse_args(argv)
+    try:
+        args.output_dir = guard_output(
+            args.output_dir, allow_in_core=args.allow_write_in_core
+        )
+    except WorkspaceError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
 
     contract = load_contract(args.contract)
 

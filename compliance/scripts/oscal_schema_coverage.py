@@ -27,7 +27,15 @@ import argparse
 import json
 import sys
 from pathlib import Path
+
 from typing import Any, Dict, List, Set
+
+import sys as _ws_sys  # noqa: E402
+
+_WS_CORE = Path(__file__).resolve().parents[2]
+if str(_WS_CORE) not in _ws_sys.path:
+    _ws_sys.path.insert(0, str(_WS_CORE))
+from compliance.lib.workspace import resolve_workspace  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
@@ -190,7 +198,7 @@ def _export_sample(model: str, vault_root: Path | None = None) -> Dict[str, Any]
         load_canonical_json,
     )
 
-    vault_root = vault_root or Path.cwd() / "examples" / "vault"
+    vault_root = vault_root or resolve_workspace() / "examples" / "vault"
     if not vault_root.is_dir():
         return None
 

@@ -27,6 +27,12 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from compliance.lib.bundle import build_bundle  # noqa: E402
+from compliance.lib.workspace import (  # noqa: E402
+    WorkspaceError,
+    add_workspace_arguments,
+    guard_output,
+    resolve_workspace,
+)
 
 
 def main() -> int:
@@ -43,7 +49,7 @@ def main() -> int:
     parser.add_argument(
         "--output-dir",
         default=None,
-        help="Output directory for bundles (default: repo_root/.exports/bundles/)",
+        help="Output directory for bundles (default: <workspace>/.exports/bundles/)",
     )
     parser.add_argument(
         "--version",
@@ -61,13 +67,18 @@ def main() -> int:
         default="zst",
         help="Compression type: zst (Zstandard), gz (gzip), or none (default: zst)",
     )
+    add_workspace_arguments(parser)
     args = parser.parse_args()
 
-    output_dir = (
-        Path(args.output_dir).resolve()
-        if args.output_dir
-        else _REPO_ROOT / ".exports" / "bundles"
-    )
+    try:
+        output_dir = guard_output(
+            args.output_dir
+            or resolve_workspace(args.workspace) / ".exports" / "bundles",
+            allow_in_core=args.allow_write_in_core,
+        )
+    except WorkspaceError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
     output_dir.mkdir(parents=True, exist_ok=True)
 
     total_errors = 0

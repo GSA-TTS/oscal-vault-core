@@ -36,6 +36,11 @@ if str(_FISMATIC_SRC) not in sys.path:
 from docx import Document  # noqa: E402
 
 from compliance.lib.control_table_anchors import find_control_tables  # noqa: E402
+from compliance.lib.workspace import (  # noqa: E402
+    WorkspaceError,
+    add_workspace_arguments,
+    guard_output,
+)
 from compliance.lib.control_table_fill import fill_control_tables  # noqa: E402
 from compliance.lib.oscal_source import (  # noqa: E402
     load_from_docx,
@@ -255,7 +260,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--name", default="template-review", help="Output base name without extension"
     )
+    add_workspace_arguments(parser)
     args = parser.parse_args(argv)
+    try:
+        args.out_dir = guard_output(
+            args.out_dir, allow_in_core=args.allow_write_in_core
+        )
+    except WorkspaceError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
     if not args.source.is_file():
         parser.error(f"Source SSP not found: {args.source}")
     if not args.template.is_file():

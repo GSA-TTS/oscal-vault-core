@@ -87,6 +87,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from compliance.lib.workspace import resolve_workspace  # noqa: E402
 from compliance.lib.vault import _NARRATIVE_NOTE_SPECS  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -384,7 +385,7 @@ def render_json(
 def _resolve_vaults(arg_vaults: Optional[List[str]]) -> List[Path]:
     if arg_vaults:
         return [Path(v).resolve() for v in arg_vaults]
-    examples = Path.cwd() / "examples" / "vault"
+    examples = resolve_workspace() / "examples" / "vault"
     if examples.is_dir():
         return [
             d

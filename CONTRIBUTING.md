@@ -57,6 +57,30 @@ A gate whose baseline file is absent reports `SKIPPED` rather than passing
 silently. See [`docs/VAULT_VALIDATION.md`](docs/VAULT_VALIDATION.md) for what
 each gate enforces.
 
+## Vendor the core; do not put system content in it
+
+The pattern is to **vendor this repository** (a git submodule is recommended) into a system
+repository and run the commands from there. Source documents and generated vaults belong in the
+system repository, not here.
+
+```bash
+cd /path/to/my-system-repo
+git submodule add <this repository> vendor/oscal-vault-core
+python vendor/oscal-vault-core/compliance/scripts/init_workspace.py   # layout + .gitignore block
+bash vendor/oscal-vault-core/compliance/scripts/validate_workspace.sh
+```
+
+- Commands write under the workspace (`--workspace`, `OSCAL_VAULT_WORKSPACE`, or the current
+  directory). A vendored core **refuses** to write inside its own tree unless you pass
+  `--allow-write-in-core`.
+- Experimenting in a fork with your own `.docx` works locally. Pull requests are checked by the
+  `guard-system-content` workflow, which rejects source documents (except the blank templates in
+  `compliance/data/blank_template_allowlist.json`), anything under `examples/`, `.exports/`,
+  `.snapshots/`, `review-output/` or `roundtrip_review/`, and generated vault notes. Run the same
+  check locally before you push:
+  `python compliance/scripts/check_system_content.py --git-range origin/main..HEAD`.
+- See [ADR-028](docs/ADR/ADR-028-workspace-and-system-content-guard.md).
+
 ## A note on `.docx` files
 
 This repo's `.gitignore` excludes all `*.docx` files. Please do not add FedRAMP

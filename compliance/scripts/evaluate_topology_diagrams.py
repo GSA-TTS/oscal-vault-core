@@ -26,6 +26,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from compliance.lib.topology import build_topology, load_pps_rows  # noqa: E402
+from compliance.lib.workspace import (  # noqa: E402
+    WorkspaceError,
+    add_workspace_arguments,
+    guard_output,
+)
 from compliance.lib.topology_c4 import render_container, render_context  # noqa: E402
 from compliance.lib.topology_cyclonedx import to_cyclonedx_blueprint  # noqa: E402
 from compliance.lib.topology_eval import (  # noqa: E402
@@ -206,7 +211,16 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Write generated C4 blocks into each Diagrams note",
     )
+    add_workspace_arguments(parser)
     args = parser.parse_args(argv)
+    try:
+        if args.out:
+            args.out = guard_output(args.out, allow_in_core=args.allow_write_in_core)
+        if args.write_vault:
+            guard_output(args.vault, allow_in_core=args.allow_write_in_core)
+    except WorkspaceError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
 
     rubric = load_rubric(RUBRIC)
     slugs = (

@@ -47,6 +47,11 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from compliance.lib.vault import build_vault  # noqa: E402
+from compliance.lib.workspace import (  # noqa: E402
+    WorkspaceError,
+    add_workspace_arguments,
+    guard_output,
+)
 
 # ---------------------------------------------------------------------------
 # Vault I/O helpers
@@ -360,6 +365,7 @@ def main() -> int:
     parser.add_argument(
         "--keep-existing", action="store_true", help="Don't wipe --vault before writing"
     )
+    add_workspace_arguments(parser)
     parser.add_argument(
         "--system-name", help="Override system-characteristics.system-name"
     )
@@ -487,7 +493,11 @@ def main() -> int:
         section_guidance=section_guidance,
     )
 
-    vault_dir = Path(args.vault).resolve()
+    try:
+        vault_dir = guard_output(args.vault, allow_in_core=args.allow_write_in_core)
+    except WorkspaceError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
     if not args.keep_existing:
         _wipe_vault(vault_dir)
     written = write_vault(notes, vault_dir)

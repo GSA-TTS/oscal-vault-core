@@ -14,7 +14,19 @@ import time
 from pathlib import Path
 
 _CORE_ROOT = Path(__file__).resolve().parents[2]
-_WORKSPACE = Path.cwd()
+import sys as _ws_sys  # noqa: E402
+
+_WS_CORE = Path(__file__).resolve().parents[2]
+if str(_WS_CORE) not in _ws_sys.path:
+    _ws_sys.path.insert(0, str(_WS_CORE))
+from compliance.lib.workspace import (  # noqa: E402
+    WorkspaceError,
+    add_workspace_arguments,
+    guard_output,
+    resolve_workspace,
+)
+
+_WORKSPACE = resolve_workspace()
 if str(_CORE_ROOT) not in sys.path:
     sys.path.insert(0, str(_CORE_ROOT))
 
@@ -64,7 +76,15 @@ def main(argv: list[str] | None = None) -> int:
         help="Per-system extraction contracts <plan_id>.yaml (default: ./compliance/datacontracts).",
     )
 
+    add_workspace_arguments(parser)
     args = parser.parse_args(argv)
+    try:
+        args.output_dir = guard_output(
+            args.output_dir, allow_in_core=args.allow_write_in_core
+        )
+    except WorkspaceError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
     if not args.registry.is_file():
         print(f"ERROR: registry not found: {args.registry}", file=sys.stderr)
         return 2

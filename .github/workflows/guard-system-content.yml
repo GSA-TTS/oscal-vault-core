@@ -1,0 +1,32 @@
+name: Guard system content
+
+# Runs from the BASE branch on pull requests, including forks. The workflow file and the
+# allowlist it reads therefore cannot be edited by the pull request being checked, and no PR code
+# is checked out or executed: the check reads the PR's file list through the REST API.
+# Require this check on main in the repository settings (a human step; see ADR-028).
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  guard:
+    name: No system content in the upstream core
+    runs-on: ubuntu-latest
+    steps:
+      # pull_request_target checks out the base branch by default. Do not set `ref:` to the PR head.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Check the pull request's changed files
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python compliance/scripts/check_system_content.py --github-pr "$PR_NUMBER"

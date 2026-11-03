@@ -32,7 +32,15 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+
 from typing import List, Optional
+
+import sys as _ws_sys  # noqa: E402
+
+_WS_CORE = Path(__file__).resolve().parents[2]
+if str(_WS_CORE) not in _ws_sys.path:
+    _ws_sys.path.insert(0, str(_WS_CORE))
+from compliance.lib.workspace import resolve_workspace  # noqa: E402
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -58,7 +66,7 @@ def _iter_target_files(args: argparse.Namespace) -> List[Path]:
     if args.vault:
         vault_dirs = [Path(v) for v in args.vault]
     elif args.all_exports:
-        examples_vault = Path.cwd() / "examples" / "vault"
+        examples_vault = resolve_workspace() / "examples" / "vault"
         if examples_vault.is_dir():
             vault_dirs = [
                 d

@@ -48,7 +48,19 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 
 _CORE_ROOT = Path(__file__).resolve().parents[2]
-_WORKSPACE = Path.cwd()
+import sys as _ws_sys  # noqa: E402
+
+_WS_CORE = Path(__file__).resolve().parents[2]
+if str(_WS_CORE) not in _ws_sys.path:
+    _ws_sys.path.insert(0, str(_WS_CORE))
+from compliance.lib.workspace import (  # noqa: E402
+    WorkspaceError,
+    add_workspace_arguments,
+    guard_output,
+    resolve_workspace,
+)
+
+_WORKSPACE = resolve_workspace()
 _FISMATIC_SRC = _CORE_ROOT / "fismatic" / "src" / "phase_1"
 
 # Drawingml namespace for inline/anchor image detection
@@ -550,9 +562,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         default=_WORKSPACE / "fismatic",
         help="Directory of source .docx files for --all (default: ./fismatic)",
     )
+    add_workspace_arguments(p)
     args = p.parse_args(argv)
     if not args.all and args.docx is None:
         p.error("give --docx <file> or --all")
+    default_out_dir = resolve_workspace(args.workspace) / "examples" / "docx_catchall"
 
     if args.all:
         docx_dir = args.docx_dir
@@ -560,7 +574,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         if not files:
             print(f"No .docx files found under {docx_dir}", file=sys.stderr)
             return 1
-        out_dir = _DEFAULT_OUT_DIR
+        try:
+            out_dir = guard_output(
+                default_out_dir, allow_in_core=args.allow_write_in_core
+            )
+        except WorkspaceError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
         out_dir.mkdir(parents=True, exist_ok=True)
         for f in files:
             base = re.sub(r"[^\w.-]+", "_", f.stem)
@@ -589,7 +609,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
         return 2
     safe_stem = re.sub(r"[^\w.-]+", "_", docx.stem)
-    out = args.output or (_DEFAULT_OUT_DIR / f"{safe_stem}.catchall.md")
+    try:
+        out = guard_output(
+            args.output or (default_out_dir / f"{safe_stem}.catchall.md"),
+            allow_in_core=args.allow_write_in_core,
+        )
+    except WorkspaceError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
     with contextlib.redirect_stdout(io.StringIO()):
         stats = dump_docx(docx, out)
     print(f"wrote {stats['output']}")
