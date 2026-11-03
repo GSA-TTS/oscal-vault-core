@@ -3,7 +3,7 @@ name = "oscal-vault"
 version = "0.1.0"
 description = "Turn FedRAMP SSP .docx documents into an Obsidian knowledge vault and validated NIST OSCAL JSON"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { file = "LICENSE.md" }
 dependencies = [
     "python-docx>=1.1.0",
@@ -77,11 +77,10 @@ package = false
 # Security floors for transitive dependencies. A normal lock refresh selected
 # vulnerable filelock 3.x even though the fixed 4.x line is compatible.
 constraint-dependencies = [
-    "filelock<3.20.4 ; python_version < '3.11'",
-    "filelock>=4.2.1 ; python_version >= '3.11'",
+    "filelock>=4.2.1",
     "urllib3>=2.8.0",
 ]
 
 [tool.ruff]
 line-length = 88
-target-version = "py310"
+target-version = "py311"
