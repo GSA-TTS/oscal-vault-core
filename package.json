@@ -1,7 +1,7 @@
 {
   "private": true,
   "engines": {
-    "node": ">=20 <25"
+    "node": ">=22.12 <25"
   },
   "devDependencies": {
     "jsdom": "26.1.0",
