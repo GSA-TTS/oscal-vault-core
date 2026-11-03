@@ -150,7 +150,7 @@ class TestBuildVaultWithParameters:
         assert "FLATTEN parameters AS parameter" in ac1.body
         assert "| `ac-01_odp.01` | annually" not in ac1.body
 
-    def test_control_without_parameters_shows_none(self):
+    def test_control_without_parameters_omits_empty_view(self):
         import json
 
         from compliance.lib.vault import build_vault
@@ -169,8 +169,5 @@ class TestBuildVaultWithParameters:
         notes = build_vault(ssp, plan_id="s", parser_name="fismatic")
         ac1 = next(n for n in notes if n.relpath == "Controls/AC-01.md")
         assert "parameters" not in ac1.frontmatter
-        assert (
-            'TABLE parameter.param_id AS "Parameter", parameter.value AS "Value"'
-            in ac1.body
-        )
-        assert "FLATTEN parameters AS parameter" in ac1.body
+        assert "# Parameters" not in ac1.body
+        assert "FLATTEN parameters AS parameter" not in ac1.body

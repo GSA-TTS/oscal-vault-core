@@ -392,7 +392,7 @@ def test_control_note_includes_statement_narrative_in_body():
     ac1 = next(n for n in notes if n.relpath == "Controls/AC-01.md")
     # New layered sections (R3 migration)
     assert "# Upstream" in ac1.body
-    assert "# Parameters" in ac1.body
+    assert "# Parameters" not in ac1.body
     assert "# Statement Parts" in ac1.body
     # CRM Guidance is emitted only when a secondary-CRM entry exists (ADR-025);
     # this synthetic SSP has none, so the section must be absent.
@@ -559,7 +559,9 @@ def test_upstream_section_carries_catalog_statement_language():
         ssp = json.load(f)
     notes = build_vault(ssp, plan_id="sample-system-ssp-2024", parser_name="fismatic")
     ac1 = next(n for n in notes if n.relpath == "Controls/AC-01.md")
-    upstream = ac1.body[ac1.body.index("# Upstream") : ac1.body.index("# Parameters")]
+    upstream = ac1.body[
+        ac1.body.index("# Upstream") : ac1.body.index("# Statement Parts")
+    ]
     # Real AC-1 catalog language, not the old "Original upstream ..." placeholder.
     assert "access control policy" in upstream
     assert "Original upstream control language" not in upstream
@@ -1485,3 +1487,17 @@ def test_control_part_template_present_and_valid():
     assert "inheritance_mode" in cp.frontmatter
     assert "part_letter" in cp.frontmatter
     assert "component" in cp.frontmatter
+
+
+def test_control_template_defers_parameter_view_until_values_exist():
+    """The generic authoring template must not create an empty parameter view."""
+    from compliance.lib.vault import build_template_notes
+
+    control = next(
+        note
+        for note in build_template_notes()
+        if note.relpath == "_meta/templates/Control.md"
+    )
+
+    assert "# Parameters" not in control.body
+    assert "FLATTEN parameters AS parameter" not in control.body

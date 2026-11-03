@@ -855,15 +855,19 @@ def build_control_note(
     lines.append("")
 
     # Parameters are losslessly stored in frontmatter. Render that canonical
-    # source in Obsidian instead of duplicating every value in Markdown.
-    lines.append("# Parameters")
-    lines.append("")
-    lines.append("```dataview")
-    lines.append('TABLE parameter.param_id AS "Parameter", parameter.value AS "Value"')
-    lines.append("FROM [[]]")
-    lines.append("FLATTEN parameters AS parameter")
-    lines.append("```")
-    lines.append("")
+    # source only when recovered values exist; an empty Dataview block obscures
+    # the implementation narrative without adding review information.
+    if param_list:
+        lines.append("# Parameters")
+        lines.append("")
+        lines.append("```dataview")
+        lines.append(
+            'TABLE parameter.param_id AS "Parameter", parameter.value AS "Value"'
+        )
+        lines.append("FROM [[]]")
+        lines.append("FLATTEN parameters AS parameter")
+        lines.append("```")
+        lines.append("")
 
     # Statement Parts section
     lines.append("# Statement Parts")
@@ -1927,12 +1931,6 @@ def build_template_notes() -> List[VaultNote]:
             "# {{title}}\n\n"
             "# Upstream\n\n"
             "> Original upstream control language.\n\n"
-            "# Parameters\n\n"
-            "```dataview\n"
-            'TABLE parameter.param_id AS "Parameter", parameter.value AS "Value"\n'
-            "FROM [[]]\n"
-            "FLATTEN parameters AS parameter\n"
-            "```\n\n"
             "# Statement Parts\n\n"
             "## Part a\n"
             "statement_part:: a\n"
