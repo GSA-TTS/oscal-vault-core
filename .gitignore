@@ -37,6 +37,9 @@ htmlcov/
 venv/
 .python-version
 
+# --- Node (Mermaid documentation parser gate) ---
+/node_modules/
+
 # --- Editors / OS ---
 .vscode/
 .idea/
