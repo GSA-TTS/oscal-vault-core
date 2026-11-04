@@ -491,6 +491,15 @@ def main(argv: List[str] | None = None) -> int:
 
     print(f"Validating {len(vaults)} vault(s): {', '.join(v.name for v in vaults)}\n")
 
+    examples_root = _WORKSPACE / "examples" / "vault"
+    if not args.vault and examples_root.is_dir():
+        _, portfolio_warnings = vault_graph.build_portfolio_graph(examples_root)
+        if portfolio_warnings:
+            print(f"[WARN] portfolio layer: {len(portfolio_warnings)} warning(s)")
+            for pw in portfolio_warnings[:10]:
+                print(f"        {pw}")
+            warn_count += 1
+
     baseline_data: Dict[str, Set[str]] = {}
     if args.no_new_debt:
         bp = Path(args.baseline_file)
