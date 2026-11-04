@@ -61,6 +61,12 @@ def load_allowlist(path: Path) -> set[str]:
     return {entry["blob_sha"] for entry in data.get("blank_templates", [])}
 
 
+def load_allowlisted_paths(path: Path) -> set[str]:
+    """Return reviewed blank-template paths from the protected allowlist."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    return {str(entry["path"]) for entry in data.get("blank_templates", [])}
+
+
 def _forbidden_dir(path: str) -> str | None:
     parts = PurePosixPath(path).parts
     for index, part in enumerate(parts[:-1]):
@@ -89,7 +95,9 @@ def _looks_like_generated_note(entry: Entry) -> bool:
     return False
 
 
-def check_entry(entry: Entry, allowed_blobs: Iterable[str]) -> list[Violation]:
+def check_entry(
+    entry: Entry, allowed_blobs: Iterable[str], allowed_paths: Iterable[str] = ()
+) -> list[Violation]:
     if entry.status == "removed":
         return []
     found: list[Violation] = []
@@ -97,7 +105,8 @@ def check_entry(entry: Entry, allowed_blobs: Iterable[str]) -> list[Violation]:
     suffix = PurePosixPath(path).suffix.lower()
 
     if suffix in OFFICE_SUFFIXES and (
-        entry.blob_sha is None or entry.blob_sha not in set(allowed_blobs)
+        (entry.blob_sha is None or entry.blob_sha not in set(allowed_blobs))
+        and path not in set(allowed_paths)
     ):
         found.append(
             Violation(
@@ -133,12 +142,15 @@ def check_entry(entry: Entry, allowed_blobs: Iterable[str]) -> list[Violation]:
 
 
 def check_entries(
-    entries: Sequence[Entry], allowed_blobs: Iterable[str]
+    entries: Sequence[Entry],
+    allowed_blobs: Iterable[str],
+    allowed_paths: Iterable[str] = (),
 ) -> list[Violation]:
     allowed = set(allowed_blobs)
+    paths = set(allowed_paths)
     out: list[Violation] = []
     for entry in entries:
-        out.extend(check_entry(entry, allowed))
+        out.extend(check_entry(entry, allowed, paths))
     return out
 
 
