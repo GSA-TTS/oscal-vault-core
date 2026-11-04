@@ -175,13 +175,21 @@ def classify_source_table(table: DocxTable) -> str | None:
 
 
 def projectable_rows(table: DocxTable) -> List[Dict[str, Any]]:
-    """Return row projections only for simple rectangular, unmerged tables."""
+    """Return row projections only for reviewable rectangular source tables.
+
+    ``user_roles`` tables in the GSA SSP starter use horizontal spans for the
+    sensitivity/privilege layout but retain one physical cell per semantic
+    column and no vertical carry-forward merges. Those spans are safe to
+    preserve as the cell's value; all other merged shapes remain preserved-only.
+    """
     if len(table.cells) < 2 or not table.cells[0]:
         return []
-    if any(
-        cell.grid_span != 1 or cell.v_merge is not None
-        for row in table.cells
-        for cell in row
+    cells = [cell for row in table.cells for cell in row]
+    if any(cell.v_merge is not None for cell in cells):
+        return []
+    if (
+        any(cell.grid_span != 1 for cell in cells)
+        and classify_source_table(table) != "user_roles"
     ):
         return []
     width = len(table.cells[0])

@@ -260,9 +260,10 @@ self-approving.
    `until_next_same_or_higher` reaches all 31 H3 runbook sections. This governs
    68,406 characters — more than everything else here combined. Do not build
    anything until this is measured.
-6. **Decide on merge-aware row projection.** `user_roles` cannot project while
-   `projectable_rows()` rejects merged cells. Either support `grid_span` or
-   decline the table explicitly.
+6. **Implement narrow merge-aware row projection.** The owner-authorized GSA
+   Pages measurement found only four horizontal `grid_span=2` cells and no
+   vertical merges in `user_roles`. Project that exact `user_roles` shape while
+   retaining preserved-only behavior for every other merged table.
 
 ### Decline on the record
 

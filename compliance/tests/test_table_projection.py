@@ -61,6 +61,46 @@ def test_merged_table_is_not_flattened_into_inline_properties():
     assert projectable_rows(_table(merged=True)) == []
 
 
+def test_user_roles_horizontal_spans_project_without_flattening_columns():
+    table = DocxTable(
+        node_id="word/document.xml#body/tbl[1]",
+        locator=DocxLocator("word/document.xml", "body/tbl[1]", 2, "table"),
+        num_rows=2,
+        num_cols=7,
+        cells=[
+            [
+                DocxTableCell(0, 0, "Role"),
+                DocxTableCell(0, 1, "Internal or External"),
+                DocxTableCell(
+                    0,
+                    2,
+                    "Privileged (P), Non-Privileged (NP), or No Logical Access (NLA)",
+                ),
+                DocxTableCell(0, 3, "Sensitivity Level", grid_span=2),
+                DocxTableCell(0, 4, "Authorized Privileges"),
+                DocxTableCell(0, 5, "Functions Performed"),
+                DocxTableCell(0, 6, "MFA Authentication Method"),
+            ],
+            [
+                DocxTableCell(1, 0, "Administrator"),
+                DocxTableCell(1, 1, "Internal"),
+                DocxTableCell(1, 2, "P"),
+                DocxTableCell(1, 3, "Moderate"),
+                DocxTableCell(1, 4, "Manage users", grid_span=2),
+                DocxTableCell(1, 5, "Administer service"),
+                DocxTableCell(1, 6, "PIV"),
+            ],
+        ],
+    )
+
+    rows = projectable_rows(table)
+
+    assert len(rows) == 1
+    assert rows[0]["fields"]["role"] == "Administrator"
+    assert rows[0]["fields"]["authorized_privileges"] == "Manage users"
+    assert rows[0]["fields"]["functions_performed"] == "Administer service"
+
+
 def test_exact_control_summary_family_is_classified_without_flattening():
     table = _table(merged=True)
     table.cells[0][0].text = "AC-02(01)"
