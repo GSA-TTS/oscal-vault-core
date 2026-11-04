@@ -60,8 +60,51 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--list", action="store_true", help="list orphans, unresolved, ambiguous"
     )
+    parser.add_argument(
+        "--portfolio",
+        nargs="?",
+        const="",
+        help="opt-in portfolio mode: evaluate examples/vault/ (or the given directory) as one vault",
+    )
     add_workspace_arguments(parser)
     args = parser.parse_args(argv)
+
+    if args.portfolio is not None:
+        p_root = (
+            Path(args.portfolio).resolve()
+            if args.portfolio
+            else resolve_workspace(args.workspace) / "examples" / "vault"
+        )
+        if not p_root.is_dir():
+            print(f"ERROR: portfolio root not found: {p_root}", file=sys.stderr)
+            return 2
+        graph, warnings = vault_graph.build_portfolio_graph(p_root)
+        m = vault_graph.metrics(graph)
+        print(
+            f"{p_root.name} (portfolio): {m['notes']} notes, {m['edges']} edges, "
+            f"{m['orphans_content']} content orphans ({m['orphans_exempt']} exempt), "
+            f"{m['unresolved_links']} unresolved, {m['ambiguous_links']} ambiguous"
+        )
+        for w in warnings:
+            print(f"  WARN: {w}")
+        if args.out:
+            try:
+                out = guard_output(args.out, allow_in_core=args.allow_write_in_core)
+            except WorkspaceError as exc:
+                print(f"ERROR: {exc}", file=sys.stderr)
+                return 2
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(
+                json.dumps(
+                    {"schema": 1, "portfolio": m, "warnings": warnings},
+                    indent=2,
+                    sort_keys=False,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            print(f"wrote {out}")
+        return 0
 
     vaults = _vault_dirs(args)
     if not vaults:

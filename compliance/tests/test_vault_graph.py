@@ -253,3 +253,20 @@ def test_a_note_that_only_embeds_images_is_an_orphan_but_is_labelled_as_such(tmp
     assert vg.attachment_only(graph) == ["Diagrams/d.md"]
     report = vg.metrics(graph)
     assert report["orphans_content"] == 2 and report["orphans_attachment_only"] == 1
+
+
+def test_portfolio_graph_scopes_intra_system_paths_and_warns_on_root_obsidian(tmp_path):
+    """R22 PR 4: opening examples/vault/ as one vault resolves intra-system paths and warns (never fails) on cross-system bare ambiguity and root .obsidian/."""
+    (tmp_path / ".obsidian").mkdir()
+    note(tmp_path, "sys-a/Controls/AC-02.md", "")
+    note(tmp_path, "sys-b/Controls/AC-02.md", "")
+    note(tmp_path, "sys-a/Systems/sys-a.md", "[[Controls/AC-02]] [[AC-02]]")
+    graph, warnings = vg.build_portfolio_graph(tmp_path)
+    assert graph.inn["sys-a/Controls/AC-02.md"] == {"sys-a/Systems/sys-a.md"}
+    assert any("root-level .obsidian/" in w for w in warnings)
+    assert any("cross-system ambiguity" in w and "AC-02" in w for w in warnings)
+
+    res = _run("--portfolio", str(tmp_path))
+    assert res.returncode == 0
+    assert "WARN:" in res.stdout
+

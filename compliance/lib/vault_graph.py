@@ -133,6 +133,11 @@ class VaultIndex:
             matches = sorted(
                 v for k, v in self.by_path.items() if k.endswith("/" + note_key)
             )
+            if len(matches) > 1 and source and "/" in source:
+                prefix = source.split("/", 1)[0] + "/"
+                scoped = [m for m in matches if m.startswith(prefix)]
+                if len(scoped) == 1:
+                    matches = scoped
         else:
             matches = sorted(self.by_name.get(note_key, []))
         if matches:
@@ -211,6 +216,29 @@ def build_graph(vault: Path, *, include_templates: bool = False) -> Graph:
             elif res.status == AMBIGUOUS:
                 graph.ambiguous.append((rel, clean_target(raw), res.targets))
     return graph
+
+
+def build_portfolio_graph(
+    portfolio_root: Path, *, include_templates: bool = False
+) -> tuple[Graph, list[str]]:
+    """Build a single graph over a portfolio directory (such as ``examples/vault/``).
+
+    Returns ``(graph, warnings)``. Never fails: warns on a root-level ``.obsidian/``
+    directory and on any cross-system link ambiguity.
+    """
+    root = Path(portfolio_root).resolve()
+    warnings: list[str] = []
+    if (root / ".obsidian").is_dir():
+        warnings.append(
+            f"{root.name}/.obsidian: root-level .obsidian/ directory detected; "
+            "each system subfolder is normally opened as its own vault."
+        )
+    graph = build_graph(root, include_templates=include_templates)
+    for src, target, cands in graph.ambiguous:
+        warnings.append(
+            f"cross-system ambiguity: {src} -> [[{target}]] matches {', '.join(cands)}"
+        )
+    return graph, warnings
 
 
 def _is_template_slot(raw: str) -> bool:
