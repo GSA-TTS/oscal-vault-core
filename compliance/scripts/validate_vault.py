@@ -491,6 +491,7 @@ def main(argv: List[str] | None = None) -> int:
 
     print(f"Validating {len(vaults)} vault(s): {', '.join(v.name for v in vaults)}\n")
 
+    warn_count = 0
     examples_root = _WORKSPACE / "examples" / "vault"
     if not args.vault and examples_root.is_dir():
         _, portfolio_warnings = vault_graph.build_portfolio_graph(examples_root)
@@ -512,8 +513,6 @@ def main(argv: List[str] | None = None) -> int:
                 print(f"WARN: could not load baseline file: {e}")
 
     error_level_failures = 0
-    warn_count = 0
-
     # --- 1) Focused sub-validators -----------------------------------------
     for name, error_level in (
         ("validate_frontmatter.py", True),

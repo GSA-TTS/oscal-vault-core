@@ -269,4 +269,3 @@ def test_portfolio_graph_scopes_intra_system_paths_and_warns_on_root_obsidian(tm
     res = _run("--portfolio", str(tmp_path))
     assert res.returncode == 0
     assert "WARN:" in res.stdout
-

@@ -22,8 +22,8 @@ SCRIPT = ROOT / "compliance" / "scripts" / "check_system_content.py"
 BLANK_SHA = "b83e5223dbad8a518b4d54dbd3098dea944cfbfb"
 
 
-def rules(entries, allowed=()):
-    return sorted({v.rule for v in check_entries(entries, allowed)})
+def rules(entries, allowed=(), allowed_paths=()):
+    return sorted({v.rule for v in check_entries(entries, allowed, allowed_paths)})
 
 
 def test_unknown_docx_is_refused_even_with_an_innocent_name():
@@ -55,6 +55,17 @@ def test_allowlisted_blank_template_blob_is_accepted_only_by_hash():
     ) == ["office-document"]
     # allowlisted bytes under a new name are fine (it is the same blank template)
     assert rules([Entry("elsewhere/copy.docx", blob_sha=BLANK_SHA)], allowed) == []
+
+
+def test_existing_allowlisted_template_path_may_be_reviewed_for_update():
+    allowed_paths = {"templates/Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx"}
+    assert (
+        rules([Entry(next(iter(allowed_paths)), blob_sha="f" * 40)], (), allowed_paths)
+        == []
+    )
+    assert rules(
+        [Entry("templates/unreviewed.docx", blob_sha="f" * 40)], (), allowed_paths
+    ) == ["office-document"]
 
 
 def test_missing_blob_hash_fails_closed():

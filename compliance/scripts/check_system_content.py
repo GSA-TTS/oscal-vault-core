@@ -32,6 +32,7 @@ from compliance.lib.system_content_guard import (  # noqa: E402
     check_entries,
     entries_from_github_files,
     load_allowlist,
+    load_allowlisted_paths,
 )
 
 _ALLOWLIST = _ROOT / "compliance" / "data" / "blank_template_allowlist.json"
@@ -135,6 +136,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         allowed = load_allowlist(args.allowlist)
+        allowed_paths = load_allowlisted_paths(args.allowlist)
         if args.git_range:
             rev = args.git_range.split("..")[-1] or "HEAD"
             entries = entries_from_git(args.repo, [args.git_range], rev)
@@ -154,7 +156,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: could not inspect changes: {exc}", file=sys.stderr)
         return 2  # fail closed: an unreadable change set must not look clean
 
-    violations = check_entries(entries, allowed)
+    violations = check_entries(entries, allowed, allowed_paths)
     print(f"checked {len(entries)} changed file(s)")
     for violation in violations:
         print(f"  VIOLATION {violation}")
