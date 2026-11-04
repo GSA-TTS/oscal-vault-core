@@ -63,7 +63,7 @@ def test_low_is_the_gsa_assessment_reference_not_nist_low():
     }
 
 
-def test_low_template_drift_is_limited_to_tracked_alignment_defects():
+def test_low_template_matches_the_gsa_assessment_reference():
     baselines, provenance = _load()
     expected = {canonical_control_id(control_id) for control_id in baselines["low"]}
     template_ids = [
@@ -75,22 +75,19 @@ def test_low_template_drift_is_limited_to_tracked_alignment_defects():
         control_id for control_id, count in Counter(template_ids).items() if count > 1
     )
 
-    alignment = provenance["low"]["known_template_alignment"]
-    assert {
+    observed = {
         "reference_without_template_table": sorted(expected - actual),
         "template_table_without_reference": sorted(actual - expected),
         "duplicate_template_control_ids": duplicates,
     } == {
-        key: alignment[key]
-        for key in (
-            "reference_without_template_table",
-            "template_table_without_reference",
-            "duplicate_template_control_ids",
-        )
+        "reference_without_template_table": [],
+        "template_table_without_reference": [],
+        "duplicate_template_control_ids": [],
     }
-    assert alignment["issues"] == {
-        "reference_without_template_table": 30,
-        "template_table_without_reference": 33,
+    assert observed
+    assert provenance["low"]["known_template_alignment"]["issues"] == {
+        "reference_without_template_table": None,
+        "template_table_without_reference": None,
     }
 
 

@@ -9,19 +9,13 @@
     "control_count": 158,
     "control_ids_sha256": "3a0111e4bc919e558261c0766e1b8fa6b949005bac8235f9cb72edcdf281576a",
     "known_template_alignment": {
-      "duplicate_template_control_ids": [
-        "RA-3"
-      ],
+      "duplicate_template_control_ids": [],
       "issues": {
-        "reference_without_template_table": 30,
-        "template_table_without_reference": 33
+        "reference_without_template_table": null,
+        "template_table_without_reference": null
       },
-      "reference_without_template_table": [
-        "RA-3(1)"
-      ],
-      "template_table_without_reference": [
-        "CA-8(2)"
-      ]
+      "reference_without_template_table": [],
+      "template_table_without_reference": []
     },
     "semantics": "GSA Low assessment baseline used for SSP coverage reconciliation",
     "source": {
