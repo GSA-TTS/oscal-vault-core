@@ -2,8 +2,8 @@
   "_comment": "Git blob SHAs of the only office documents allowed in this repository: the blank GSA templates (ADR-021) and the jinja round-trip templates. They contain no customer content. Changing this file needs a CODEOWNERS review; the guard reads it from the base branch, so a pull request cannot widen its own allowlist.",
   "blank_templates": [
     {"path": "compliance/templates/high-sspp.jinja.docx", "blob_sha": "f7e0d970f60c8c1832388c69d2635d1e5bc526c2"},
-    {"path": "compliance/templates/low-sspp.jinja.docx", "blob_sha": "87831ac2f866d186b979b9a054d3cfbc1145509e"},
-    {"path": "compliance/templates/moderate-sspp.jinja.docx", "blob_sha": "b83e5223dbad8a518b4d54dbd3098dea944cfbfb"},
+    {"path": "compliance/templates/low-sspp.jinja.docx", "blob_sha": "06a6e9b38f3a67cb4517674f0f92fd813aa4ceaa"},
+    {"path": "compliance/templates/moderate-sspp.jinja.docx", "blob_sha": "e0957f0758de9480ed25a8eb983a13dfdadd7908"},
     {"path": "templates/High-SSPP-Template-[Contains-CUI]-10-16-2024.docx", "blob_sha": "fade626f17922611b59634b1110138d483cdc7e2"},
     {"path": "templates/Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx", "blob_sha": "d4524b92ed75580f5936222d3e1ab1fdfdb456f1"},
     {"path": "templates/Moderate-SSPP-Template-[Contains-CUI]-10-16-2024.docx", "blob_sha": "b4be2910113b0ddce2666ddd87eedbf35f65fe0e"}
