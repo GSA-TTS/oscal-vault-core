@@ -158,3 +158,31 @@ def statement_text_map_from_oscal_ssp(
         if stmts:
             out[control_id] = stmts
     return out
+
+
+def whole_control_text_map_from_oscal_ssp(oscal_ssp: dict[str, Any]) -> dict[str, str]:
+    """Build ``{control_id: text}`` for requirements that have no statements.
+
+    A requirement without ``statements`` carries its narrative only in
+    ``by-components`` on the requirement itself. ``statement_text_map_from_oscal_ssp``
+    cannot represent that (there is no statement id to key it by), so without this
+    map the narrative never reaches the DOCX control table. Requirements that do
+    have statements are excluded: their text is already in the statement map.
+    """
+    ssp = oscal_ssp.get("system-security-plan", oscal_ssp)
+    requirements = (ssp.get("control-implementation") or {}).get(
+        "implemented-requirements", []
+    )
+    out: dict[str, str] = {}
+    for req in requirements:
+        control_id = req.get("control-id")
+        if not control_id or req.get("statements"):
+            continue
+        text = "\n\n".join(
+            str(component.get("description") or "").strip()
+            for component in req.get("by-components", [])
+            if str(component.get("description") or "").strip()
+        )
+        if text:
+            out[control_id] = text
+    return out

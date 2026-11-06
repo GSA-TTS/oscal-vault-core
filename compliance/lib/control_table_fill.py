@@ -267,12 +267,28 @@ def _fill_narrative(
     return results
 
 
+def _fill_whole_control(
+    anchor: ControlTableAnchor, text: str
+) -> dict[str, str | bool | None]:
+    """Write a statement-less control's narrative into the single blank answer cell.
+
+    Only the blank answer cell is used. A template table that has "Part" rows but a
+    source control without statements is reported as ``unmatched`` instead of being
+    guessed into a part row, so the gap stays visible in the manifest.
+    """
+    if anchor.blank_answer_cell is not None:
+        anchor.blank_answer_cell.text = text
+        return {"placement": "blank-answer", "written": True}
+    return {"placement": "unmatched", "written": False}
+
+
 def fill_control_tables(
     docx_path: str | Path | DocxDocument,
     controls: list[CanonicalControl],
     output_path: str | Path,
     *,
     statement_text_by_control: dict[str, dict[str, str]] | None = None,
+    whole_control_text_by_control: dict[str, str] | None = None,
     normalize_id=None,
 ) -> ControlFillResult:
     """Fill every matching CIS table in ``docx_path`` from ``controls``.
@@ -296,6 +312,12 @@ def fill_control_tables(
         carries ``statement_ids``, not their text -- see
         ``canonical_model.py``). When omitted, narrative Part rows are left
         untouched (only checkboxes are set).
+    whole_control_text_by_control:
+        Optional ``{control_id: text}`` for controls that have no statements, so
+        their narrative would otherwise be dropped (see
+        ``oscal_source.whole_control_text_map_from_oscal_ssp``). Written to the
+        single blank answer cell; reported under ``whole_control`` in each control
+        result.
     normalize_id:
         Control-ID normalizer, defaulting to
         ``fismatic.parser.normalize_control_id`` (imported lazily so this
@@ -356,6 +378,7 @@ def fill_control_tables(
                     "normalized_control_id": norm,
                     "target_tables": [],
                     "statements": [],
+                    "whole_control": None,
                 }
             )
             continue
@@ -374,6 +397,7 @@ def fill_control_tables(
             control._statement_text_by_id = texts  # type: ignore[attr-defined]
         target_tables = []
         statement_results = []
+        whole_control: dict[str, str | bool | None] | None = None
         for anchor in matching_anchors:
             _set_checkbox_lines(
                 anchor.status_cell.paragraphs,
@@ -386,6 +410,14 @@ def fill_control_tables(
                 ORIGINATION_KEY_PATTERNS,
             )
             statement_results.extend(_fill_narrative(anchor, control))
+            whole_text = (whole_control_text_by_control or {}).get(control.control_id)
+            if whole_text and not control.statement_ids:
+                result = _fill_whole_control(anchor, whole_text)
+                if whole_control is not None:
+                    result["written"] = bool(
+                        result["written"] and whole_control["written"]
+                    )
+                whole_control = result
             target_tables.append(
                 {
                     "table_index": anchor.table_index,
@@ -402,6 +434,7 @@ def fill_control_tables(
                 "normalized_control_id": norm,
                 "target_tables": target_tables,
                 "statements": statement_results,
+                "whole_control": whole_control,
             }
         )
 
