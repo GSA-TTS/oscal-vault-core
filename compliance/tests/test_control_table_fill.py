@@ -392,6 +392,25 @@ class TestSyntheticFillAndFismaticReadback:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(
+    not _LOW_JINJA.exists() or not _MOD_JINJA.exists(),
+    reason="committed Low/Moderate jinja templates absent",
+)
+def test_gsa_pages_template_part_anchors_are_unambiguous():
+    """Prevent reintroducing the GSA Pages RA-03 / IR-04 mapping defects."""
+    moderate = find_control_tables(_MOD_JINJA)
+    ra_03 = [anchor for anchor in moderate if anchor.control_id == "RA-03"]
+    ra_03_01 = [anchor for anchor in moderate if anchor.control_id == "RA-03(01)"]
+    assert len(ra_03) == 1
+    assert len(ra_03_01) == 1
+    assert set(ra_03[0].part_rows) == {"a", "b", "c", "d", "e", "f"}
+    assert set(ra_03_01[0].part_rows) == {"a", "b"}
+
+    low = find_control_tables(_LOW_JINJA)
+    ir_04 = next(anchor for anchor in low if anchor.control_id == "IR-04")
+    assert set(ir_04.part_rows) == {"a", "b", "c", "d"}
+
+
 @pytest.mark.slow
 @pytest.mark.skipif(
     not _LOW_JINJA.exists(), reason="committed Low jinja template absent"
