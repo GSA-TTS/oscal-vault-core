@@ -98,6 +98,107 @@ def _minimal_valid_component_definition() -> dict:
     }
 
 
+def _minimal_valid_poam() -> dict:
+    return {
+        "plan-of-action-and-milestones": {
+            "uuid": _uuid(),
+            "metadata": {
+                "title": "POA&M",
+                "last-modified": "2026-07-20T00:00:00Z",
+                "version": "1.0",
+                "oscal-version": "1.1.3",
+            },
+            "import-ssp": {"href": "ssp.json"},
+            "poam-items": [{"uuid": _uuid(), "title": "FIND-1", "description": "d"}],
+        }
+    }
+
+
+def _minimal_valid_assessment_results() -> dict:
+    return {
+        "assessment-results": {
+            "uuid": _uuid(),
+            "metadata": {
+                "title": "AR",
+                "last-modified": "2026-07-20T00:00:00Z",
+                "version": "1.0",
+                "oscal-version": "1.1.3",
+            },
+            "import-ap": {"href": "ap.json"},
+            "results": [
+                {
+                    "uuid": _uuid(),
+                    "title": "Result",
+                    "description": "d",
+                    "start": "2026-07-20T00:00:00Z",
+                    "reviewed-controls": {"control-selections": [{"include-all": {}}]},
+                }
+            ],
+        }
+    }
+
+
+class TestPoamAndAssessmentResults:
+    @pytest.mark.parametrize("version", ["1.1.3", "1.0.4"])
+    def test_minimal_poam_is_valid(self, version):
+        doc = _minimal_valid_poam()
+        doc["plan-of-action-and-milestones"]["metadata"]["oscal-version"] = version
+        result = validate_oscal_document(doc, oscal_version=version)
+        assert result.valid, result.errors
+        assert result.document_type == "plan-of-action-and-milestones"
+
+    @pytest.mark.parametrize("version", ["1.1.3", "1.0.4"])
+    def test_minimal_assessment_results_is_valid(self, version):
+        doc = _minimal_valid_assessment_results()
+        doc["assessment-results"]["metadata"]["oscal-version"] = version
+        result = validate_oscal_document(doc, oscal_version=version)
+        assert result.valid, result.errors
+        assert result.document_type == "assessment-results"
+
+    def test_poam_missing_required_field_reported(self):
+        doc = _minimal_valid_poam()
+        del doc["plan-of-action-and-milestones"]["poam-items"]
+        result = validate_oscal_document(doc)
+        assert not result.valid
+        assert any("poam-items" in e for e in result.errors)
+
+    def test_assessment_results_missing_results_reported(self):
+        doc = _minimal_valid_assessment_results()
+        del doc["assessment-results"]["results"]
+        result = validate_oscal_document(doc)
+        assert not result.valid
+
+    def test_detects_new_wrappers(self):
+        assert (
+            detect_document_type(_minimal_valid_poam())
+            == "plan-of-action-and-milestones"
+        )
+        assert (
+            detect_document_type(_minimal_valid_assessment_results())
+            == "assessment-results"
+        )
+
+    def test_available_types_include_new_models(self):
+        types = available_document_types()
+        assert "plan-of-action-and-milestones" in types
+        assert "assessment-results" in types
+
+    def test_semantic_fails_closed_for_new_models(self):
+        result = validate_oscal_document(_minimal_valid_poam(), semantic=True)
+        assert not result.valid
+        assert result.errors == [
+            "semantic: unsupported document type 'plan-of-action-and-milestones'"
+        ]
+
+    def test_semantics_report_unsupported_type(self):
+        from compliance.lib.validate_oscal import validate_oscal_semantics
+
+        errors = validate_oscal_semantics(_minimal_valid_poam())
+        assert errors == [
+            "semantic: unsupported document type 'plan-of-action-and-milestones'"
+        ]
+
+
 class TestDocumentTypeDetection:
     def test_detects_ssp_wrapper(self):
         assert detect_document_type(_minimal_valid_ssp()) == "system-security-plan"
