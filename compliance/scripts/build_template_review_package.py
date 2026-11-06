@@ -45,6 +45,7 @@ from compliance.lib.control_table_fill import fill_control_tables  # noqa: E402
 from compliance.lib.oscal_source import (  # noqa: E402
     load_from_docx,
     statement_text_map_from_oscal_ssp,
+    whole_control_text_map_from_oscal_ssp,
 )
 from fismatic.ssp_converter import SSPConverter  # noqa: E402
 
@@ -210,6 +211,7 @@ def build_review_package(
         controls,
         output_docx,
         statement_text_by_control=statements,
+        whole_control_text_by_control=whole_control_text_map_from_oscal_ssp(oscal),
     )
     doc = Document(str(output_docx))
     _add_cover(doc, source, template)

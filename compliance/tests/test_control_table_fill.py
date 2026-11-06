@@ -554,3 +554,132 @@ def test_high_template_control_tables_detected(tmp_path):
     result = fill_control_tables(_HIGH_JINJA, controls, out)
     assert len(result.filled_control_ids) == len(anchors)
     assert out.exists()
+
+
+class TestWholeControlNarrative:
+    """A control with no statements keeps its narrative in requirement-level
+    ``by-components``; it must still reach the DOCX control table."""
+
+    def _ssp(self, *requirements: dict) -> dict:
+        return {
+            "system-security-plan": {
+                "control-implementation": {
+                    "implemented-requirements": list(requirements)
+                }
+            }
+        }
+
+    def _req(self, control_id: str, text: str, statements: list | None = None) -> dict:
+        req = {
+            "control-id": control_id,
+            "by-components": [{"description": text}],
+            "props": [{"name": "implementation-status", "value": "implemented"}],
+        }
+        if statements is not None:
+            req["statements"] = statements
+        return req
+
+    def test_map_includes_only_statementless_requirements(self):
+        from compliance.lib.oscal_source import whole_control_text_map_from_oscal_ssp
+
+        ssp = self._ssp(
+            self._req("ia-6", "Not applicable."),
+            self._req(
+                "ac-1",
+                "Requirement-level text.",
+                [{"statement-id": "ac-1_smt.a", "description": "Part text."}],
+            ),
+            self._req("ia-7", "   "),
+        )
+        assert whole_control_text_map_from_oscal_ssp(ssp) == {"ia-6": "Not applicable."}
+
+    def test_text_is_written_to_the_blank_answer_cell(self, tmp_path):
+        doc = docx.Document()
+        _add_cis_table(doc, "IA-06", with_parts=False)
+        control = CanonicalControl.from_raw(
+            "ia-6", raw_status="implemented", raw_origination=[], statement_ids=[]
+        )
+        out = tmp_path / "filled.docx"
+        result = fill_control_tables(
+            doc,
+            [control],
+            out,
+            whole_control_text_by_control={"ia-6": "Not applicable here."},
+        )
+        assert (
+            "Not applicable here."
+            in docx.Document(str(out)).tables[0].rows[4].cells[0].text
+        )
+        assert result.control_results[0]["whole_control"] == {
+            "placement": "blank-answer",
+            "written": True,
+        }
+
+    def test_part_row_table_is_reported_not_guessed(self, tmp_path):
+        doc = docx.Document()
+        _add_cis_table(doc, "AC-1", with_parts=True)
+        control = CanonicalControl.from_raw(
+            "ac-1", raw_status="implemented", raw_origination=[], statement_ids=[]
+        )
+        out = tmp_path / "filled.docx"
+        result = fill_control_tables(
+            doc, [control], out, whole_control_text_by_control={"ac-1": "Orphan text."}
+        )
+        assert result.control_results[0]["whole_control"] == {
+            "placement": "unmatched",
+            "written": False,
+        }
+        assert "Orphan text." not in " ".join(
+            cell.text
+            for row in docx.Document(str(out)).tables[0].rows
+            for cell in row.cells
+        )
+
+    def test_controls_with_statements_ignore_the_whole_control_map(self, tmp_path):
+        doc = docx.Document()
+        _add_cis_table(doc, "AC-1", with_parts=True)
+        control = CanonicalControl.from_raw(
+            "ac-1",
+            raw_status="implemented",
+            raw_origination=[],
+            statement_ids=["ac-1_smt.a"],
+        )
+        out = tmp_path / "filled.docx"
+        result = fill_control_tables(
+            doc,
+            [control],
+            out,
+            statement_text_by_control={"ac-1": {"ac-1_smt.a": "Part text."}},
+            whole_control_text_by_control={"ac-1": "Should not be used."},
+        )
+        assert result.control_results[0]["whole_control"] is None
+
+    def test_default_behaviour_is_unchanged(self, tmp_path):
+        doc = docx.Document()
+        _add_cis_table(doc, "IA-06", with_parts=False)
+        control = CanonicalControl.from_raw(
+            "ia-6", raw_status="implemented", raw_origination=[], statement_ids=[]
+        )
+        out = tmp_path / "filled.docx"
+        result = fill_control_tables(doc, [control], out)
+        assert result.control_results[0]["whole_control"] is None
+        assert docx.Document(str(out)).tables[0].rows[4].cells[0].text.strip() == ""
+
+    def test_end_to_end_from_oscal(self, tmp_path):
+        import json
+
+        from compliance.scripts.fill_ssp_from_oscal import build_from_oscal
+
+        template = tmp_path / "t.docx"
+        doc = docx.Document()
+        _add_cis_table(doc, "IA-06", with_parts=False)
+        doc.save(str(template))
+        oscal = tmp_path / "ssp.json"
+        oscal.write_text(json.dumps(self._ssp(self._req("ia-6", "Whole narrative."))))
+        out, manifest = tmp_path / "o.docx", tmp_path / "m.json"
+        result = build_from_oscal(oscal, template, out, manifest)
+        assert (
+            "Whole narrative."
+            in docx.Document(str(out)).tables[0].rows[4].cells[0].text
+        )
+        assert result["controls"][0]["whole_control"]["written"] is True
