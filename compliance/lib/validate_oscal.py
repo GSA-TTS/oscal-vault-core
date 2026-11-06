@@ -41,7 +41,14 @@ _SCHEMAS_ROOT = Path(__file__).resolve().parents[1] / "schemas"
 _WRAPPER_TO_SCHEMA: Dict[str, str] = {
     "system-security-plan": "oscal_ssp_schema.json",
     "component-definition": "oscal_component_schema.json",
+    "plan-of-action-and-milestones": "oscal_poam_schema.json",
+    "assessment-results": "oscal_assessment-results_schema.json",
 }
+
+# Document types the post-schema semantic checks understand. The reference
+# graph walk is specific to SSP/component-definition layouts, so the other
+# wired types are schema-validated only and fail closed under ``semantic=True``.
+_SEMANTIC_DOCUMENT_TYPES = frozenset({"system-security-plan", "component-definition"})
 
 
 class SchemaNotAvailableError(FileNotFoundError):
@@ -344,7 +351,7 @@ def validate_oscal_semantics(
     :func:`verify_oscal_parity`.
     """
     dtype = document_type or detect_document_type(document)
-    if dtype not in _WRAPPER_TO_SCHEMA:
+    if dtype not in _SEMANTIC_DOCUMENT_TYPES:
         return [f"semantic: unsupported document type {dtype!r}"]
     root = document[dtype]
     errors: List[str] = []
