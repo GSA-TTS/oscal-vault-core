@@ -62,3 +62,37 @@ def test_is_control_table_saas_crm(header_texts, data_texts, expected):
     parser_obj = DocxParser.__new__(DocxParser)
     table = _make_mock_table(header_texts, data_texts)
     assert parser_obj.is_control_table(table) == expected
+
+
+def test_extract_implementation_details_skips_spaced_enhancement_header():
+    """Header rows like 'IA-05 (01)' must be skipped when control_id is normalized to 'IA-05(01)'."""
+    table = _make_mock_table(
+        ["IA-05 (01)", "Control Enhancement Summary Information"],
+        ["Part a", "This control is fully inherited from cloud.gov."],
+    )
+    details = parser.extract_implementation_details(
+        {"table": table, "is_control_table": True, "control_id": "IA-05(01)"}
+    )
+    assert details == {
+        "implementation": {"a": "This control is fully inherited from cloud.gov."}
+    }
+
+
+def test_extract_implementation_details_ignores_non_part_rows_in_continuation_table():
+    """Continuation tables (is_control_table=False) must only extract Part/Req rows, not Acronym glossaries."""
+    glossary = _make_mock_table(
+        ["Acronym", "Full Name"],
+        ["AMI", "Amazon Machine Image"],
+    )
+    assert parser.extract_implementation_details({"table": glossary}) == {}
+
+    continuation = _make_mock_table(
+        ["Part d", "Continuation narrative for part d."],
+        ["Part e", "Continuation narrative for part e."],
+    )
+    assert parser.extract_implementation_details({"table": continuation}) == {
+        "implementation": {
+            "d": "Continuation narrative for part d.",
+            "e": "Continuation narrative for part e.",
+        }
+    }

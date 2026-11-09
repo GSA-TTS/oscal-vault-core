@@ -581,7 +581,15 @@ def extract_implementation_details(control_data: Any, config: Optional[Dict[str,
         # Skip headers, prompts, and CIS rows if this is a control table
         if is_ctrl:
             control_id = control_data.get("control_id")
-            if control_id and control_id.lower() in label_lower and len(label) < 20:
+            if (
+                control_id
+                and len(label) < 20
+                and (
+                    control_id.lower() in label_lower
+                    or normalize_control_id(parse_control_id(label, config=config))
+                    == normalize_control_id(control_id)
+                )
+            ):
                 continue
             if status_label in label_lower:
                 continue
@@ -601,16 +609,21 @@ def extract_implementation_details(control_data: Any, config: Optional[Dict[str,
             implementation[part_key] = value
         else:
             # If label is long or equal to value (merged cell), it is narrative text, not a label column.
-            # In that case, use 'a' as a fallback part key.
+            # In that case, use 'a' as a fallback part key (only inside a confirmed control table).
             if len(label) > 20 or label == value:
+                if not is_ctrl:
+                    continue
                 part_key = "a"
             else:
-                part_key = label
                 part_match_general = re.match(r"(?:part|req\.?)\s*([a-z0-9]+)", label, re.IGNORECASE)
                 if part_match_general:
                     part_key = part_match_general.group(1)
+                elif not is_ctrl:
+                    # Non-control tables (e.g. Acronym/Glossary or Appendix tables after SR-12)
+                    # must not turn arbitrary column-0 labels into fake statement parts.
+                    continue
                 else:
-                    part_key = re.sub(r'[^A-Za-z0-9_-]', '_', part_key.strip())
+                    part_key = re.sub(r'[^A-Za-z0-9_-]', '_', label.strip())
                     if not part_key:
                         part_key = "a"
             implementation[part_key] = value

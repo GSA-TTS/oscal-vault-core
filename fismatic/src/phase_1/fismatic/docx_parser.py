@@ -351,6 +351,10 @@ class DocxParser:
                                     additional_details["implementation"]
                                 )
                                 current_control.implementation = current_implementation
+                            else:
+                                # Non-control table with no Part/Req rows ends continuation
+                                current_control = None
+                                current_table = None
                         except Exception as e:
                             print(
                                 f"Warning: Error processing continuation table: {str(e)}"
