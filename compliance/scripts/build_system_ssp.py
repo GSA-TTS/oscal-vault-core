@@ -18,7 +18,11 @@ if str(_CORE_ROOT) not in sys.path:
     sys.path.insert(0, str(_CORE_ROOT))
 
 
-UUID_NAMESPACE = uuid.UUID("fe99db8d-02ba-4ca0-aec7-b42591f604a1")
+# UUIDv5 namespace, derived from a stable name so no opaque literal is needed.
+# Callers that must reproduce UUIDs minted under another namespace pass it explicitly.
+DEFAULT_UUID_NAMESPACE = uuid.uuid5(
+    uuid.NAMESPACE_URL, "urn:oscal-vault-core:system-security-plan"
+)
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -44,8 +48,8 @@ def statement_id(control_id: str, part: str | None) -> str:
     return f"{token}_stmt.{part_token}"
 
 
-def _stable_uuid(system: str, kind: str, value: str) -> str:
-    return str(uuid.uuid5(UUID_NAMESPACE, f"{system}:{kind}:{value}"))
+def _stable_uuid(namespace: uuid.UUID, system: str, kind: str, value: str) -> str:
+    return str(uuid.uuid5(namespace, f"{system}:{kind}:{value}"))
 
 
 def _metadata(defaults: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
@@ -53,7 +57,10 @@ def _metadata(defaults: dict[str, Any], overrides: dict[str, Any]) -> dict[str, 
 
 
 def _evidence_resources(
-    slug: str, countermeasures: dict[str, Any], evidence: dict[str, Any]
+    namespace: uuid.UUID,
+    slug: str,
+    countermeasures: dict[str, Any],
+    evidence: dict[str, Any],
 ) -> tuple[dict[str, str], list[dict[str, Any]]]:
     referenced = {
         mechanism["ref"]
@@ -65,7 +72,8 @@ def _evidence_resources(
     links = evidence.get("evidence_links") or {}
     artifacts = evidence.get("evidence_artifacts") or {}
     resource_ids = {
-        key: _stable_uuid(slug, "evidence", key) for key in sorted(referenced)
+        key: _stable_uuid(namespace, slug, "evidence", key)
+        for key in sorted(referenced)
     }
     resources = []
     for key, resource_uuid in resource_ids.items():
@@ -102,11 +110,12 @@ def build_oscal(
     sidecar: dict[str, Any] | None = None,
     countermeasures: dict[str, Any] | None = None,
     evidence: dict[str, Any] | None = None,
+    namespace: uuid.UUID = DEFAULT_UUID_NAMESPACE,
 ) -> dict[str, Any]:
     slug = str(system["slug"])
     name = str(system["name"])
     sensitivity = str(system.get("baseline") or "low").casefold()
-    component_uuid = _stable_uuid(slug, "component", "this-system")
+    component_uuid = _stable_uuid(namespace, slug, "component", "this-system")
     defaults = source["response_defaults"]
     overrides = source.get("control_metadata") or {}
     parameter_values = ((sidecar or {}).get("sdr") or {}).get("parameter_values") or {}
@@ -116,7 +125,7 @@ def build_oscal(
         if item.get("control_id")
     }
     resource_ids, resources = _evidence_resources(
-        slug, countermeasures or {}, evidence or {}
+        namespace, slug, countermeasures or {}, evidence or {}
     )
     requirements = []
     for control_id, entries in (source.get("responses") or {}).items():
@@ -125,7 +134,10 @@ def build_oscal(
             {
                 "statement-id": statement_id(control_id, entry.get("part")),
                 "uuid": _stable_uuid(
-                    slug, "statement", statement_id(control_id, entry.get("part"))
+                    namespace,
+                    slug,
+                    "statement",
+                    statement_id(control_id, entry.get("part")),
                 ),
                 "remarks": entry["implementation"].strip(),
             }
@@ -138,7 +150,7 @@ def build_oscal(
             for entry in entries
         )
         requirement = {
-            "uuid": _stable_uuid(slug, "control", control_id),
+            "uuid": _stable_uuid(namespace, slug, "control", control_id),
             "control-id": control_token(control_id),
             "props": [
                 {
@@ -154,7 +166,7 @@ def build_oscal(
             "by-components": [
                 {
                     "component-uuid": component_uuid,
-                    "uuid": _stable_uuid(slug, "by-component", control_id),
+                    "uuid": _stable_uuid(namespace, slug, "by-component", control_id),
                     "description": narrative,
                     "implementation-status": {
                         "state": metadata["implementation_status"]
@@ -198,7 +210,7 @@ def build_oscal(
     requirements.sort(key=lambda item: item["control-id"])
     document = {
         "system-security-plan": {
-            "uuid": _stable_uuid(slug, "ssp", slug),
+            "uuid": _stable_uuid(namespace, slug, "ssp", slug),
             "metadata": {
                 "title": f"{name} System Security and Privacy Plan",
                 "last-modified": "2000-01-01T00:00:00Z",
@@ -233,7 +245,7 @@ def build_oscal(
             "system-implementation": {
                 "users": [
                     {
-                        "uuid": _stable_uuid(slug, "user", "system-users"),
+                        "uuid": _stable_uuid(namespace, slug, "user", "system-users"),
                         "title": "System users",
                         "remarks": "User classes are maintained in the governed architecture sources.",
                     }
@@ -276,6 +288,13 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         help="Output path (default: build/oscal/<slug>.ssp.json under the CWD)",
     )
+    parser.add_argument(
+        "--uuid-namespace",
+        type=uuid.UUID,
+        default=DEFAULT_UUID_NAMESPACE,
+        help="UUIDv5 namespace for generated identifiers (default: derived from "
+        "a fixed name). Pass an existing namespace to keep UUIDs stable across tools.",
+    )
     args = parser.parse_args(argv)
     root = args.system_dir
     manifest = root / "system.yaml"
@@ -296,6 +315,7 @@ def main(argv: list[str] | None = None) -> int:
                 sidecar=_optional_yaml(root / "sidecar.yaml"),
                 countermeasures=_optional_yaml(root / "countermeasures.yaml"),
                 evidence=_optional_yaml(root / "model" / "evidence.yaml"),
+                namespace=args.uuid_namespace,
             ),
             indent=2,
         )
