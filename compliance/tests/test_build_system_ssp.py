@@ -148,3 +148,27 @@ def test_cli_rejects_directory_without_responses(tmp_path, capsys):
     with pytest.raises(SystemExit):
         build_system_ssp.main([str(tmp_path)])
     assert "responses.yaml" in capsys.readouterr().err
+
+
+def test_uuids_are_deterministic_and_namespace_scoped():
+    import uuid
+
+    system = {"slug": "example", "name": "Example System"}
+    source = {
+        "response_defaults": {
+            "implementation_status": "planned",
+            "origination": ["system-specific"],
+        },
+        "responses": {"AC-2": [{"part": None, "implementation": "Text."}]},
+    }
+    other = uuid.uuid5(uuid.NAMESPACE_URL, "urn:example:other-namespace")
+
+    default = build_system_ssp.build_oscal(system, source)
+    again = build_system_ssp.build_oscal(system, source)
+    scoped = build_system_ssp.build_oscal(system, source, namespace=other)
+
+    assert default == again
+    assert (
+        default["system-security-plan"]["uuid"]
+        != scoped["system-security-plan"]["uuid"]
+    )
