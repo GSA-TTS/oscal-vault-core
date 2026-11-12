@@ -194,3 +194,48 @@ def test_statement_component_text_and_status_are_used(tmp_path):
     anchor = find_control_tables(output)[0]
     assert anchor.part_rows["a"].text == "Narrative from the statement-level component."
     assert "☒ Planned" in anchor.status_cell.text
+
+
+def test_build_from_oscal_replaces_origination_provider_tokens(tmp_path):
+    source = tmp_path / "ssp.json"
+    template = tmp_path / "template.docx"
+    output = tmp_path / "filled.docx"
+    manifest = tmp_path / "manifest.json"
+    _oscal(source)
+    payload = json.loads(source.read_text())
+    payload["system-security-plan"]["system-implementation"] = {
+        "components": [
+            {"uuid": "comp-1", "title": "cloud.gov Pages", "type": "service"}
+        ]
+    }
+    req = payload["system-security-plan"]["control-implementation"][
+        "implemented-requirements"
+    ][0]
+    req["props"] = [
+        {"name": "implementation-status", "value": "implemented"},
+        {"name": "control-origination", "value": "inherited"},
+    ]
+    req["by-components"] = [{"component-uuid": "comp-1", "description": "Inherited."}]
+    source.write_text(json.dumps(payload), encoding="utf-8")
+
+    document = docx.Document()
+    table = document.add_table(rows=5, cols=2)
+    table.rows[0].cells[0].text = "AC-2"
+    table.rows[0].cells[1].text = "Control Summary Information"
+    status = table.rows[1].cells[0].merge(table.rows[1].cells[-1])
+    status.text = "Implementation Status:"
+    status.add_paragraph(f"{UNCHECKED_GLYPH} Implemented")
+    origination = table.rows[2].cells[0].merge(table.rows[2].cells[-1])
+    origination.text = "Control Origination:"
+    origination.add_paragraph(
+        f"{UNCHECKED_GLYPH} Inherited from: [Enter System's Name]"
+    )
+    table.rows[3].cells[0].merge(table.rows[3].cells[-1]).text = "Describe how"
+    table.rows[4].cells[0].text = "Part a"
+    document.save(template)
+
+    fill_ssp_from_oscal.build_from_oscal(source, template, output, manifest)
+
+    anchor = find_control_tables(output)[0]
+    assert "Inherited from: cloud.gov Pages" in anchor.origination_cell.text
+    assert "[Enter System's Name]" not in anchor.origination_cell.text

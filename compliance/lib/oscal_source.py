@@ -14,6 +14,7 @@ source .docx via `load_from_docx` instead of read with `load_from_oscal_ssp`.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,53 @@ from .canonical_model import CanonicalControl
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _FISMATIC_SRC = _REPO_ROOT / "fismatic" / "src" / "phase_1"
+_QUOTES = str.maketrans({"\u201c": '"', "\u201d": '"', "\u2019": "'", "\u2018": "'"})
+_PART_SPLIT_RE = re.compile(r"(?:^|\n\n)Part\s+([a-z]):\s*\n+", re.IGNORECASE)
+
+
+def _norm_prose(text: str) -> str:
+    cleaned = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text or "").translate(_QUOTES)
+    return re.sub(r"[^a-z0-9]+", "", cleaned.lower())
+
+
+def _deduplicate_component_descriptions(components: list[dict[str, Any]]) -> list[str]:
+    raw_texts = [
+        str(component.get("description") or "").strip()
+        for component in components
+        if str(component.get("description") or "").strip()
+    ]
+    if len(raw_texts) <= 1:
+        return raw_texts
+    kept: list[str] = []
+    for idx, desc in enumerate(raw_texts):
+        nd = _norm_prose(desc)
+        if not nd:
+            continue
+        is_dup = any(
+            i != idx
+            and _norm_prose(other)
+            and nd in _norm_prose(other)
+            and (len(_norm_prose(other)) > len(nd) or i > idx)
+            for i, other in enumerate(raw_texts)
+        )
+        if not is_dup:
+            kept.append(desc)
+    return kept
+
+
+def _split_part_sections(text: str) -> dict[str, str]:
+    if "Part a:" not in text and "Part b:" not in text:
+        return {}
+    chunks = _PART_SPLIT_RE.split(text.strip())
+    if len(chunks) < 3:
+        return {}
+    out: dict[str, str] = {}
+    for idx in range(1, len(chunks), 2):
+        part_key = chunks[idx].lower().strip()
+        part_body = chunks[idx + 1].strip()
+        if part_body and _norm_prose(part_body) != _norm_prose("This System:"):
+            out[part_key] = part_body
+    return out
 
 
 def _ensure_fismatic_importable() -> None:
@@ -141,22 +189,70 @@ def statement_text_map_from_oscal_ssp(
             text = statement.get("description") or statement.get("remarks", "")
             if not text:
                 text = "\n\n".join(
-                    str(component.get("description") or "").strip()
-                    for component in statement.get("by-components", [])
-                    if str(component.get("description") or "").strip()
+                    _deduplicate_component_descriptions(
+                        statement.get("by-components", [])
+                    )
                 )
             stmts[statement_id] = text
-        if not any(stmts.values()):
-            by_component_text = "\n\n".join(
-                str(component.get("description") or "").strip()
-                for component in req.get("by-components", [])
-                if str(component.get("description") or "").strip()
-            )
-            if by_component_text and stmts:
-                first_statement = next(iter(stmts))
-                stmts[first_statement] = by_component_text
+        by_component_texts = _deduplicate_component_descriptions(
+            req.get("by-components", [])
+        )
+        if by_component_texts and stmts:
+            by_part = {
+                sid.replace("_stmt.", "_smt.").rsplit("_smt.", 1)[-1].lower(): sid
+                for sid in stmts
+                if "_smt." in sid.replace("_stmt.", "_smt.")
+            }
+            for wt in by_component_texts:
+                for p_key, p_txt in _split_part_sections(wt).items():
+                    target_sid = by_part.get(p_key)
+                    if target_sid and _norm_prose(p_txt) not in _norm_prose(
+                        stmts[target_sid]
+                    ):
+                        cur = stmts[target_sid].strip()
+                        stmts[target_sid] = (
+                            f"{p_txt}\n\n{cur}".strip() if cur else p_txt
+                        )
+            combined_stmt_norm = "".join(_norm_prose(v) for v in stmts.values())
+            first_statement = next(iter(stmts))
+            for wt in by_component_texts:
+                if _norm_prose(wt) and _norm_prose(wt) not in combined_stmt_norm:
+                    cur = stmts[first_statement].strip()
+                    stmts[first_statement] = f"{wt}\n\n{cur}".strip() if cur else wt
+                    combined_stmt_norm += _norm_prose(wt)
         if stmts:
             out[control_id] = stmts
+    return out
+
+
+def origination_provider_map_from_oscal_ssp(
+    oscal_ssp: dict[str, Any],
+) -> dict[str, str]:
+    """Build ``{control_id: provider_label}`` from component titles in an OSCAL SSP."""
+    ssp = oscal_ssp.get("system-security-plan", oscal_ssp)
+    comp_titles = {
+        str(comp.get("uuid") or ""): str(comp.get("title") or "").strip()
+        for comp in (ssp.get("system-implementation") or {}).get("components", [])
+        if comp.get("uuid") and comp.get("title") and comp.get("type") != "this-system"
+    }
+    requirements = (ssp.get("control-implementation") or {}).get(
+        "implemented-requirements", []
+    )
+    out: dict[str, str] = {}
+    for req in requirements:
+        control_id = req.get("control-id")
+        if not control_id:
+            continue
+        names: list[str] = []
+        for block in [
+            *req.get("by-components", []),
+            *(c for s in req.get("statements", []) for c in s.get("by-components", [])),
+        ]:
+            title = comp_titles.get(str(block.get("component-uuid") or ""))
+            if title and title not in names:
+                names.append(title)
+        if names:
+            out[control_id] = " and ".join(names)
     return out
 
 

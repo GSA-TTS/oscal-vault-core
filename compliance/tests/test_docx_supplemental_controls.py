@@ -103,3 +103,40 @@ def test_append_unwritten_statement_to_existing_control_table(tmp_path):
 
     assert result == {"statements": 1, "mismatches": 0}
     assert Document(document_path).tables[0].rows[-1].cells[-1].text == "Whole control"
+
+
+def test_append_supplemental_control_reads_by_components_narrative(tmp_path):
+    document_path = tmp_path / "ssp.docx"
+    oscal_path = tmp_path / "ssp.json"
+    Document().save(document_path)
+    oscal_path.write_text(
+        json.dumps(
+            {
+                "system-security-plan": {
+                    "control-implementation": {
+                        "implemented-requirements": [
+                            {
+                                "control-id": "pm-1",
+                                "props": [
+                                    {
+                                        "name": "implementation-status",
+                                        "value": "implemented",
+                                    }
+                                ],
+                                "by-components": [
+                                    {"description": "Program management narrative."}
+                                ],
+                            }
+                        ]
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = append_supplemental_controls(document_path, oscal_path, ["pm-1"])
+
+    assert result["controls"][0]["characters"] == len("Program management narrative.")
+    table = Document(document_path).tables[0]
+    assert table.rows[3].cells[1].text == "Program management narrative."

@@ -11,6 +11,36 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
 
+def _statement_text(statement: dict) -> str:
+    text = (statement.get("description") or statement.get("remarks") or "").strip()
+    if text:
+        return text
+    return "\n\n".join(
+        str(comp.get("description") or "").strip()
+        for comp in statement.get("by-components", [])
+        if str(comp.get("description") or "").strip()
+    )
+
+
+def _requirement_narratives(requirement: dict) -> list[str]:
+    narratives = [
+        text
+        for statement in requirement.get("statements", [])
+        if (text := _statement_text(statement))
+    ]
+    whole = [
+        str(comp.get("description") or "").strip()
+        for comp in requirement.get("by-components", [])
+        if str(comp.get("description") or "").strip()
+    ]
+    if not narratives:
+        return whole
+    for text in whole:
+        if text not in narratives:
+            narratives.insert(0, text)
+    return narratives
+
+
 def append_supplemental_controls(
     docx_path: Path, oscal_path: Path, control_ids: list[str]
 ) -> dict:
@@ -49,10 +79,7 @@ def append_supplemental_controls(
         ]
         table.rows[2].cells[1].text = ", ".join(origins)
         table.rows[3].cells[0].text = "Implementation Narrative"
-        narratives = [
-            statement.get("remarks", "")
-            for statement in requirement.get("statements", [])
-        ]
+        narratives = _requirement_narratives(requirement)
         table.rows[3].cells[1].text = "\n\n".join(narratives)
         caption = OxmlElement("w:tblCaption")
         caption.set(qn("w:val"), f"ttse:supplemental:{control_id}")
@@ -116,7 +143,7 @@ def append_unwritten_statements(
         table = document.tables[table_index]
         requirement = requirements[control_id]
         statements = {
-            item["statement-id"]: item.get("remarks", "")
+            item["statement-id"]: _statement_text(item)
             for item in requirement.get("statements", [])
         }
         for statement_id in statement_ids:

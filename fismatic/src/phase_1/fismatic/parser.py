@@ -20,7 +20,9 @@ from .text_matcher import extract_related_controls as _tm_extract_related_contro
 # ---------------------------------------------------------------------------
 
 _CONTROL_ID_PREFIXES = ("security control", "control", "requirement", "req.", "part")
-_CONTROL_ID_RE = re.compile(r"([a-z]{2})[\s-]*0*(\d+)(?:(?:\s*\(0*(\d+|[a-z]+)\))|(?:\.0*(\d+|[a-z]+)))?")
+_CONTROL_ID_RE = re.compile(
+    r"([a-z]{2})[\s-]*0*(\d+)(?:(?:\s*\(0*(\d+|[a-z]+)\))|(?:\.0*(\d+|[a-z]+)))?"
+)
 
 
 def normalize_control_id(control_id: Optional[str]) -> Optional[str]:
@@ -44,7 +46,9 @@ def normalize_control_id(control_id: Optional[str]) -> Optional[str]:
     return f"{base}({enhancement})" if enhancement else base
 
 
-def parse_control_id(text: Optional[str], config: Optional[Dict[str, Any]] = None) -> Optional[str]:
+def parse_control_id(
+    text: Optional[str], config: Optional[Dict[str, Any]] = None
+) -> Optional[str]:
     """Extract and normalize a control ID from arbitrary cell/heading text."""
     if not text:
         return None
@@ -192,7 +196,9 @@ def _strip_checkbox(line: str) -> str:
     return content
 
 
-def parse_implementation_status(text: Optional[str], config: Optional[Dict[str, Any]] = None) -> Dict[str, bool]:
+def parse_implementation_status(
+    text: Optional[str], config: Optional[Dict[str, Any]] = None
+) -> Dict[str, bool]:
     """Parse a FedRAMP 'Implementation Status:' checkbox block into flags."""
     status = {key: False for key, _ in _STATUS_KEYWORDS}
     if not text:
@@ -219,7 +225,9 @@ def parse_implementation_status(text: Optional[str], config: Optional[Dict[str, 
     return status
 
 
-def parse_control_origination(text: Optional[str], config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def parse_control_origination(
+    text: Optional[str], config: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     """Parse a FedRAMP 'Control Origination:' checkbox block into flags."""
     origination: Dict[str, Any] = {
         "inherited": False,
@@ -257,7 +265,11 @@ def parse_control_origination(text: Optional[str], config: Optional[Dict[str, An
                 origination[key] = True
 
         if origination["inherited"]:
-            inherited_pat = config.get("inheritedFromRegex", r"inherited\s+from:?\s*(.+)") if config else r"inherited\s+from:?\s*(.+)"
+            inherited_pat = (
+                config.get("inheritedFromRegex", r"inherited\s+from:?\s*(.+)")
+                if config
+                else r"inherited\s+from:?\s*(.+)"
+            )
             match = re.search(inherited_pat, content, flags=re.IGNORECASE)
             if match:
                 origination["inherited_from"] = (
@@ -265,7 +277,11 @@ def parse_control_origination(text: Optional[str], config: Optional[Dict[str, An
                 )
 
         if origination["hybrid"]:
-            hybrid_pat = config.get("hybridSystemsRegex", r"shared\s+between\s+(.+?)(?:;|\)|$)") if config else r"shared\s+between\s+(.+?)(?:;|\)|$)"
+            hybrid_pat = (
+                config.get("hybridSystemsRegex", r"shared\s+between\s+(.+?)(?:;|\)|$)")
+                if config
+                else r"shared\s+between\s+(.+?)(?:;|\)|$)"
+            )
             between = re.search(hybrid_pat, content, flags=re.IGNORECASE)
             if between:
                 systems = re.split(r"\s+and\s+", between.group(1))
@@ -483,7 +499,9 @@ def sanitize_responsible_role(text: Optional[str]) -> Optional[str]:
     return first or None
 
 
-def parse_control_table(table: Any, config: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+def parse_control_table(
+    table: Any, config: Optional[Dict[str, Any]] = None
+) -> Optional[Dict[str, Any]]:
     """Parse a docx control-summary (CIS) table into a flat dict for `Control()`."""
     if not table or not getattr(table, "rows", None):
         return None
@@ -502,9 +520,21 @@ def parse_control_table(table: Any, config: Optional[Dict[str, Any]] = None) -> 
     origination_text = ""
 
     # Load label pattern config
-    status_label = config.get("implStatusRowLabel", "implementation status") if config else "implementation status"
-    origin_label = config.get("ctrlOriginationRowLabel", "control origination") if config else "control origination"
-    role_label = config.get("responsibleRoleRowLabel", "responsible + role") if config else "responsible + role"
+    status_label = (
+        config.get("implStatusRowLabel", "implementation status")
+        if config
+        else "implementation status"
+    )
+    origin_label = (
+        config.get("ctrlOriginationRowLabel", "control origination")
+        if config
+        else "control origination"
+    )
+    role_label = (
+        config.get("responsibleRoleRowLabel", "responsible + role")
+        if config
+        else "responsible + role"
+    )
 
     for row in table.rows:
         try:
@@ -542,7 +572,9 @@ def parse_control_table(table: Any, config: Optional[Dict[str, Any]] = None) -> 
     }
 
 
-def extract_implementation_details(control_data: Any, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def extract_implementation_details(
+    control_data: Any, config: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     """
     Extract additional Control fields from either:
       - a raw docx continuation table, passed as {'table': <docx Table>}, or
@@ -558,14 +590,32 @@ def extract_implementation_details(control_data: Any, config: Optional[Dict[str,
 
     is_ctrl = control_data.get("is_control_table", False)
 
-    part_pat = config.get("partRowRegex", r"(?:part|req\.?)\s*([a-z0-9]+)") if config else r"(?:part|req\.?)\s*([a-z0-9]+)"
-    part_re = re.compile(part_pat, re.IGNORECASE) if isinstance(part_pat, str) else part_pat
+    part_pat = (
+        config.get("partRowRegex", r"(?:part|req\.?)\s*([a-z0-9]+)")
+        if config
+        else r"(?:part|req\.?)\s*([a-z0-9]+)"
+    )
+    part_re = (
+        re.compile(part_pat, re.IGNORECASE) if isinstance(part_pat, str) else part_pat
+    )
 
     implementation: Dict[str, str] = {}
 
-    status_label = (config.get("implStatusRowLabel", "implementation status") if config else "implementation status").lower()
-    origin_label = (config.get("ctrlOriginationRowLabel", "control origination") if config else "control origination").lower()
-    role_label = (config.get("responsibleRoleRowLabel", "responsible + role") if config else "responsible + role").lower()
+    status_label = (
+        config.get("implStatusRowLabel", "implementation status")
+        if config
+        else "implementation status"
+    ).lower()
+    origin_label = (
+        config.get("ctrlOriginationRowLabel", "control origination")
+        if config
+        else "control origination"
+    ).lower()
+    role_label = (
+        config.get("responsibleRoleRowLabel", "responsible + role")
+        if config
+        else "responsible + role"
+    ).lower()
 
     for row in getattr(table, "rows", []):
         try:
@@ -595,18 +645,19 @@ def extract_implementation_details(control_data: Any, config: Optional[Dict[str,
                 continue
             if origin_label in label_lower:
                 continue
-            if "+" in role_label:
-                if all(p.strip() in label_lower for p in role_label.split("+")):
+            is_merged_narrative = len(label) > 40 and label == value
+            if not is_merged_narrative:
+                if "+" in role_label:
+                    if all(p.strip() in label_lower for p in role_label.split("+")):
+                        continue
+                elif bool(re.search(role_label, label_lower)):
                     continue
-            elif bool(re.search(role_label, label_lower)):
-                continue
             if "describe how" in label_lower or "control summary" in label_lower:
                 continue
 
         part_match = part_re.match(label)
         if part_match:
             part_key = part_match.group(1)
-            implementation[part_key] = value
         else:
             # If label is long or equal to value (merged cell), it is narrative text, not a label column.
             # In that case, use 'a' as a fallback part key (only inside a confirmed control table).
@@ -615,7 +666,9 @@ def extract_implementation_details(control_data: Any, config: Optional[Dict[str,
                     continue
                 part_key = "a"
             else:
-                part_match_general = re.match(r"(?:part|req\.?)\s*([a-z0-9]+)", label, re.IGNORECASE)
+                part_match_general = re.match(
+                    r"(?:part|req\.?)\s*([a-z0-9]+)", label, re.IGNORECASE
+                )
                 if part_match_general:
                     part_key = part_match_general.group(1)
                 elif not is_ctrl:
@@ -623,9 +676,13 @@ def extract_implementation_details(control_data: Any, config: Optional[Dict[str,
                     # must not turn arbitrary column-0 labels into fake statement parts.
                     continue
                 else:
-                    part_key = re.sub(r'[^A-Za-z0-9_-]', '_', label.strip())
+                    part_key = re.sub(r"[^A-Za-z0-9_-]", "_", label.strip())
                     if not part_key:
                         part_key = "a"
+        existing = implementation.get(part_key, "")
+        if existing and value not in existing:
+            implementation[part_key] = f"{existing}\n\n{value}"
+        elif not existing:
             implementation[part_key] = value
 
     return {"implementation": implementation} if implementation else {}
@@ -699,13 +756,13 @@ def load_contract_config(contract_path: Optional[str]) -> Dict[str, Any]:
     import yaml
 
     config = {
-        "controlIdRegex": r'([a-z]{2})[\s-]*(\d+)(?:\s*\((\d+|[a-z]+)\))?',
-        "checkboxCheckedRegex": r'^[☒☑✓⊠]|^\[[ xX]\]|^[xX]\b',
-        "implStatusRowLabel": 'implementation status',
-        "ctrlOriginationRowLabel": 'control origination',
-        "responsibleRoleRowLabel": 'responsible + role',
-        "partRowRegex": r'(?:part|req\.?)\s*([a-z0-9]+)',
-        "parameterRowRegex": r'^[Pp]arameter\s+(\S+):?\s*$',
+        "controlIdRegex": r"([a-z]{2})[\s-]*(\d+)(?:\s*\((\d+|[a-z]+)\))?",
+        "checkboxCheckedRegex": r"^[☒☑✓⊠]|^\[[ xX]\]|^[xX]\b",
+        "implStatusRowLabel": "implementation status",
+        "ctrlOriginationRowLabel": "control origination",
+        "responsibleRoleRowLabel": "responsible + role",
+        "partRowRegex": r"(?:part|req\.?)\s*([a-z0-9]+)",
+        "parameterRowRegex": r"^[Pp]arameter\s+(\S+):?\s*$",
     }
     if not contract_path:
         return config
@@ -714,7 +771,10 @@ def load_contract_config(contract_path: Optional[str]) -> Dict[str, Any]:
             data = yaml.safe_load(f)
         if isinstance(data, dict):
             for obj in data.get("schema", []):
-                if obj.get("id") == "oscal_control" or obj.get("name") == "oscal_control":
+                if (
+                    obj.get("id") == "oscal_control"
+                    or obj.get("name") == "oscal_control"
+                ):
                     for prop in obj.get("customProperties", []):
                         prop_name = prop.get("property")
                         prop_val = prop.get("value")

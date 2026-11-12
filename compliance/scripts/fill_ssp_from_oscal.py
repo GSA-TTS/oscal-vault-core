@@ -20,6 +20,7 @@ from compliance.lib.control_table_anchors import find_control_tables  # noqa: E4
 from compliance.lib.control_table_fill import fill_control_tables  # noqa: E402
 from compliance.lib.oscal_source import (  # noqa: E402
     load_from_oscal_ssp,
+    origination_provider_map_from_oscal_ssp,
     statement_text_map_from_oscal_ssp,
     whole_control_text_map_from_oscal_ssp,
 )
@@ -42,6 +43,7 @@ def build_from_oscal(
         output_path,
         statement_text_by_control=statements,
         whole_control_text_by_control=whole_control_text_map_from_oscal_ssp(oscal),
+        origination_providers_by_control=origination_provider_map_from_oscal_ssp(oscal),
     )
     manifest = {
         "purpose": "Manual review only; not an authorization or submission package.",

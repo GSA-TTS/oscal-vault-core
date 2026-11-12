@@ -96,3 +96,17 @@ def test_extract_implementation_details_ignores_non_part_rows_in_continuation_ta
             "e": "Continuation narrative for part e.",
         }
     }
+
+
+def test_extract_implementation_details_preserves_row3_crm_and_responsible_role_prose():
+    """Merged Row-3 CRM statements and merged narratives containing 'responsible' and 'role' must not be dropped."""
+    crm_text = "cloud.gov Pages: Site owners are responsible for assigning org and space roles."
+    tenant_text = (
+        "GSA Pages Tenant: Managers are responsible for repository role assignments."
+    )
+    table = _make_mock_table([crm_text, crm_text], [tenant_text, tenant_text])
+    details = parser.extract_implementation_details(
+        {"table": table, "is_control_table": True, "control_id": "CM-05"}
+    )
+    assert crm_text in details["implementation"]["a"]
+    assert tenant_text in details["implementation"]["a"]
