@@ -282,6 +282,27 @@ def _fill_whole_control(
     return {"placement": "unmatched", "written": False}
 
 
+def _replace_origination_tokens(origination_cell, provider_label: str) -> None:
+    if not provider_label:
+        return
+    tokens = (
+        "[Enter System\u2019s Name]",
+        "[Enter System's Name]",
+        "[list system(s) providing common portion(s)]",
+        "[list systems]",
+    )
+    for elem in origination_cell._tc.iter(_W_T):
+        text = elem.text
+        if not text:
+            continue
+        updated = text
+        for token in tokens:
+            if token in updated:
+                updated = updated.replace(token, provider_label)
+        if updated != text:
+            elem.text = updated
+
+
 def fill_control_tables(
     docx_path: str | Path | DocxDocument,
     controls: list[CanonicalControl],
@@ -289,6 +310,7 @@ def fill_control_tables(
     *,
     statement_text_by_control: dict[str, dict[str, str]] | None = None,
     whole_control_text_by_control: dict[str, str] | None = None,
+    origination_providers_by_control: dict[str, str] | None = None,
     normalize_id=None,
 ) -> ControlFillResult:
     """Fill every matching CIS table in ``docx_path`` from ``controls``.
@@ -409,6 +431,11 @@ def fill_control_tables(
                 origination_keys,
                 ORIGINATION_KEY_PATTERNS,
             )
+            provider_label = (origination_providers_by_control or {}).get(
+                control.control_id, ""
+            )
+            if provider_label:
+                _replace_origination_tokens(anchor.origination_cell, provider_label)
             statement_results.extend(_fill_narrative(anchor, control))
             whole_text = (whole_control_text_by_control or {}).get(control.control_id)
             if whole_text and not control.statement_ids:
