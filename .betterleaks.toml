@@ -1,0 +1,10 @@
+title = "Public core source secret scan"
+[extend]
+useDefault = true
+[allowlist]
+description = "Generated dependency/cache artifacts and public NIST parameter labels"
+paths = [
+  '''(^|/)(node_modules|\.venv|__pycache__|\.review-cache)/''',
+  # Public NIST organization-defined parameter labels trigger generic-api-key.
+  '''^compliance/data/nist_sp800-53_rev5_param_labels\.json$''',
+]

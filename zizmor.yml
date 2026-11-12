@@ -1,0 +1,6 @@
+rules:
+  dangerous-triggers:
+    ignore:
+      # Approved base-only REST inventory gate; never executes pull-request code.
+      # Boundary is regression-tested in tests/test_tooling_contract.py; ADR-031.
+      - guard-system-content.yml

@@ -1,0 +1,13 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-lint
+        name: Ruff lint
+        entry: mise run lint
+        language: system
+        pass_filenames: false
+      - id: security
+        name: BetterLeaks and Zizmor
+        entry: mise run security
+        language: system
+        pass_filenames: false

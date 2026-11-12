@@ -14,6 +14,8 @@ or a validation gate belongs here. Add the file and the index row together.
 
 ## Index
 
+Proposed tooling record: [ADR-031](ADR-031-pinned-tooling-and-actions-boundaries.md).
+
 | # | Title | Status | Date |
 |---|-------|--------|------|
 | ADR-001 | Dotted Type Taxonomy (`oscal.*`, `oscal.x.*`, `okf.*`) | Accepted | 2026-07-18 |
