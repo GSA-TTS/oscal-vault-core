@@ -57,19 +57,28 @@ def _deduplicate_component_descriptions(components: list[dict[str, Any]]) -> lis
     return kept
 
 
-def _split_part_sections(text: str) -> dict[str, str]:
-    if "Part a:" not in text and "Part b:" not in text:
-        return {}
+def _distribute_requirement_text(stmts: dict[str, str], text: str) -> None:
+    """Route named parts once; retain preambles and unmatched parts on the first."""
+    by_part = {
+        sid.replace("_stmt.", "_smt.").rsplit("_smt.", 1)[-1].lower(): sid
+        for sid in stmts
+        if "_smt." in sid.replace("_stmt.", "_smt.")
+    }
     chunks = _PART_SPLIT_RE.split(text.strip())
-    if len(chunks) < 3:
-        return {}
-    out: dict[str, str] = {}
+    residual = [chunks[0]] if chunks[0].strip() else []
     for idx in range(1, len(chunks), 2):
-        part_key = chunks[idx].lower().strip()
-        part_body = chunks[idx + 1].strip()
-        if part_body and _norm_prose(part_body) != _norm_prose("This System:"):
-            out[part_key] = part_body
-    return out
+        key, body = chunks[idx].lower(), chunks[idx + 1].strip()
+        target = by_part.get(key)
+        if target and body:
+            if _norm_prose(body) not in _norm_prose(stmts[target]):
+                stmts[target] = f"{body}\n\n{stmts[target]}".strip()
+        elif body:
+            residual.append(f"Part {key}:\n\n{body}")
+    remaining = "\n\n".join(residual).strip()
+    combined = "".join(_norm_prose(value) for value in stmts.values())
+    if _norm_prose(remaining) and _norm_prose(remaining) not in combined:
+        first = next(iter(stmts))
+        stmts[first] = f"{remaining}\n\n{stmts[first]}".strip()
 
 
 def _ensure_fismatic_importable() -> None:
@@ -198,28 +207,8 @@ def statement_text_map_from_oscal_ssp(
             req.get("by-components", [])
         )
         if by_component_texts and stmts:
-            by_part = {
-                sid.replace("_stmt.", "_smt.").rsplit("_smt.", 1)[-1].lower(): sid
-                for sid in stmts
-                if "_smt." in sid.replace("_stmt.", "_smt.")
-            }
             for wt in by_component_texts:
-                for p_key, p_txt in _split_part_sections(wt).items():
-                    target_sid = by_part.get(p_key)
-                    if target_sid and _norm_prose(p_txt) not in _norm_prose(
-                        stmts[target_sid]
-                    ):
-                        cur = stmts[target_sid].strip()
-                        stmts[target_sid] = (
-                            f"{p_txt}\n\n{cur}".strip() if cur else p_txt
-                        )
-            combined_stmt_norm = "".join(_norm_prose(v) for v in stmts.values())
-            first_statement = next(iter(stmts))
-            for wt in by_component_texts:
-                if _norm_prose(wt) and _norm_prose(wt) not in combined_stmt_norm:
-                    cur = stmts[first_statement].strip()
-                    stmts[first_statement] = f"{wt}\n\n{cur}".strip() if cur else wt
-                    combined_stmt_norm += _norm_prose(wt)
+                _distribute_requirement_text(stmts, wt)
         if stmts:
             out[control_id] = stmts
     return out
