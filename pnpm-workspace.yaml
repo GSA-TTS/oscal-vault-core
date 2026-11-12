@@ -1,0 +1,2 @@
+# Dependency installation must never execute lifecycle scripts implicitly.
+ignoreScripts: true

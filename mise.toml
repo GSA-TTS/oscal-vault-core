@@ -1,0 +1,39 @@
+min_version = "2026.11.1"
+
+[tools]
+python = "3.13.11"
+node = "24.21.0"
+uv = "0.13.7"
+pnpm = "12.16.1"
+ruff = "0.15.6"
+prek = "0.5.10"
+betterleaks = "1.10.0"
+zizmor = "1.32.0"
+git-cliff = "2.14.2"
+
+[tasks.setup]
+description = "Install locked Python and Node dependencies"
+run = ["uv sync --frozen", "pnpm install --frozen-lockfile --ignore-scripts"]
+
+[tasks.lint]
+run = ["ruff check compliance tests scripts", "ruff format --check compliance tests scripts"]
+
+[tasks.audit]
+run = ["uv audit --frozen --system-certs", "pnpm audit --registry https://registry.npmjs.org"]
+
+[tasks.security]
+run = ["betterleaks dir . --redact --config .betterleaks.toml", "zizmor --offline --strict-collection .github/workflows"]
+
+[tasks.test]
+env = { PYTHONPATH = ".:fismatic/src/phase_1" }
+run = ["uv run --frozen pytest tests compliance/tests -q -m 'not slow'", "uv run --frozen python scripts/validate_mermaid_blocks.py"]
+
+[tasks.verify]
+depends = ["lint", "audit", "security", "test"]
+
+[tasks.hooks]
+run = "prek install"
+
+[tasks.changelog]
+description = "Preview release notes; never publish a release"
+run = "git-cliff --config cliff.toml --unreleased"
