@@ -161,18 +161,21 @@ def find_control_tables(
         part_rows: dict[str, _Cell] = {}
         blank_answer_cell: _Cell | None = None
         continuation_table: Table | None = None
-        for row in table.rows[origin_idx + 1 :]:
+        for row_index in range(origin_idx + 1, len(table.rows)):
+            row = table.rows[row_index]
             label = row.cells[0].text.strip()
             m = _PART_ROW_RE.match(label)
             if m:
                 part_rows[m.group(1).lower()] = row.cells[-1]
             elif (
-                label == ""
-                and blank_answer_cell is None
+                blank_answer_cell is None
                 and len(table.rows) == status_idx + 4
+                and row_index == status_idx + 3
             ):
-                # Only the single row after Describe-how in a no-Part table is
+                # Only the single row after Describe-how in a no-Part CIS table is
                 # the blank answer slot; guard against matching later padding.
+                # It may be empty or carry a label, such as "Cloud.gov Customer
+                # Responsibility:", that the narrative is written after.
                 blank_answer_cell = row.cells[0]
 
         if (

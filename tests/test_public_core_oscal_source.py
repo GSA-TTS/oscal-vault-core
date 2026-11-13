@@ -7,6 +7,7 @@ from compliance.lib.oscal_source import (  # noqa: E402
     load_from_oscal_ssp,
     origination_provider_map_from_oscal_ssp,
     statement_text_map_from_oscal_ssp,
+    whole_control_text_map_from_oscal_ssp,
 )
 
 
@@ -142,3 +143,73 @@ def test_repeated_part_sections_are_preserved_without_cross_part_duplication():
     assert "Second A." in result["ac-1_smt.a"]
     assert "Only B." not in result["ac-1_smt.a"]
     assert result["ac-1_smt.b"] == "Only B."
+
+
+def test_statement_text_map_strips_vault_metadata_from_all_narrative_paths():
+    meta = "statement_part:: a\ninheritance_mode:: local\n"
+    ssp = {
+        "control-implementation": {
+            "implemented-requirements": [
+                {
+                    "control-id": "ac-1",
+                    "statements": [
+                        {
+                            "statement-id": "ac-1_smt.a",
+                            "remarks": f"{meta}Statement remarks narrative.",
+                        },
+                        {
+                            "statement-id": "ac-1_smt.b",
+                            "by-components": [
+                                {
+                                    "description": f"Part b: {meta}Statement component narrative."
+                                }
+                            ],
+                        },
+                    ],
+                    "by-components": [
+                        {
+                            "description": f"Part a: {meta}Requirement component narrative."
+                        }
+                    ],
+                },
+                {
+                    "control-id": "ia-6",
+                    "by-components": [
+                        {"description": f"{meta}Whole-control narrative."}
+                    ],
+                },
+            ]
+        }
+    }
+
+    statements = statement_text_map_from_oscal_ssp(ssp)["ac-1"]
+    whole_control = whole_control_text_map_from_oscal_ssp(ssp)
+
+    assert (
+        statements["ac-1_smt.a"]
+        == "Requirement component narrative.\n\nStatement remarks narrative."
+    )
+    assert statements["ac-1_smt.b"] == "Part b:\nStatement component narrative."
+    assert whole_control == {"ia-6": "Whole-control narrative."}
+    assert "statement_part::" not in "\n".join(
+        (*statements.values(), *whole_control.values())
+    )
+
+
+def test_vault_export_metadata_is_not_copied_into_docx_narratives():
+    meta = (
+        "statement_part:: a\ninheritance_mode:: local\n"
+        "implementation_status:: implemented\n\n"
+    )
+    body = "Cloud.gov Customer Responsibility: Synthetic narrative."
+    requirement = {
+        "control-id": "ac-1",
+        "by-components": [{"description": f"Part a: {meta}{body}"}],
+        "statements": [{"statement-id": "ac-1_smt.a", "remarks": f"{meta}{body}"}],
+    }
+    result = statement_text_map_from_oscal_ssp(
+        {"control-implementation": {"implemented-requirements": [requirement]}}
+    )["ac-1"]["ac-1_smt.a"]
+    assert "statement_part::" not in result
+    assert "inheritance_mode::" not in result
+    assert result.count("Synthetic narrative.") == 1

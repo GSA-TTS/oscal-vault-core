@@ -25,6 +25,24 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _FISMATIC_SRC = _REPO_ROOT / "fismatic" / "src" / "phase_1"
 _QUOTES = str.maketrans({"\u201c": '"', "\u201d": '"', "\u2019": "'", "\u2018": "'"})
 _PART_SPLIT_RE = re.compile(r"(?:^|\n\n)Part\s+([a-z]):\s*\n+", re.IGNORECASE)
+# Inline Dataview fields written by the vault export. They describe the statement,
+# not its narrative, so they must not be copied into the DOCX control tables.
+_EXPORT_PART_META_RE = re.compile(
+    r"(?im)^([ \t]*Part\s+[a-z]:)[ \t]*statement_part::[^\n]*"
+)
+_EXPORT_META_LINE_RE = re.compile(
+    r"(?im)^[ \t]*(?:statement_part|inheritance_mode|implementation_status|inherited_from)::[^\n]*\n?"
+)
+
+
+def _strip_export_meta(text: str) -> str:
+    """Remove vault Dataview fields so only the narrative remains.
+
+    A ``Part x:`` marker is kept (so part routing still works) and the fields that
+    follow it are dropped.
+    """
+    text = _EXPORT_PART_META_RE.sub(r"\1", text or "")
+    return _EXPORT_META_LINE_RE.sub("", text)
 
 
 def _norm_prose(text: str) -> str:
@@ -195,17 +213,23 @@ def statement_text_map_from_oscal_ssp(
             statement_id = statement.get("statement-id")
             if not statement_id:
                 continue
-            text = statement.get("description") or statement.get("remarks", "")
+            text = _strip_export_meta(
+                statement.get("description") or statement.get("remarks", "")
+            )
             if not text:
                 text = "\n\n".join(
-                    _deduplicate_component_descriptions(
+                    _strip_export_meta(component_text)
+                    for component_text in _deduplicate_component_descriptions(
                         statement.get("by-components", [])
                     )
                 )
             stmts[statement_id] = text
-        by_component_texts = _deduplicate_component_descriptions(
-            req.get("by-components", [])
-        )
+        by_component_texts = [
+            _strip_export_meta(text)
+            for text in _deduplicate_component_descriptions(
+                req.get("by-components", [])
+            )
+        ]
         if by_component_texts and stmts:
             for wt in by_component_texts:
                 _distribute_requirement_text(stmts, wt)
@@ -264,9 +288,9 @@ def whole_control_text_map_from_oscal_ssp(oscal_ssp: dict[str, Any]) -> dict[str
         if not control_id or req.get("statements"):
             continue
         text = "\n\n".join(
-            str(component.get("description") or "").strip()
+            _strip_export_meta(str(component.get("description") or "").strip())
             for component in req.get("by-components", [])
-            if str(component.get("description") or "").strip()
+            if _strip_export_meta(str(component.get("description") or "").strip())
         )
         if text:
             out[control_id] = text

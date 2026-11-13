@@ -56,6 +56,29 @@ from compliance.lib.control_table_anchors import (
 )
 
 _W_T = qn("w:t")
+_ROUTING_LABEL_RE = re.compile(
+    r"Controls Reference:|GSA Implementation of [^:\n]*:|USA\.gov [A-Za-z ]*Responsibility:"
+    r"|Customer Responsibility:|Cloud\.gov [A-Za-z ]*Responsibility:|GSA Responsibility:"
+    r"|Not Applicable\."
+)
+
+
+def _norm_text(text: str) -> str:
+    return " ".join(re.findall(r"[a-z0-9]+", (text or "").lower()))
+
+
+def _narrative_pieces(text: str) -> list[str]:
+    """Return meaningful sentence fragments after removing routing labels."""
+    pieces: list[str] = []
+    for sentence in re.split(
+        r"(?<=[.!?])\s+|\n+", _ROUTING_LABEL_RE.sub("\n", text or "")
+    ):
+        piece = _norm_text(sentence)
+        if piece:
+            pieces.append(piece)
+    return pieces
+
+
 _W_SDT = qn("w:sdt")
 _W_SDT_CONTENT = qn("w:sdtContent")
 _PAREN_RE = re.compile(r"\([^)]*\)")
@@ -207,6 +230,21 @@ def _set_checkbox_lines(
         )
 
 
+def _text_already_in_table(anchor: ControlTableAnchor, text: str) -> bool:
+    """True when every sentence-level piece of ``text`` already sits in this table.
+
+    Used for statements that have no Part row and no blank answer slot. Only the
+    statement's own owning table is searched, never the whole document, so a
+    match proves placement under the owning control. Controls Reference labels
+    are not narrative and are ignored.
+    """
+    table_pieces = _narrative_pieces(
+        "\n".join(cell.text for row in anchor.table.rows for cell in row.cells)
+    )
+    pieces = _narrative_pieces(text)
+    return bool(pieces) and all(piece in table_pieces for piece in pieces)
+
+
 def _fill_narrative(
     anchor: ControlTableAnchor, control: CanonicalControl
 ) -> list[dict[str, str | bool | None]]:
@@ -247,6 +285,15 @@ def _fill_narrative(
                     "written": bool(text),
                 }
             )
+        elif text and _text_already_in_table(anchor, text):
+            results.append(
+                {
+                    "statement_id": stmt_id,
+                    "part": part_key,
+                    "placement": "existing-text",
+                    "written": True,
+                }
+            )
         elif text:
             remaining_text.append(text)
             results.append(
@@ -259,12 +306,36 @@ def _fill_narrative(
             )
 
     if remaining_text and anchor.blank_answer_cell is not None:
-        anchor.blank_answer_cell.text = "; ".join(remaining_text)
+        _write_into_slot(anchor.blank_answer_cell, "; ".join(remaining_text))
         for result in results:
             if result["placement"] == "unmatched":
                 result["placement"] = "blank-answer"
                 result["written"] = True
     return results
+
+
+def _write_into_slot(cell, text: str) -> None:
+    """Write ``text`` into a blank-answer slot without destroying existing content.
+
+    An empty slot receives the text. A slot that already carries template or
+    source narrative (a labelled row such as "Cloud.gov Customer Responsibility:")
+    keeps every existing paragraph; only sentences not already present are
+    appended as new paragraphs, so nothing is duplicated and nothing is lost.
+    """
+    existing = cell.text
+    if not _norm_text(existing):
+        cell.text = text
+        return
+    existing_pieces = _narrative_pieces(existing)
+    missing = [
+        sentence
+        for sentence in re.split(
+            r"(?<=[.!?])\s+|\n+", _ROUTING_LABEL_RE.sub("\n", text)
+        )
+        if _norm_text(sentence) and _norm_text(sentence) not in existing_pieces
+    ]
+    if missing:
+        cell.add_paragraph(" ".join(missing))
 
 
 def _fill_whole_control(
@@ -277,7 +348,7 @@ def _fill_whole_control(
     guessed into a part row, so the gap stays visible in the manifest.
     """
     if anchor.blank_answer_cell is not None:
-        anchor.blank_answer_cell.text = text
+        _write_into_slot(anchor.blank_answer_cell, text)
         return {"placement": "blank-answer", "written": True}
     return {"placement": "unmatched", "written": False}
 
