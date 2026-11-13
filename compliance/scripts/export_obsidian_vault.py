@@ -58,7 +58,9 @@ from compliance.lib.workspace import (  # noqa: E402
 # ---------------------------------------------------------------------------
 
 
-def _wipe_vault(vault_dir: Path, keep: tuple[str, ...] = (".git",)) -> None:
+def _wipe_vault(
+    vault_dir: Path, keep: tuple[str, ...] = (".git", ".export-policy.json")
+) -> None:
     """Remove every entry under `vault_dir` except those in `keep`."""
     if not vault_dir.exists():
         return
@@ -188,6 +190,24 @@ def _apply_metadata_yaml(oscal_ssp: Dict[str, Any], args) -> tuple:
     registry_components = match.get("components") or []
     registry_leveraged_auths = match.get("leveraged_authorizations") or []
     return registry_components, registry_leveraged_auths
+
+
+def _read_registry_export_policy(
+    metadata_yaml: str | None, plan_id: str
+) -> dict[str, Any] | None:
+    """Return optional ``export_policy`` dict for ``plan_id`` from ``metadata_yaml``."""
+    if not metadata_yaml:
+        return None
+    import yaml
+
+    with open(metadata_yaml, encoding="utf-8") as f:
+        registry = yaml.safe_load(f) or {}
+    systems = registry.get("systems") or []
+    match = next((s for s in systems if s.get("plan_id") == plan_id), None)
+    if not match:
+        return None
+    policy = match.get("export_policy")
+    return policy if isinstance(policy, dict) else None
 
 
 def _apply_fips199_level(oscal_ssp: Dict[str, Any], level: str) -> None:
@@ -501,6 +521,12 @@ def main() -> int:
     if not args.keep_existing:
         _wipe_vault(vault_dir)
     written = write_vault(notes, vault_dir)
+    export_policy = _read_registry_export_policy(args.metadata_yaml, args.plan_id)
+    if export_policy is not None:
+        (vault_dir / ".export-policy.json").write_text(
+            json.dumps(export_policy, indent=2) + "\n",
+            encoding="utf-8",
+        )
     from compliance.lib.oscal_lineage import mapping_lineage_report
 
     capabilities_path = vault_dir / "_exports" / "oscal-mapping-capabilities.json"

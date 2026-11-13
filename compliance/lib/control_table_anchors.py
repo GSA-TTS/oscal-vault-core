@@ -42,9 +42,19 @@ from docx.document import Document as DocxDocument
 from docx.table import Table, _Cell
 
 _STATUS_ROW_MARKER = "Implementation Status:"
+_STATUS_ROW_RE = re.compile(
+    r"^Implementation\s+(?:Status|Type)(?:\s*\([^)]*\))?\s*:", re.IGNORECASE
+)
 _ORIGIN_ROW_MARKER = "Control Origination:"
+_ORIGIN_ROW_RE = re.compile(
+    r"^Control\s+(?:Origination|Applicability)(?:\s*\([^)]*\))?\s*:", re.IGNORECASE
+)
 _DESCRIBE_ROW_MARKER = "Describe how"
-_PART_ROW_RE = re.compile(r"^Part\s+([a-z0-9]+)\s*$", re.IGNORECASE)
+_CONTINUATION_HEADER_RE = re.compile(
+    r"^(?:[a-z]{2}[\s-]*0*\d+(?:\s*\(0*(?:\d+|[a-z]+)\))?\s+)?(?:describe\s+how\b|what\s+is\s+the\s+solution\b)",
+    re.IGNORECASE,
+)
+_PART_ROW_RE = re.compile(r"^(?:Part|Req\.?)\s+([a-z0-9]+)\s*$", re.IGNORECASE)
 
 
 @dataclass
@@ -70,6 +80,10 @@ class ControlTableAnchor:
         The single fully-merged row-4 answer cell, present only when
         ``part_rows`` is empty (a control with no Part breakdown still has
         exactly one blank narrative slot to fill).
+    continuation_table:
+        Optional paired narrative table immediately following a split CIS
+        summary table (e.g. Rev 4 / early Rev 5 templates where status and
+        narrative live in adjacent tables).
     """
 
     control_id: str
@@ -79,20 +93,41 @@ class ControlTableAnchor:
     origination_cell: _Cell
     part_rows: dict[str, _Cell] = field(default_factory=dict)
     blank_answer_cell: _Cell | None = None
+    continuation_table: Table | None = None
 
 
 def _status_row_index(table: Table) -> int | None:
-    if len(table.rows) < 4:
+    if len(table.rows) < 3:
         return None
-    for idx in (1, 2):
+    for idx in range(1, min(len(table.rows), 10)):
         try:
-            if len(table.rows) >= idx + 4 and table.rows[idx].cells[
-                0
-            ].text.strip().startswith(_STATUS_ROW_MARKER):
+            text = table.rows[idx].cells[0].text.strip()
+            if text.startswith(_STATUS_ROW_MARKER) or _STATUS_ROW_RE.match(text):
                 return idx
         except Exception:  # pragma: no cover - defensive (malformed table)
             continue
     return None
+
+
+def _origination_row_index(table: Table, status_idx: int) -> int:
+    for idx in range(status_idx + 1, min(len(table.rows), status_idx + 5)):
+        try:
+            text = table.rows[idx].cells[0].text.strip()
+            if text.startswith(_ORIGIN_ROW_MARKER) or _ORIGIN_ROW_RE.match(text):
+                return idx
+        except Exception:  # pragma: no cover
+            continue
+    return min(status_idx + 1, len(table.rows) - 1)
+
+
+def _is_continuation_table(table: Table) -> bool:
+    if len(table.rows) < 2 or _status_row_index(table) is not None:
+        return False
+    try:
+        header = " ".join(table.rows[0].cells[0].text.split())
+        return bool(_CONTINUATION_HEADER_RE.match(header))
+    except Exception:  # pragma: no cover
+        return False
 
 
 def _looks_like_status_row(table: Table) -> bool:
@@ -112,18 +147,21 @@ def find_control_tables(
     doc = source if isinstance(source, DocxDocument) else Document(str(source))
 
     anchors: list[ControlTableAnchor] = []
-    for table_index, table in enumerate(doc.tables):
+    tables = list(doc.tables)
+    for table_index, table in enumerate(tables):
         status_idx = _status_row_index(table)
         if status_idx is None:
             continue
 
         control_id = table.rows[0].cells[0].text.strip()
         status_cell = table.rows[status_idx].cells[0]
-        origination_cell = table.rows[status_idx + 1].cells[0]
+        origin_idx = _origination_row_index(table, status_idx)
+        origination_cell = table.rows[origin_idx].cells[0]
 
         part_rows: dict[str, _Cell] = {}
         blank_answer_cell: _Cell | None = None
-        for row in table.rows[status_idx + 3 :]:
+        continuation_table: Table | None = None
+        for row in table.rows[origin_idx + 1 :]:
             label = row.cells[0].text.strip()
             m = _PART_ROW_RE.match(label)
             if m:
@@ -137,6 +175,24 @@ def find_control_tables(
                 # the blank answer slot; guard against matching later padding.
                 blank_answer_cell = row.cells[0]
 
+        if (
+            not part_rows
+            and table_index + 1 < len(tables)
+            and _is_continuation_table(tables[table_index + 1])
+        ):
+            continuation_table = tables[table_index + 1]
+            for row in continuation_table.rows[1:]:
+                label = row.cells[0].text.strip()
+                m = _PART_ROW_RE.match(label)
+                if m:
+                    part_rows[m.group(1).lower()] = row.cells[-1]
+            if (
+                not part_rows
+                and blank_answer_cell is None
+                and len(continuation_table.rows) == 2
+            ):
+                blank_answer_cell = continuation_table.rows[1].cells[0]
+
         anchors.append(
             ControlTableAnchor(
                 control_id=control_id,
@@ -146,6 +202,7 @@ def find_control_tables(
                 origination_cell=origination_cell,
                 part_rows=part_rows,
                 blank_answer_cell=blank_answer_cell,
+                continuation_table=continuation_table,
             )
         )
 
