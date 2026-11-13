@@ -28,8 +28,35 @@ run = ["betterleaks dir . --redact --config .betterleaks.toml", "zizmor --offlin
 env = { PYTHONPATH = ".:fismatic/src/phase_1" }
 run = ["uv run --frozen pytest tests compliance/tests -q -m 'not slow'", "uv run --frozen python scripts/validate_mermaid_blocks.py"]
 
+[tasks.roundtrip-demo]
+description = "Run synthetic template fill-back parity"
+run = "uv run --frozen python compliance/scripts/roundtrip_demo.py"
+
 [tasks.verify]
 depends = ["lint", "audit", "security", "test"]
+
+[tasks.workspace-verify]
+description = "Validate a system-output workspace named by OSCAL_VAULT_WORKSPACE"
+run = """
+set -euo pipefail
+: "${OSCAL_VAULT_WORKSPACE:?Set OSCAL_VAULT_WORKSPACE to the system-output repository path}"
+workspace="$(cd "$OSCAL_VAULT_WORKSPACE" && pwd)"
+core="${MISE_PROJECT_ROOT:?mise did not provide the core project root}"
+python="${core}/.venv/bin/python"
+test -x "$python" || { echo "Core dependencies are not installed; run 'mise run setup' in oscal-vault-core first." >&2; exit 2; }
+test -d "$workspace/examples/vault" || { echo "Workspace lacks examples/vault: $workspace" >&2; exit 2; }
+cd "$workspace"
+"$python" "$core/compliance/scripts/generate_canonical_json.py" --check
+if [ -f scripts/vault_debt_baseline.json ]; then "$python" "$core/compliance/scripts/validate_vault.py" --no-new-debt --baseline-file scripts/vault_debt_baseline.json; else echo "SKIPPED vault validation (missing scripts/vault_debt_baseline.json)"; fi
+"$python" "$core/compliance/scripts/validate_cui_contracts.py"
+"$python" "$core/compliance/scripts/validate_oscal_mappings.py"
+"$python" "$core/compliance/scripts/generate_canonical_json.py"
+"$python" "$core/compliance/scripts/export_oscal.py" --validate
+"$python" "$core/compliance/scripts/validate_oscal.py" --all-exports --semantic --parity
+if [ -f scripts/progressive_coverage_baseline.json ]; then "$python" "$core/compliance/scripts/progressive_coverage.py"; else echo "SKIPPED progressive coverage debt (missing scripts/progressive_coverage_baseline.json)"; fi
+if [ -f scripts/table_coverage_baseline.json ]; then "$python" "$core/compliance/scripts/table_coverage.py"; else echo "SKIPPED table coverage debt (missing scripts/table_coverage_baseline.json)"; fi
+if [ -f scripts/lineage_operator_attestations_v1.json ]; then "$python" "$core/compliance/scripts/validate_lineage_attestations.py"; else echo "SKIPPED lineage attestations (missing scripts/lineage_operator_attestations_v1.json)"; fi
+"""
 
 [tasks.hooks]
 run = "prek install"

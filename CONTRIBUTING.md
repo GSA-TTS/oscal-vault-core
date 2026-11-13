@@ -19,13 +19,12 @@ request workflow.
 ```bash
 # 1. Fork, then clone your fork and create a branch.
 
-# 2. Install dependencies (creates .venv, resolves against uv.lock).
-uv sync
+# 2. Install the pinned toolchain and locked dependencies.
+mise install
+mise run setup
 
 # 3. Run the gates CI runs, before opening a pull request.
-uv run ruff check compliance tests
-uv run ruff format --check compliance tests
-uv run pytest tests compliance/tests -q -m "not slow"
+mise run verify
 ```
 
 No `.docx` fixture is required: the suite is 987 passing tests on synthetic
@@ -35,7 +34,7 @@ If your change touches the `.docx` → OSCAL roundtrip, also run the slow
 sentinel test that renders through the committed blank templates:
 
 ```bash
-uv run pytest compliance/tests/test_docx_fill_roundtrip.py -q -m slow \
+mise exec -- uv run pytest compliance/tests/test_docx_fill_roundtrip.py -q -m slow \
   -k synthetic_contract_sentinel
 ```
 
@@ -50,7 +49,7 @@ run the harness **from that repository**:
 
 ```bash
 cd /path/to/my-system-repo
-bash /path/to/oscal-vault-core/compliance/scripts/validate_workspace.sh
+OSCAL_VAULT_WORKSPACE="$PWD" mise -C /path/to/oscal-vault-core run workspace-verify
 ```
 
 A gate whose baseline file is absent reports `SKIPPED` rather than passing
@@ -67,7 +66,8 @@ system repository, not here.
 cd /path/to/my-system-repo
 git submodule add <this repository> vendor/oscal-vault-core
 python vendor/oscal-vault-core/compliance/scripts/init_workspace.py   # layout + .gitignore block
-bash vendor/oscal-vault-core/compliance/scripts/validate_workspace.sh
+mise -C vendor/oscal-vault-core run setup
+OSCAL_VAULT_WORKSPACE="$PWD" mise -C vendor/oscal-vault-core run workspace-verify
 ```
 
 - Commands write under the workspace (`--workspace`, `OSCAL_VAULT_WORKSPACE`, or the current
