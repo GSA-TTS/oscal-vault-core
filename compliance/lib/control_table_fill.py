@@ -497,15 +497,16 @@ def fill_control_tables(
                 {status_key} if status_key else set(),
                 STATUS_KEY_PATTERNS,
             )
-            _set_checkbox_lines(
-                anchor.origination_cell.paragraphs,
-                origination_keys,
-                ORIGINATION_KEY_PATTERNS,
-            )
+            if anchor.origination_cell is not None:
+                _set_checkbox_lines(
+                    anchor.origination_cell.paragraphs,
+                    origination_keys,
+                    ORIGINATION_KEY_PATTERNS,
+                )
             provider_label = (origination_providers_by_control or {}).get(
                 control.control_id, ""
             )
-            if provider_label:
+            if provider_label and anchor.origination_cell is not None:
                 _replace_origination_tokens(anchor.origination_cell, provider_label)
             statement_results.extend(_fill_narrative(anchor, control))
             whole_text = (whole_control_text_by_control or {}).get(control.control_id)

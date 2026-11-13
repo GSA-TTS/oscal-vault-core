@@ -48,3 +48,4 @@ Proposed tooling record: [ADR-031](ADR-031-pinned-tooling-and-actions-boundaries
 | ADR-028 | [Workspace-Relative Output and a Guard Against System Content in the Core](ADR-028-workspace-and-system-content-guard.md) | Proposed | 2026-11-02 |
 | ADR-029 | [Path-Aware Wikilink Resolution and a Vault Graph Audit](ADR-029-path-aware-wikilink-resolution.md) | Proposed | 2026-11-02 |
 | ADR-030 | [Connect Extension Notes to Their System and to the Index](ADR-030-extension-note-graph-links.md) | Proposed | 2026-11-02 |
+| ADR-032 | [Synthetic CRM Roundtrip Template Family](ADR-032-synthetic-crm-roundtrip-template.md) | Proposed | 2026-11-13 |
