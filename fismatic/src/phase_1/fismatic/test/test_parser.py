@@ -110,3 +110,71 @@ def test_extract_implementation_details_preserves_row3_crm_and_responsible_role_
     )
     assert crm_text in details["implementation"]["a"]
     assert tenant_text in details["implementation"]["a"]
+
+
+def _make_multi_row_mock_table(rows_cells):
+    table = MagicMock()
+    rows = []
+    for cell_texts in rows_cells:
+        row = MagicMock()
+        cells = []
+        for t in cell_texts:
+            cell = MagicMock()
+            cell.text = t
+            cells.append(cell)
+        row.cells = cells
+        rows.append(row)
+    table.rows = rows
+
+    def _cell(r, c):
+        return rows[r].cells[c]
+
+    table.cell = _cell
+    return table
+
+
+def test_split_cis_and_continuation_tables_preserve_status_and_parts():
+    """Split CIS summary + continuation tables (Rev 4 / early Rev 5) must preserve
+    Implementation Status/Type and merge continuation Part rows without overwriting."""
+    cis_table = _make_multi_row_mock_table(
+        [
+            ["AC-1", "Control Summary Information"],
+            ["Responsible Role: System Owner", "Responsible Role: System Owner"],
+            ["Parameter AC-1(a): Annually", "Parameter AC-1(a): Annually"],
+            [
+                "Implementation Type (check all that apply):\n☒ Implemented\n☐ Planned",
+                "Implementation Type (check all that apply):\n☒ Implemented\n☐ Planned",
+            ],
+            [
+                "Control Origination (check all that apply):\n☒ Service Provider System Specific",
+                "Control Origination (check all that apply):\n☒ Service Provider System Specific",
+            ],
+        ]
+    )
+    cont_table = _make_multi_row_mock_table(
+        [
+            [
+                "AC-1 What is the solution and how is it implemented?",
+                "AC-1 What is the solution and how is it implemented?",
+            ],
+            ["Part a", "Access control policy is documented and reviewed annually."],
+            ["Part b", "Procedures are maintained by the ISSO."],
+        ]
+    )
+
+    parser_obj = DocxParser.__new__(DocxParser)
+    parser_obj.config = {}
+    parser_obj.tables = [cis_table, cont_table]
+
+    assert parser_obj.is_control_table(cis_table) is True
+    assert parser_obj.is_control_table(cont_table) is False
+
+    controls = parser_obj.get_controls()
+    assert list(controls.keys()) == ["AC-1"]
+    ctrl = controls["AC-1"]
+    assert ctrl.implementation_status == {"state": "implemented"}
+    assert ctrl.origination == ["system-specific"]
+    assert ctrl.implementation == {
+        "a": "Access control policy is documented and reviewed annually.",
+        "b": "Procedures are maintained by the ISSO.",
+    }

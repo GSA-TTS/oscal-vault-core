@@ -280,3 +280,40 @@ def test_library_accepts_matching_control_count() -> None:
         "implemented-requirements"
     ]
     assert [r["control-id"] for r in requirements] == ["ac-1"]
+
+
+def test_wipe_vault_preserves_export_policy_and_reads_registry_policy(
+    tmp_path: Path,
+) -> None:
+    from compliance.scripts.export_obsidian_vault import (
+        _read_registry_export_policy,
+        _wipe_vault,
+    )
+
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    policy_path = vault / ".export-policy.json"
+    policy_path.write_text(
+        json.dumps({"allow_synthetic": True, "rationale": "FIPS-199 categorization"})
+    )
+    stale = vault / "Controls" / "AC-01.md"
+    stale.parent.mkdir()
+    stale.write_text("stale")
+
+    _wipe_vault(vault)
+    assert policy_path.is_file()
+    assert not stale.exists()
+
+    reg = tmp_path / "registry.yaml"
+    reg.write_text(
+        "systems:\n"
+        "  - plan_id: fpdf-ui-fips-199\n"
+        "    export_policy:\n"
+        "      allow_synthetic: true\n"
+        "      rationale: FIPS-199 categorization\n"
+    )
+    loaded = _read_registry_export_policy(str(reg), "fpdf-ui-fips-199")
+    assert loaded == {
+        "allow_synthetic": True,
+        "rationale": "FIPS-199 categorization",
+    }

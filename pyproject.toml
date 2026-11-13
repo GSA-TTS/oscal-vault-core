@@ -78,6 +78,7 @@ package = false
 # vulnerable filelock 3.x even though the fixed 4.x line is compatible.
 constraint-dependencies = [
     "filelock>=4.2.1",
+    "soupsieve>=4.0.0",
     "urllib3>=2.8.0",
 ]
 

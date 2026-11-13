@@ -266,6 +266,11 @@ def collect(docx_path: Path) -> dict[str, Any]:
     doc = _load_doc(docx_path)
     control_tables = find_control_tables(doc)
     routed_table_ids = {id(a.table._tbl) for a in control_tables}
+    routed_table_ids.update(
+        id(a.continuation_table._tbl)
+        for a in control_tables
+        if a.continuation_table is not None
+    )
 
     def _is_instruction(para) -> bool:
         text = (para.text or "").strip()
@@ -474,6 +479,7 @@ def _integrity(control_tables) -> IntegrityMetrics:
             integ.filled_part_narrative_slots += sum(
                 1 for cell in anchor.part_rows.values() if cell.text.strip()
             )
+            impl: dict[str, str] = {}
             try:
                 details = extract_implementation_details(
                     {
@@ -482,9 +488,20 @@ def _integrity(control_tables) -> IntegrityMetrics:
                         "control_id": parsed.get("control_id") if parsed else None,
                     }
                 )
+                impl.update(details.get("implementation", {}))
             except Exception:
-                details = {}
-            integ.part_rows_extracted += len(details.get("implementation", {}))
+                pass
+            if anchor.continuation_table is not None:
+                try:
+                    cont_details = extract_implementation_details(
+                        {"table": anchor.continuation_table}
+                    )
+                    impl.update(cont_details.get("implementation", {}))
+                except Exception:
+                    pass
+            integ.part_rows_extracted += sum(
+                1 for k in anchor.part_rows if k in impl and impl[k].strip()
+            )
     return integ
 
 

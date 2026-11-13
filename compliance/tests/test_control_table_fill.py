@@ -161,6 +161,34 @@ class TestSyntheticDetection:
         assert summary["with_blank_answer_only"] == 1
         assert summary["max_parts"] == 3
 
+    def test_finds_split_rev4_cis_and_continuation_tables(self):
+        doc = docx.Document()
+        cis = doc.add_table(rows=4, cols=2)
+        cis.rows[0].cells[0].text = "AC-1"
+        cis.rows[0].cells[1].text = "Control Summary Information"
+        cis.rows[1].cells[0].text = "Responsible Role: System Owner"
+        cis.rows[2].cells[
+            0
+        ].text = "Implementation Type (check all that apply):\n☒ Implemented\n☐ Planned"
+        cis.rows[3].cells[
+            0
+        ].text = "Control Origination (check all that apply):\n☒ Service Provider System Specific"
+        cont = doc.add_table(rows=3, cols=2)
+        cont.rows[0].cells[
+            0
+        ].text = "AC-1 What is the solution and how is it implemented?"
+        cont.rows[1].cells[0].text = "Part a"
+        cont.rows[1].cells[1].text = "Policy narrative."
+        cont.rows[2].cells[0].text = "Part b"
+        cont.rows[2].cells[1].text = "Procedures narrative."
+
+        anchors = find_control_tables(doc)
+        assert len(anchors) == 1
+        assert anchors[0].control_id == "AC-1"
+        assert anchors[0].continuation_table is not None
+        assert set(anchors[0].part_rows.keys()) == {"a", "b"}
+        assert anchors[0].part_rows["a"].text == "Policy narrative."
+
 
 class TestSyntheticCheckboxToggle:
     def test_toggles_matching_status_line_only(self):

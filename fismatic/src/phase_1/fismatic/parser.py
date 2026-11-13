@@ -100,10 +100,13 @@ def is_control_table(table: Any) -> Tuple[bool, Optional[str]]:
     if not table or not getattr(table, "rows", None) or len(table.rows) < 3:
         return False, None
 
+    if is_continuation_table(table):
+        return False, None
+
     try:
         header_text = " ".join(
             cell.text.strip()
-            for row in table.rows[: min(3, len(table.rows))]
+            for row in table.rows[: min(10, len(table.rows))]
             for cell in row.cells
             if cell.text and cell.text.strip()
         )
@@ -114,10 +117,12 @@ def is_control_table(table: Any) -> Tuple[bool, Optional[str]]:
     if not control_id:
         return False, None
 
+    header_lower = header_text.lower()
     if (
         not is_control_heading(header_text)
-        and "implementation status" not in header_text.lower()
-        and "control origination" not in header_text.lower()
+        and "implementation status" not in header_lower
+        and "implementation type" not in header_lower
+        and "control origination" not in header_lower
     ):
         return False, None
 
@@ -128,9 +133,42 @@ def is_control_table(table: Any) -> Tuple[bool, Optional[str]]:
 # Implementation status / control origination text parsing
 # ---------------------------------------------------------------------------
 
-_STATUS_HEADER_RE = re.compile(r"^implementation\s+status\s*:?\s*$", re.IGNORECASE)
-_ORIGIN_HEADER_RE = re.compile(r"^control\s+origination\s*:?\s*$", re.IGNORECASE)
+_STATUS_HEADER_RE = re.compile(
+    r"^implementation\s+(?:status|type)(?:\s*\([^)]*\))?\s*:?\s*$", re.IGNORECASE
+)
+_ORIGIN_HEADER_RE = re.compile(
+    r"^control\s+origination(?:\s*\([^)]*\))?\s*:?\s*$", re.IGNORECASE
+)
+_CONTINUATION_HEADER_RE = re.compile(
+    r"^(?:[a-z]{2}[\s-]*0*\d+(?:\s*\(0*(?:\d+|[a-z]+)\))?\s+)?(?:describe\s+how\b|what\s+is\s+the\s+solution\b)",
+    re.IGNORECASE,
+)
+_CIS_TABLE_MARKER_RE = re.compile(
+    r"(?:implementation\s+(?:status|type)|control\s+origination|control\s+(?:enhancement\s+)?summary\s+information|responsibility\s+summary)",
+    re.IGNORECASE,
+)
 _SECTION_HEADER_RE = re.compile(r"^[A-Za-z][A-Za-z0-9 .,'&()/-]{0,80}:$")
+
+
+def is_continuation_table(table: Any) -> bool:
+    """True if `table` is a split narrative continuation table rather than a CIS header table."""
+    if not table or not getattr(table, "rows", None):
+        return False
+    try:
+        row0_text = " ".join(
+            cell.text.strip() for cell in table.rows[0].cells if cell.text and cell.text.strip()
+        )
+        if not _CONTINUATION_HEADER_RE.search(row0_text):
+            return False
+        full_text = "\n".join(
+            cell.text.strip()
+            for row in table.rows[: min(10, len(table.rows))]
+            for cell in row.cells
+            if cell.text and cell.text.strip()
+        )
+        return not bool(_CIS_TABLE_MARKER_RE.search(full_text))
+    except Exception:
+        return False
 
 _STATUS_KEYWORDS = [
     ("implemented", r"^implemented\b"),
@@ -552,7 +590,7 @@ def parse_control_table(
             responsible_role = sanitize_responsible_role(value_text)
             if responsible_role:
                 responsible_role = responsible_role.strip()
-        elif status_label in label:
+        elif status_label in label or "implementation type" in label:
             status_text = value_text
         elif origin_label in label:
             origination_text = value_text
@@ -589,6 +627,7 @@ def extract_implementation_details(
         return {}
 
     is_ctrl = control_data.get("is_control_table", False)
+    is_cont = is_continuation_table(table)
 
     part_pat = (
         config.get("partRowRegex", r"(?:part|req\.?)\s*([a-z0-9]+)")
@@ -628,6 +667,14 @@ def extract_implementation_details(
 
         label_lower = label.lower()
 
+        if (
+            "describe how" in label_lower
+            or "what is the solution" in label_lower
+            or "control summary" in label_lower
+            or "control enhancement summary" in label_lower
+        ):
+            continue
+
         # Skip headers, prompts, and CIS rows if this is a control table
         if is_ctrl:
             control_id = control_data.get("control_id")
@@ -641,9 +688,11 @@ def extract_implementation_details(
                 )
             ):
                 continue
-            if status_label in label_lower:
+            if status_label in label_lower or "implementation type" in label_lower:
                 continue
-            if origin_label in label_lower:
+            if origin_label in label_lower or "control applicability" in label_lower:
+                continue
+            if re.match(r"^(?:implemented\s+)?parameter\b", label_lower):
                 continue
             is_merged_narrative = len(label) > 40 and label == value
             if not is_merged_narrative:
@@ -652,17 +701,15 @@ def extract_implementation_details(
                         continue
                 elif bool(re.search(role_label, label_lower)):
                     continue
-            if "describe how" in label_lower or "control summary" in label_lower:
-                continue
 
         part_match = part_re.match(label)
         if part_match:
             part_key = part_match.group(1)
         else:
             # If label is long or equal to value (merged cell), it is narrative text, not a label column.
-            # In that case, use 'a' as a fallback part key (only inside a confirmed control table).
+            # In that case, use 'a' as a fallback part key (only inside a confirmed control or continuation table).
             if len(label) > 20 or label == value:
-                if not is_ctrl:
+                if not (is_ctrl or is_cont):
                     continue
                 part_key = "a"
             else:

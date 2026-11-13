@@ -6,6 +6,7 @@ from .control import Control
 from .control_set import ControlSet
 from .parser import (
     extract_implementation_details,
+    is_continuation_table,
     parse_control_table,
     load_contract_config,
 )
@@ -71,10 +72,19 @@ class DocxParser:
         if not table or len(table.rows) < 2:  # Need at least header and one data row
             return False
 
+        if is_continuation_table(table):
+            return False
+
         try:
-            # Get all cell text from first two rows
+            # Get cell text from the header row and up to the first 9 data rows
+            # (Rev 4 / early Rev 5 CIS tables place Responsible Role and Parameter
+            # rows before Implementation Status / Control Origination).
             header_cells = [cell.text.strip().lower() for cell in table.rows[0].cells]
-            data_cells = [cell.text.strip().lower() for cell in table.rows[1].cells]
+            data_cells = [
+                cell.text.strip().lower()
+                for row in table.rows[1 : min(10, len(table.rows))]
+                for cell in row.cells
+            ]
 
             # Join all text for pattern matching
             header_text = " ".join(header_cells)
