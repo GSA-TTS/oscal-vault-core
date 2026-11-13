@@ -68,7 +68,9 @@ def _fismatic_parser():
 # ---------------------------------------------------------------------------
 
 
-def _add_cis_table(doc, control_id: str, *, with_parts: bool = True):
+def _add_cis_table(
+    doc, control_id: str, *, with_parts: bool = True, answer_label: str = ""
+):
     """Build a minimal CIS table matching the official templates' row layout.
 
     Merges each row's cells (matching the real templates -- confirmed via
@@ -115,7 +117,9 @@ def _add_cis_table(doc, control_id: str, *, with_parts: bool = True):
             row.cells[0].text = f"Part {part}"
     else:
         answer_row = table.rows[4]
-        answer_row.cells[0].merge(answer_row.cells[-1])
+        answer_cell = answer_row.cells[0].merge(answer_row.cells[-1])
+        if answer_label:
+            answer_cell.text = answer_label
 
     return table
 
@@ -332,6 +336,33 @@ class TestSyntheticFillAndFismaticReadback:
         reloaded = docx.Document(str(out))
         answer_row = reloaded.tables[0].rows[4]
         assert "Single blob of narrative text." in answer_row.cells[0].text
+
+    def test_labelled_merged_answer_row_is_a_blank_slot(self, tmp_path):
+        doc = docx.Document()
+        _add_cis_table(
+            doc,
+            "AC-2(1)",
+            with_parts=False,
+            answer_label="Cloud.gov Customer Responsibility:",
+        )
+        anchors = find_control_tables(doc)
+        assert anchors[0].blank_answer_cell is not None
+        control = CanonicalControl.from_raw(
+            "AC-2(1)",
+            raw_status="implemented",
+            raw_origination=[],
+            statement_ids=["ac-02.01_smt.a"],
+        )
+        statement_text = {"AC-2(1)": {"ac-02.01_smt.a": "Replacement narrative."}}
+        out = tmp_path / "filled.docx"
+        result = fill_control_tables(
+            doc, [control], out, statement_text_by_control=statement_text
+        )
+        statement = result.control_results[0]["statements"][0]
+        assert statement["written"] is True
+        assert statement["placement"] == "blank-answer"
+        reloaded = docx.Document(str(out))
+        assert "Replacement narrative." in reloaded.tables[0].rows[4].cells[0].text
 
     def test_unmatched_control_reported(self, tmp_path):
         doc = docx.Document()
@@ -711,3 +742,125 @@ class TestWholeControlNarrative:
             in docx.Document(str(out)).tables[0].rows[4].cells[0].text
         )
         assert result["controls"][0]["whole_control"]["written"] is True
+
+
+class TestExistingTextIsNotRewritten:
+    def _table_with_existing_routed_text(
+        self, doc, control_id: str, *, narrative: str | None = None
+    ):
+        table = _add_cis_table(doc, control_id, with_parts=False)
+        table.rows[4].cells[0].text = narrative or (
+            "Controls Reference: AC-2 (7): Privileged User Accounts "
+            "Customer Responsibility: Customers manage privileged accounts. "
+            "GSA Implementation of GCP Responsibility: Applies only to GSA."
+        )
+        return table
+
+    def test_statement_already_in_owning_table_is_not_duplicated(self, tmp_path):
+        doc = docx.Document()
+        self._table_with_existing_routed_text(doc, "AC-2(7)")
+        control = CanonicalControl.from_raw(
+            "AC-2(7)",
+            raw_status="implemented",
+            raw_origination=[],
+            statement_ids=["ac-02.07_smt.a"],
+        )
+        statement_text = {
+            "AC-2(7)": {
+                "ac-02.07_smt.a": (
+                    "Customer Responsibility: Customers manage privileged accounts. "
+                    "GSA Implementation of GCP Responsibility: Applies only to GSA."
+                )
+            }
+        }
+        out = tmp_path / "filled.docx"
+        result = fill_control_tables(
+            doc, [control], out, statement_text_by_control=statement_text
+        )
+        statement = result.control_results[0]["statements"][0]
+        assert statement["placement"] == "existing-text"
+        assert statement["written"] is True
+        reloaded = docx.Document(str(out))
+        cell = reloaded.tables[0].rows[4].cells[0].text
+        assert cell.count("Customers manage privileged accounts.") == 1
+        assert len(reloaded.tables[0].rows) == 5
+
+    def test_existing_text_requires_a_complete_sentence_match(self, tmp_path):
+        doc = docx.Document()
+        self._table_with_existing_routed_text(
+            doc,
+            "AC-2(7)",
+            narrative="Customer Responsibility: Customer accounts are managed.",
+        )
+        control = CanonicalControl.from_raw(
+            "AC-2(7)",
+            raw_status="implemented",
+            raw_origination=[],
+            statement_ids=["ac-02.07_smt.a"],
+        )
+        statement_text = {"AC-2(7)": {"ac-02.07_smt.a": "Accounts are managed."}}
+        out = tmp_path / "filled.docx"
+        result = fill_control_tables(
+            doc, [control], out, statement_text_by_control=statement_text
+        )
+        statement = result.control_results[0]["statements"][0]
+        assert statement["placement"] == "blank-answer"
+        cell = docx.Document(str(out)).tables[0].rows[4].cells[0].text
+        assert cell.count("Accounts are managed.") == 1
+
+    def test_text_absent_from_owning_table_is_still_reported_unwritten(self, tmp_path):
+        doc = docx.Document()
+        self._table_with_existing_routed_text(doc, "AC-2(7)")
+        control = CanonicalControl.from_raw(
+            "AC-2(7)",
+            raw_status="implemented",
+            raw_origination=[],
+            statement_ids=["ac-02.07_smt.a"],
+        )
+        statement_text = {
+            "AC-2(7)": {"ac-02.07_smt.a": "Entirely different narrative about logging."}
+        }
+        result = fill_control_tables(
+            doc,
+            [control],
+            tmp_path / "filled.docx",
+            statement_text_by_control=statement_text,
+        )
+        statement = result.control_results[0]["statements"][0]
+        assert statement["placement"] == "blank-answer"
+        cell = docx.Document(str(tmp_path / "filled.docx")).tables[0].rows[4].cells[0]
+        assert cell.text.count("Entirely different narrative about logging.") == 1
+
+
+class TestSlotPreservesExistingNarrative:
+    def test_labelled_slot_keeps_source_text_and_appends_only_missing_sentences(
+        self, tmp_path
+    ):
+        doc = docx.Document()
+        table = _add_cis_table(doc, "AC-4", with_parts=False)
+        table.rows[4].cells[0].text = (
+            "Cloud.gov Customer Responsibility: Source sentence one is kept. "
+            "See AU-2 below for audit detail."
+        )
+        control = CanonicalControl.from_raw(
+            "AC-4",
+            raw_status="implemented",
+            raw_origination=[],
+            statement_ids=["ac-04_smt.a"],
+        )
+        statement_text = {
+            "AC-4": {
+                "ac-04_smt.a": (
+                    "Cloud.gov Customer Responsibility: Source sentence one is kept. "
+                    "New OSCAL sentence is added."
+                )
+            }
+        }
+        out = tmp_path / "filled.docx"
+        fill_control_tables(
+            doc, [control], out, statement_text_by_control=statement_text
+        )
+        cell = docx.Document(str(out)).tables[0].rows[4].cells[0].text
+        assert cell.count("Source sentence one is kept.") == 1
+        assert "See AU-2 below for audit detail." in cell
+        assert cell.count("New OSCAL sentence is added.") == 1
