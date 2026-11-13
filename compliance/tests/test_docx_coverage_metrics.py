@@ -43,6 +43,19 @@ def test_moderate_structural_coverage_shape():
     assert 0.45 <= struct.routable_block_coverage <= 0.60
 
 
+def test_contract_routed_tables_are_not_counted_as_residual_loss():
+    result = collect(_template(MODERATE))
+    structural = result["structural"]
+    asset_inventory = next(
+        element
+        for element in result["semantic"].elements
+        if element["element"] == "asset_inventory"
+    )
+
+    assert structural.routed_tables > 330
+    assert asset_inventory["dropped_tables"] == 0
+
+
 def test_cis_readback_is_lossless_on_blank_templates():
     for name in (LOW, MODERATE):
         integ: IntegrityMetrics = collect(_template(name))["integrity"]

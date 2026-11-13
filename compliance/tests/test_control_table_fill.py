@@ -147,6 +147,30 @@ class TestSyntheticDetection:
         assert anchors[0].part_rows == {}
         assert anchors[0].blank_answer_cell is not None
 
+    def test_finds_cis_table_when_status_row_is_second_row(self):
+        """Protect the Moderate PT-07(01) status-row layout variant."""
+        doc = docx.Document()
+        table = doc.add_table(rows=5, cols=2)
+        table.rows[0].cells[0].text = "PT-07(01)"
+        table.rows[0].cells[1].text = "Control Summary Information"
+        table.rows[1].cells[0].merge(table.rows[1].cells[1]).text = "Responsible Role:"
+        table.rows[2].cells[0].merge(
+            table.rows[2].cells[1]
+        ).text = "Implementation Status:\n☐ Implemented"
+        table.rows[3].cells[0].merge(
+            table.rows[3].cells[1]
+        ).text = "Control Origination:\n☐ System Specific Control"
+        table.rows[4].cells[0].merge(
+            table.rows[4].cells[1]
+        ).text = "PT-07(01) Describe how the control is implemented."
+
+        anchors = find_control_tables(doc)
+
+        assert len(anchors) == 1
+        assert anchors[0].control_id == "PT-07(01)"
+        assert anchors[0].status_cell.text.startswith("Implementation Status:")
+        assert anchors[0].origination_cell.text.startswith("Control Origination:")
+
     def test_ignores_non_cis_tables(self):
         doc = docx.Document()
         plain = doc.add_table(rows=2, cols=2)
