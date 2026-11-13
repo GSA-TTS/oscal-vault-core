@@ -55,7 +55,7 @@ _REGISTRY = [
     },
     {
         "name": "leveraged-saas-crm",
-        "blank": "fismatic/Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx",
+        "blank": "templates/Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx",
         "contract": "compliance/datacontracts/leveraged-saas-crm-roundtrip.yaml",
         "output": "compliance/templates/leveraged-saas-crm.jinja.docx",
     },

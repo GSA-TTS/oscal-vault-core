@@ -34,10 +34,11 @@ _FISMATIC = _REPO_ROOT / "fismatic"
 _DC = _REPO_ROOT / "compliance" / "datacontracts"
 _FIX = _REPO_ROOT / "compliance" / "tests" / "fixtures" / "roundtrip"
 _TEMPLATES = _REPO_ROOT / "compliance" / "templates"
+_BLANK_TEMPLATES = _REPO_ROOT / "templates"
 
 _LOW_BLANK = _FISMATIC / "Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx"
 _CRM_BLANK = (
-    _FISMATIC / "Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx"
+    _BLANK_TEMPLATES / "Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx"
 )
 _MOD_BLANK = _FISMATIC / "Moderate-SSPP-Template-[Contains-CUI]-10-16-2024.docx"
 _HIGH_BLANK = _FISMATIC / "High-SSPP-Template-[Contains-CUI]-10-16-2024.docx"

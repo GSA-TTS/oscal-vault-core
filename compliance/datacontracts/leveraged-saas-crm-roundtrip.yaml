@@ -48,11 +48,11 @@ servers:
   - id: local_docx
     server: local-fedramp-crm-ssp
     type: local
-    description: Local CRM SSP blank template under fismatic/ (gitignored).
+    description: Official blank CRM SSP template under templates/.
     environment: dev
     customProperties:
       - property: path
-        value: "fismatic/Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx"
+        value: "templates/Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx"
       - property: format
         value: docx
 
@@ -87,7 +87,7 @@ schema:
       - property: isSource
         value: "true"
       - property: blankTemplatePath
-        value: "fismatic/Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx"
+        value: "templates/Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx"
       - property: instructionColors
         value: "0070C0,1F497D,366091"
       - property: instructionTextPrefixes
