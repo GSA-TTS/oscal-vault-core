@@ -147,6 +147,65 @@ class TestSyntheticDetection:
         assert anchors[0].part_rows == {}
         assert anchors[0].blank_answer_cell is not None
 
+    def test_finds_crm_table_without_treating_responsibility_as_origination(self):
+        doc = docx.Document()
+        table = doc.add_table(rows=6, cols=2)
+        rows = table.rows
+        rows[0].cells[0].text = "CR-1"
+        rows[0].cells[1].text = "Responsibility Summary Information"
+        rows[1].cells[0].merge(
+            rows[1].cells[1]
+        ).text = "Implementation Status:\n☐ Implemented"
+        rows[2].cells[0].merge(
+            rows[2].cells[1]
+        ).text = "Customer Responsibility: Source responsibility prose."
+        rows[3].cells[0].merge(rows[3].cells[1]).text = "Controls Reference: AC-2"
+        rows[4].cells[0].merge(
+            rows[4].cells[1]
+        ).text = "CR-1 Describe how the customer responsibility is implemented."
+        rows[5].cells[0].merge(rows[5].cells[1]).text = "Source answer prose."
+
+        anchor = find_control_tables(doc)[0]
+
+        assert anchor.origination_cell is None
+        assert anchor.blank_answer_cell is not None
+        assert "Source answer prose." in anchor.blank_answer_cell.text
+
+    def test_filling_crm_table_preserves_reference_and_responsibility_rows(
+        self, tmp_path
+    ):
+        doc = docx.Document()
+        table = doc.add_table(rows=6, cols=2)
+        rows = table.rows
+        rows[0].cells[0].text = "CR-1"
+        rows[0].cells[1].text = "Responsibility Summary Information"
+        status_cell = rows[1].cells[0].merge(rows[1].cells[1])
+        status_cell.text = "Implementation Status:"
+        status_cell.add_paragraph("☐ Implemented")
+        status_cell.add_paragraph("☐ Not applicable")
+        rows[2].cells[0].merge(
+            rows[2].cells[1]
+        ).text = "Customer Responsibility: Source responsibility prose."
+        rows[3].cells[0].merge(rows[3].cells[1]).text = "Controls Reference: AC-2"
+        rows[4].cells[0].merge(
+            rows[4].cells[1]
+        ).text = "CR-1 Describe how the customer responsibility is implemented."
+        rows[5].cells[0].merge(rows[5].cells[1]).text = "Source answer prose."
+        control = CanonicalControl.from_raw(
+            "CR-1", raw_status="implemented", raw_origination=[], statement_ids=[]
+        )
+        out = tmp_path / "crm.filled.docx"
+
+        fill_control_tables(doc, [control], out)
+
+        reloaded = docx.Document(str(out)).tables[0]
+        assert "☒ Implemented" in reloaded.rows[1].cells[0].text
+        assert (
+            reloaded.rows[2].cells[0].text
+            == "Customer Responsibility: Source responsibility prose."
+        )
+        assert reloaded.rows[3].cells[0].text == "Controls Reference: AC-2"
+
     def test_ignores_non_cis_tables(self):
         doc = docx.Document()
         plain = doc.add_table(rows=2, cols=2)

@@ -42,6 +42,9 @@ from docx.document import Document as DocxDocument
 from docx.table import Table, _Cell
 
 _STATUS_ROW_MARKER = "Implementation Status:"
+_CRM_CONTROL_ID_RE = re.compile(r"^CR-\d+\s*$", re.IGNORECASE)
+_CRM_RESPONSIBILITY_RE = re.compile(r"^Customer\s+Responsibility\s*:", re.IGNORECASE)
+_CRM_REFERENCE_RE = re.compile(r"^Controls?\s+Reference\s*:", re.IGNORECASE)
 _STATUS_ROW_RE = re.compile(
     r"^Implementation\s+(?:Status|Type)(?:\s*\([^)]*\))?\s*:", re.IGNORECASE
 )
@@ -72,14 +75,15 @@ class ControlTableAnchor:
     status_cell:
         Row 1's first cell (the merged "Implementation Status:" block).
     origination_cell:
-        Row 2's first cell (the merged "Control Origination:" block).
+        The merged "Control Origination:" block, or ``None`` for CRM tables
+        whose equivalent rows contain customer-responsibility reference prose.
     part_rows:
         ``{part_key: value_cell}`` for each "Part <key>" row found (row 4+).
         Empty when the control has no Part breakdown.
     blank_answer_cell:
-        The single fully-merged row-4 answer cell, present only when
-        ``part_rows`` is empty (a control with no Part breakdown still has
-        exactly one blank narrative slot to fill).
+        The single fully-merged narrative answer cell, present only when
+        ``part_rows`` is empty. Standard CIS tables place it in row 4; CRM
+        tables place it after responsibility and reference rows.
     continuation_table:
         Optional paired narrative table immediately following a split CIS
         summary table (e.g. Rev 4 / early Rev 5 templates where status and
@@ -90,7 +94,7 @@ class ControlTableAnchor:
     table_index: int
     table: Table
     status_cell: _Cell
-    origination_cell: _Cell
+    origination_cell: _Cell | None
     part_rows: dict[str, _Cell] = field(default_factory=dict)
     blank_answer_cell: _Cell | None = None
     continuation_table: Table | None = None
@@ -155,8 +159,20 @@ def find_control_tables(
 
         control_id = table.rows[0].cells[0].text.strip()
         status_cell = table.rows[status_idx].cells[0]
+        is_crm = bool(_CRM_CONTROL_ID_RE.match(control_id))
         origin_idx = _origination_row_index(table, status_idx)
-        origination_cell = table.rows[origin_idx].cells[0]
+        origination_cell: _Cell | None = table.rows[origin_idx].cells[0]
+        if (
+            is_crm
+            and len(table.rows) == status_idx + 5
+            and _CRM_RESPONSIBILITY_RE.match(table.rows[status_idx + 1].cells[0].text)
+            and _CRM_REFERENCE_RE.match(table.rows[status_idx + 2].cells[0].text)
+        ):
+            # CRM tables use Customer Responsibility and Controls Reference
+            # rows where standard CIS tables carry Control Origination. They
+            # are source/reference prose, never checkbox targets.
+            origin_idx = status_idx
+            origination_cell = None
 
         part_rows: dict[str, _Cell] = {}
         blank_answer_cell: _Cell | None = None
@@ -167,10 +183,17 @@ def find_control_tables(
             m = _PART_ROW_RE.match(label)
             if m:
                 part_rows[m.group(1).lower()] = row.cells[-1]
-            elif (
-                blank_answer_cell is None
-                and len(table.rows) == status_idx + 4
-                and row_index == status_idx + 3
+            elif blank_answer_cell is None and (
+                (
+                    is_crm
+                    and len(table.rows) == status_idx + 5
+                    and row_index == status_idx + 4
+                )
+                or (
+                    not is_crm
+                    and len(table.rows) == status_idx + 4
+                    and row_index == status_idx + 3
+                )
             ):
                 # Only the single row after Describe-how in a no-Part CIS table is
                 # the blank answer slot; guard against matching later padding.
