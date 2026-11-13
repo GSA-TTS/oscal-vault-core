@@ -186,6 +186,22 @@ def test_golden_docx_writes_review_note_for_every_table(tmp_path: Path):
     assert payload["filters"] == {"and": ['file.inFolder("_source/tables")']}
 
 
+def test_complex_merged_table_is_preserved_in_source_table_note(tmp_path: Path):
+    docx = tmp_path / "golden.docx"
+    vault = tmp_path / "vault"
+    create_synthetic_golden_docx(docx)
+
+    paths = write_source_table_notes(docx, vault)
+    records = [yaml.safe_load(path.read_text().split("---", 2)[1]) for path in paths]
+
+    preserved = [
+        record for record in records if record["projection_status"] == "preserved_only"
+    ]
+    assert preserved
+    assert all(record["merged_cell_count"] > 0 for record in preserved)
+    assert all(record["preservation_manifest"] for record in preserved)
+
+
 def test_projection_cleanup_only_removes_owned_stale_files(tmp_path: Path):
     docx = tmp_path / "golden.docx"
     vault = tmp_path / "vault"
