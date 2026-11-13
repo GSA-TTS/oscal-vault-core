@@ -177,7 +177,7 @@ kanban
     s4[987-test suite on synthetic fixtures]@{ ticket: 14, priority: 'Very High' }
     s5[Architecture, schema, ADR and interop docs]@{ ticket: 11, priority: 'High' }
     s6[Batch and diagnostic scripts via system registry]@{ ticket: 12, priority: 'Low' }
-    s7[validate_workspace.sh for system repositories]@{ ticket: 16, priority: 'High' }
+    s7[mise workspace-verify for system repositories]@{ ticket: 16, priority: 'High' }
     s8[Mapping fallback to the core's own vocabularies]@{ ticket: 15, priority: 'Low' }
   feedback[Feedback - awaiting human review or policy sign-off]
     f1[Branch protection policy]@{ ticket: 3, priority: 'High' }
@@ -326,23 +326,20 @@ Read the grammar as the contract:
 - `intake` has no alternative. This repository holds no system content, so the
   `.docx` always comes from the caller.
 
-## Quickstart (uv)
+## Quickstart (mise)
 
-Managed with [`uv`](https://docs.astral.sh/uv/):
+Managed with [`mise`](https://mise.jdx.dev/) and its pinned toolchain:
 
 ```bash
-# Install dependencies (creates .venv, resolves against uv.lock)
-uv sync
+# Install the pinned toolchain and locked dependencies.
+mise install
+mise run setup
 
-# Run the test suite (987 tests on synthetic fixtures; no .docx required)
-uv run pytest tests compliance/tests -q -m "not slow"
-
-# Lint and format, matching CI
-uv run ruff check compliance tests
-uv run ruff format --check compliance tests
+# Run all CI gates (lint, audit, security, and synthetic tests).
+mise run verify
 
 # Build a vault from a FedRAMP SSP .docx you supply locally
-uv run python compliance/scripts/export_obsidian_vault.py \
+mise exec -- uv run python compliance/scripts/export_obsidian_vault.py \
   --docx path/to/your-ssp.docx \
   --plan-id my-system-2026 \
   --system-name "My System" --fips-199 low \
@@ -350,8 +347,8 @@ uv run python compliance/scripts/export_obsidian_vault.py \
   --vault examples/vault/my-system-2026/
 
 # Regenerate canonical JSON sidecars, then export + validate OSCAL
-uv run python compliance/scripts/generate_canonical_json.py --vault examples/vault/my-system-2026/
-uv run python compliance/scripts/export_oscal.py --vault examples/vault/my-system-2026/ --validate
+mise exec -- uv run python compliance/scripts/generate_canonical_json.py --vault examples/vault/my-system-2026/
+mise exec -- uv run python compliance/scripts/export_oscal.py --vault examples/vault/my-system-2026/ --validate
 ```
 
 ### Running the gates against a system repository
@@ -361,7 +358,7 @@ run the harness **from that repository**:
 
 ```bash
 cd /path/to/my-system-repo
-bash /path/to/oscal-vault-core/compliance/scripts/validate_workspace.sh
+OSCAL_VAULT_WORKSPACE="$PWD" mise -C /path/to/oscal-vault-core run workspace-verify
 ```
 
 It expects `./examples/vault/<system>/` and, optionally, baseline files under
@@ -376,7 +373,7 @@ passing silently, and the exit code is non-zero if any gate that ran failed.
 | `compliance/lib/`                     | Core library (56 modules): vault builders, contract-driven `heading_parser`, OSCAL export, canonical JSON, validators. |
 | `compliance/scripts/`                 | 54 CLIs: `export_obsidian_vault.py`, `generate_canonical_json.py`, `export_oscal.py`, `validate_*.py`, coverage and roundtrip tools. |
 | `compliance/scripts/classify_dropped_blocks.py` | Classifies every unrouted block by what it is, so the loss budget can be adopted or declined per class. |
-| `compliance/scripts/validate_workspace.sh` | Runs the core's gates against a system repository (see above).                                         |
+| `mise run workspace-verify` | Runs the core's gates against a system repository named by `OSCAL_VAULT_WORKSPACE`. |
 | `compliance/datacontracts/`           | ODCS v3.1.0 routing contract (`fedramp-ssp-v1.yaml`) + roundtrip fill-back contracts.                        |
 | `compliance/mappings/`                | Vocabulary crosswalk tables (raw → normalized status/origination enums), with a built-in fallback.          |
 | `compliance/schemas/`                 | Vendored NIST OSCAL 1.0.4 / 1.1.3 schemas (Layer-1 validation).                                              |
@@ -407,9 +404,8 @@ Consequently:
 - To build a vault from scratch, supply your own SSP `.docx` (or use one of the
   committed blank baselines) and point the CLI at it.
 - **No example vault is committed here.** A generated vault belongs to the
-  system repository that owns the content; see
-  `compliance/scripts/validate_workspace.sh` for how the core validates one in
-  place.
+  system repository that owns the content; use `mise run workspace-verify` with
+  `OSCAL_VAULT_WORKSPACE` to validate one in place.
 
 ## OSBAPI / Backstage interoperability (recommended projection)
 
@@ -432,11 +428,10 @@ to `main`:
 
 | Gate                                                            | What it proves                                              |
 | --------------------------------------------------------------- | ----------------------------------------------------------- |
-| `uv sync --frozen`                                              | The lockfile resolves; no undeclared dependency             |
-| `uv run ruff check compliance tests`                            | Lint (ADR-004 scopes ruff to `compliance/`)                 |
-| `uv run ruff format --check compliance tests`                   | Formatting                                                  |
-| `uv run pytest tests compliance/tests -q -m "not slow"`          | 987 tests, no source `.docx` required                       |
-| `pytest … -m slow -k synthetic_contract_sentinel`                | Synthetic sentinels render through the blank templates      |
+| `mise run setup`                                                | Pinned toolchain and locked dependencies                    |
+| `mise run lint`                                                 | Lint and formatting (ADR-004 scopes ruff to `compliance/`) |
+| `mise run audit` / `mise run security`                          | Dependency and static security checks                       |
+| `mise run test`                                                 | Synthetic tests; no source `.docx` required                 |
 
 The core validates its own parser and control-table behaviour. System
 repositories validate their own restricted content separately; **no system
