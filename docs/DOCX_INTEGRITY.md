@@ -135,3 +135,14 @@ The core-owned [review workflow and evidence ledger](DOCX_INTEGRITY_REVIEW.md)
 includes generic registry setup, root causes, validation history and remaining
 work. Registry and standalone relocation tests run in this core's test suite;
 no consumer repository is needed to exercise synthetic integrity behavior.
+
+## Stage ownership
+
+The CLI only parses arguments and establishes private output/logging. Library
+modules own pipeline orchestration (`docx_integrity_pipeline.py`), exact fill
+context evidence (`docx_integrity_context.py`), live fill/readback checks
+(`docx_integrity_fillback.py`) and control-table rendering
+(`docx_integrity_render.py`). The existing `fill_ssp_from_oscal.py` command
+delegates rendering to the same library. No integrity library imports an
+executable script; existing CLI function imports remain compatibility aliases.
+Architecture tests enforce bounded files/functions and dependency direction.

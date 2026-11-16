@@ -49,6 +49,12 @@ is independent of mandatory human sign-off. No new dependency or CI change.
 
 ## Consequences
 
+DI-007 maintainability refinement: executable entry points are thin adapters,
+not library dependencies. Pipeline, context validation, fill/readback and render
+stages are separate bounded library modules. Existing CLI imports are aliases
+for compatibility; the public argument/exit-code contract is unchanged. Tests
+enforce file/function limits, decision-node budgets and one-way library imports.
+
 Consumer validation must discover files relative to vault roots, not discard a
 whole vault because an absolute ancestor is hidden. Canonical drift gates fail
 on missing hashes and generation errors. Mapping parsing uses a bounded cache

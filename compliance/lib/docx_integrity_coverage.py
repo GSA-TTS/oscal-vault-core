@@ -56,6 +56,23 @@ def preserve_source_nodes(source: Path, vault: Path) -> dict:
     target = vault / "_source" / "nodes.json"
     target.parent.mkdir(parents=True, exist_ok=True)
     records = [node.to_dict() for node in document.nodes]
+    deltas = retain_ir_records(target, records)
+    tables = table_dispositions(document)
+    return {
+        "status": "PASS"
+        if package_evidence["status"] == "PASS"
+        and all(d["category"] == "opaque_preserved" for d in deltas)
+        else "FAIL",
+        "structured_count": 0,
+        "opaque_preserved_count": len(deltas),
+        "review_note": "Source IR retained locally; semantic projection is evaluated separately at L2.",
+        "nodes": deltas,
+        "tables": tables,
+        "package_retention": package_evidence,
+    }
+
+
+def retain_ir_records(target: Path, records: list[dict]) -> list[dict]:
     target.write_text(
         json.dumps(records, sort_keys=True, indent=2) + "\n", encoding="utf-8"
     )
@@ -78,6 +95,10 @@ def preserve_source_nodes(source: Path, vault: Path) -> dict:
                 "source_disposition": node["disposition"],
             }
         )
+    return deltas
+
+
+def table_dispositions(document) -> list[dict]:
     tables = []
     for table in document.tables:
         merged = any(
@@ -98,15 +119,4 @@ def preserve_source_nodes(source: Path, vault: Path) -> dict:
                 ],
             }
         )
-    return {
-        "status": "PASS"
-        if package_evidence["status"] == "PASS"
-        and all(d["category"] == "opaque_preserved" for d in deltas)
-        else "FAIL",
-        "structured_count": 0,
-        "opaque_preserved_count": len(deltas),
-        "review_note": "Source IR retained locally; semantic projection is evaluated separately at L2.",
-        "nodes": deltas,
-        "tables": tables,
-        "package_retention": package_evidence,
-    }
+    return tables

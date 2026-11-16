@@ -74,7 +74,7 @@ Owners require human maintainer assignment. Deferred work is not silently passed
 | DI-003 | REVIEW | Proven per-field DOCX→canonical→OSCAL lineage beyond opaque fallback; approve mapping scope and synthetic fixtures |
 | DI-004 | REVIEW | Fine-grained XML delta evidence and automatic provenance-bound writable-slot decisions; retain substantive fail-closed gate |
 | DI-005 | COMPLETE | Core PR #76 merged at 33d613bd5c8ccae3a959d3e9e2b9c56545b16ffd; consumer PR #130 merged at 7e98b63b9db5557f260718813016566428efe829 adopting that immutable pin. User reported review/merge; PR validation passed and local consumer parity/attestations passed. Core post-merge validation passed |
-| DI-007 | REVIEW | Remaining oversized stage functions need further factoring to 50-line discipline without behavior changes |
+| DI-007 | VERIFYING | Thin CLI delegates to pipeline, fillback, context and render libraries; all integrity modules under 400 lines and functions under 50. Architecture regressions enforce bounded stages and no library imports of executable scripts; legacy CLI aliases retained. Full verify/sentinel and human PR review pending |
 | DI-009 | FIXED | Consumer canonical check completed; content-keyed mapping cache invalidation tested. Corrected full consumer gate checked 5835 frontmatter notes and 5576 Dataview blocks; 52/52 exports schema/semantic valid, canonical parity and lineage attestations passed. Existing portfolio warnings and baselined debt remain visible |
 
 ## Verification transcript
@@ -116,6 +116,13 @@ workspace vaults and generated local ignored exports.
   and core-template roundtrip fill-back parity (4m10s).
 - Consumer pin-only PR #129 was closed as superseded by #130, not conflict-resolved
   to the older pin: ancestry confirms `b4bd872` is included in `33d613bd`.
+- DI-007 refactor verification: 40 focused architecture/live integrity/relocation
+  tests passed. Full core verify passed with 1202 tests, 37 skips and 20
+  deselections; lint/format, security/audits and 53 Mermaid blocks passed.
+  Slow synthetic sentinel passed: 3 tests, 17 deselected in 385.82 seconds.
+  Final full-suite rerun passed with 1203 tests (37 skips, 20 deselections),
+  including the last unrelated-directory CLI regression; lint/security/audits
+  and all 53 Mermaid blocks passed.
 
 An early frozen UV invocation created a core-local virtualenv despite the initial
 no-install scope; this was disclosed. Later Node installation was explicitly

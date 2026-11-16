@@ -55,6 +55,10 @@ def write_report(output: Path, report: dict) -> None:
         format_checker=jsonschema.FormatChecker(),
     )
     write_json(output / "compare" / "final-report.json", report)
+    write_markdown_report(output, report)
+
+
+def write_markdown_report(output: Path, report: dict) -> None:
     lines = [
         "---",
         f"title: DOCX E2E Integrity Report — {report['system_id']}",
