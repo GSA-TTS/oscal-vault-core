@@ -728,7 +728,15 @@ def extract_implementation_details(
                 elif bool(re.search(role_label, label_lower)):
                     continue
 
-        if len(label) > 20 and label == value:
+        # Standard named parts retain identity even when label and value are
+        # the same merged cell. Extended authored labels (e.g. Part PT-07_01_)
+        # remain opaque prose under the explicit fallback, not guessed IDs.
+        named_merged_part = re.match(r"^(?:part|req\.?)\s+([a-z0-9]+)(?=\s|:|$)", label, re.IGNORECASE)
+        if config or label != value:
+            named_merged_part = part_re.match(label)
+        if named_merged_part:
+            part_key = named_merged_part.group(1)
+        elif len(label) > 20 and label == value:
             if not (is_ctrl or is_cont):
                 continue
             part_key = "a"

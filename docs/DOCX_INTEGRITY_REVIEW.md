@@ -53,6 +53,49 @@ queue belongs in this reusable core.
 
 ## Root causes and repairs
 
+### PR #79 generic-preservation audit
+
+FPDF evidence motivated generic regression tests, not customer-specific parsing
+branches. Independent synthetic review reproduced additional failures: the
+no-op narrative comparator erased punctuation/case/Unicode distinctions, and
+long merged `Part b:` prose was routed to part `a`. Equality now ignores only
+whitespace; standard named merged parts retain identity. Extended authored
+labels such as `Part PT-07_01_` remain explicit fallback prose, not guessed IDs.
+
+Checkbox labels are read from OOXML because python-docx omits SDT-contained
+text from `Paragraph.text`. Only the owning changed editorial checkbox wrapper
+is unwrapped; unrelated wrappers and semantic binding/lock/checkbox properties
+remain. Synthetic save/reload tests cover wrapped toggles, unchanged wrappers,
+Unicode/punctuation changes and numbered no-op cells. Normalization collisions
+remain failing evidence and no longer overwrite the first observed value.
+
+These tests reduce regression risk but do not prove support for every Word
+layout. Full suite, real blank-template sentinel and unaffected family readback
+remain required. No private FPDF source files were accessed in this audit.
+
+Unaffected Moderate demo after review fixes: 49/49 narrative tags recovered,
+332/332 control tables verified, zero unmatched/mismatched. The demo's blank
+path was absent and it used the committed Jinja template; fresh Jinjafy was
+SKIPPED in this run, not counted as a full source-to-template pass. Focused
+generic/Fismatic/live-integrity regression run: 67 passed. Full core verify
+passed: 1222 tests, 37 skips, 20 deselections; lint/format, security/dependency
+audits and all 53 Mermaid blocks passed. Slow synthetic sentinel passed:
+3 tests, 17 deselected in 275.73 seconds. Optional fixture skips are not
+source-document passes.
+
+### Parser versus compliance boundary
+
+Both directories are maintained in this core, not separate products. Fismatic
+owns legacy DOCX control-table recognition and raw read extraction; compliance
+owns IR preservation, canonical mapping, export, writing and validation. The
+different names reflect historical layering, but duplicated identifiers and
+private helper imports cause coupling. Combining directories alone will not
+remove those semantic differences and risks imports/schema/consumer contracts.
+Prefer a separately approved incremental migration: shared public identifier
+and table-layout primitives; typed raw parser boundary; deprecate path hacks;
+then move modules with compatibility aliases and synthetic corpus parity gates.
+No namespace merge is part of PR #79.
+
 | Finding | Root cause | Repair and actual evidence |
 |---|---|---|
 | L1 serialization mistaken for independent preservation | JSON write/read does not prove full source retention | Every bounded ZIP member retained with manifest; independent byte/set verifier; corruption and extra-member tests |
