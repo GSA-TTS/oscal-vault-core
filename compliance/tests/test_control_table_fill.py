@@ -1005,7 +1005,7 @@ def test_match_key_and_statement_normalization_and_collision_detection():
         {"ac-02.01_smt.a": "first", "ac-02(01)_stmt.a": "colliding"},
     )
     assert collision is True
-    assert normalized == {"AC-2(1)_smt.a": "colliding"}
+    assert normalized == {"AC-2(1)_smt.a": "first"}
 
 
 def test_unchanged_part_cell_preserves_numbering_and_untouched_sdt_wrappers(tmp_path):

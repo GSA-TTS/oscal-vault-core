@@ -141,6 +141,29 @@ def _match_key(control_id: str | None) -> str | None:
     return f"{base}({enhancement})" if enhancement else base
 
 
+def _unwrap_glyph_sdt(glyph_element) -> None:
+    """Unwrap only the owning checkbox wrapper, never unrelated sibling controls."""
+    wrappers = [node for node in glyph_element.iterancestors() if node.tag == _W_SDT]
+    for wrapper in wrappers:
+        # Real form controls have semantic properties; a glyph toggle must not
+        # discard those properties under the editorial-wrapper workaround.
+        props = wrapper.find(qn("w:sdtPr"))
+        if props is not None and any(
+            node.tag.rsplit("}", 1)[-1]
+            in {"checkbox", "checkBox", "dataBinding", "lock"}
+            for node in props.iter()
+        ):
+            continue
+        content = wrapper.find(_W_SDT_CONTENT)
+        parent = wrapper.getparent()
+        if content is None or parent is None:
+            continue
+        index = parent.index(wrapper)
+        for offset, child in enumerate(list(content)):
+            parent.insert(index + offset, child)
+        parent.remove(wrapper)
+
+
 _STATEMENT_SUFFIX_RE = re.compile(
     r"^(.+?)_(?:smt|stmt)(?:\.([A-Za-z0-9][A-Za-z0-9._-]*))?$"
 )
@@ -176,6 +199,7 @@ def _normalize_statement_map(
         key = _statement_key(owner_control_id, sid)
         if key in normalized:
             collision = True
+            continue
         normalized[key] = text
     return normalized, collision
 
@@ -252,7 +276,8 @@ def _set_checkbox_lines(
         glyph_el = _find_glyph_element(para)
         if glyph_el is None:
             continue
-        label = _strip_glyph(para.text)
+        # python-docx Paragraph.text omits runs inside structured document tags.
+        label = _strip_glyph("".join(t.text or "" for t in para._p.iter(_W_T)))
         label_lower = label.lower()
         without_parens = _PAREN_RE.sub("", label_lower).strip()
         matched_key = None
@@ -269,7 +294,7 @@ def _set_checkbox_lines(
         current = (glyph_el.text or "").lstrip()[:1]
         if current == desired:
             continue
-        _unwrap_sdt_runs(para)
+        _unwrap_glyph_sdt(glyph_el)
         glyph_el = _find_glyph_element(para)
         if glyph_el is not None:
             glyph_el.text = _replace_leading_glyph(glyph_el.text, desired)
@@ -321,7 +346,7 @@ def _fill_narrative(
                 break
         cell = anchor.part_rows.get(part_key) if part_key else None
         if cell is not None:
-            if text and _norm_text(cell.text) != _norm_text(text):
+            if text and " ".join(cell.text.split()) != " ".join(text.split()):
                 cell.text = text
             results.append(
                 {
