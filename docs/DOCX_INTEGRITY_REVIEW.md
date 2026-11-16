@@ -73,14 +73,18 @@ Owners require human maintainer assignment. Deferred work is not silently passed
 | DI-002 | BLOCKED | Per-source authorization, corpus evidence and human sign-off; source owner approval required |
 | DI-003 | REVIEW | Proven per-field DOCX→canonical→OSCAL lineage beyond opaque fallback; approve mapping scope and synthetic fixtures |
 | DI-004 | REVIEW | Fine-grained XML delta evidence and automatic provenance-bound writable-slot decisions; retain substantive fail-closed gate |
-| DI-005 | BLOCKED | Human PR/CI review, immutable commit/pin and consumer attestations; separate commit/push authorization |
+| DI-005 | COMPLETE | Core PR #76 merged at 33d613bd5c8ccae3a959d3e9e2b9c56545b16ffd; consumer PR #130 merged at 7e98b63b9db5557f260718813016566428efe829 adopting that immutable pin. User reported review/merge; PR validation passed and local consumer parity/attestations passed. Core post-merge validation passed |
 | DI-007 | REVIEW | Remaining oversized stage functions need further factoring to 50-line discipline without behavior changes |
 | DI-009 | FIXED | Consumer canonical check completed; content-keyed mapping cache invalidation tested. Corrected full consumer gate checked 5835 frontmatter notes and 5576 Dataview blocks; 52/52 exports schema/semantic valid, canonical parity and lineage attestations passed. Existing portfolio warnings and baselined debt remain visible |
 
 ## Verification transcript
 
-Approved scoped edits in isolated worktree; no commits, pushes, real-source runs,
-core-pin changes or publication. Source corpus was not copied into core.
+Implementation used approved scoped edits in an isolated worktree, initially
+without commits, pushes or pin changes. Later explicit user approvals authorized
+publication through core PR #76 and consumer adoption PR #130. Both merged;
+the user reported review and merge. No real-source DOCX corpus runs occurred,
+and source corpus was not copied into core. Consumer validation read existing
+workspace vaults and generated local ignored exports.
 
 - Initial verify failed formatting; corrected and rerun. Early full-suite and
   sentinel attempts timed out at 120 seconds and were not counted as passes.
@@ -99,6 +103,16 @@ core-pin changes or publication. Source corpus was not copied into core.
 - Canonical check now fails on missing content hashes and generation errors. Content-keyed bounded mapping cache avoids reparsing unchanged YAML while invalidating on content changes; mutable return-list isolation tested.
 - Consumer Taskfile verify/roundtrip no longer depend on setup, avoiding implicit submodule reset or installs. Core-owned Task dispatch regression covers delegation without setup/reset.
 - PR #76 CI exposed an undeclared integration-test prerequisite: Task existed on the local machine but not in core's pinned CI environment. Declare Task 3.54.0 in core mise tools, matching the consumer; retain the actual dispatch test rather than skipping or mocking it. CI run 43924141591 otherwise passed 1190 tests; the missing executable was its sole test failure.
+- Merged core [PR #76](https://github.com/GSA-TTS/oscal-vault-core/pull/76):
+  GitHub validate and system-content guard passed. Core post-merge
+  [validation run 43946716841](https://github.com/GSA-TTS/oscal-vault-core/actions/runs/43946716841)
+  passed on commit `33d613bd5c8ccae3a959d3e9e2b9c56545b16ffd`.
+- Merged consumer [PR #130](https://github.com/GSA-TTS/oscal-vault/pull/130):
+  PR CI passed; top-level local verify passed through the adopted core, including
+  5835 frontmatter notes, 5576 Dataview blocks, 52/52 valid OSCAL documents,
+  canonical parity and lineage attestations. Existing warnings/debt were not waived.
+- Consumer pin-only PR #129 was closed as superseded by #130, not conflict-resolved
+  to the older pin: ancestry confirms `b4bd872` is included in `33d613bd`.
 
 An early frozen UV invocation created a core-local virtualenv despite the initial
 no-install scope; this was disclosed. Later Node installation was explicitly
