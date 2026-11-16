@@ -1,6 +1,7 @@
 min_version = "2026.11.1"
 
 [tools]
+task = "3.54.0"
 python = "3.13.11"
 node = "24.21.0"
 uv = "0.13.7"
