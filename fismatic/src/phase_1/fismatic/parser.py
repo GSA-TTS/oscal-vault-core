@@ -156,7 +156,9 @@ def is_continuation_table(table: Any) -> bool:
         return False
     try:
         row0_text = " ".join(
-            cell.text.strip() for cell in table.rows[0].cells if cell.text and cell.text.strip()
+            cell.text.strip()
+            for cell in table.rows[0].cells
+            if cell.text and cell.text.strip()
         )
         if not _CONTINUATION_HEADER_RE.search(row0_text):
             return False
@@ -169,6 +171,7 @@ def is_continuation_table(table: Any) -> bool:
         return not bool(_CIS_TABLE_MARKER_RE.search(full_text))
     except Exception:
         return False
+
 
 _STATUS_KEYWORDS = [
     ("implemented", r"^implemented\b"),
@@ -666,12 +669,16 @@ def extract_implementation_details(
             continue
 
         label_lower = label.lower()
+        is_merged_narrative = len(label) > 80 and label == value
 
-        if (
-            "describe how" in label_lower
-            or "what is the solution" in label_lower
-            or "control summary" in label_lower
-            or "control enhancement summary" in label_lower
+        if _CONTINUATION_HEADER_RE.match(label) or (
+            not is_merged_narrative
+            and (
+                "describe how" in label_lower
+                or "what is the solution" in label_lower
+                or "control summary" in label_lower
+                or "control enhancement summary" in label_lower
+            )
         ):
             continue
 
@@ -694,21 +701,23 @@ def extract_implementation_details(
                 continue
             if re.match(r"^(?:implemented\s+)?parameter\b", label_lower):
                 continue
-            is_merged_narrative = len(label) > 40 and label == value
-            if not is_merged_narrative:
+            is_merged_role_prose = len(label) > 40 and label == value
+            if not is_merged_role_prose:
                 if "+" in role_label:
                     if all(p.strip() in label_lower for p in role_label.split("+")):
                         continue
                 elif bool(re.search(role_label, label_lower)):
                     continue
 
-        part_match = part_re.match(label)
-        if part_match:
-            part_key = part_match.group(1)
+        if len(label) > 20 and label == value:
+            if not (is_ctrl or is_cont):
+                continue
+            part_key = "a"
         else:
-            # If label is long or equal to value (merged cell), it is narrative text, not a label column.
-            # In that case, use 'a' as a fallback part key (only inside a confirmed control or continuation table).
-            if len(label) > 20 or label == value:
+            part_match = part_re.match(label)
+            if part_match:
+                part_key = part_match.group(1)
+            elif len(label) > 20:
                 if not (is_ctrl or is_cont):
                     continue
                 part_key = "a"

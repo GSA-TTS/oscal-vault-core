@@ -76,12 +76,14 @@ def control_readback(expected: dict, filled: Path, output: Path) -> dict:
 
 
 def compare_control(control, data: dict) -> list:
-    from compliance.lib.control_table_fill import _match_key
+    from compliance.lib.control_table_fill import _match_key, _normalize_statement_map
 
     key = _match_key(control.control_id)
     other = data["actual"].get(key)
-    expected_text = data["expected_text"].get(control.control_id, {})
-    actual_text = data["actual_text"].get(key, {})
+    expected_text = _normalize_statement_map(
+        data["expected_text"].get(control.control_id, {})
+    )
+    actual_text = _normalize_statement_map(data["actual_text"].get(key, {}))
     findings = []
     if (expected_text or control.control_id not in data["expected_whole"]) and set(
         expected_text

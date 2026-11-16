@@ -24,7 +24,9 @@ from .canonical_model import CanonicalControl
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _FISMATIC_SRC = _REPO_ROOT / "fismatic" / "src" / "phase_1"
 _QUOTES = str.maketrans({"\u201c": '"', "\u201d": '"', "\u2019": "'", "\u2018": "'"})
-_PART_SPLIT_RE = re.compile(r"(?:^|\n\n)Part\s+([a-z]):\s*\n+", re.IGNORECASE)
+_PART_SPLIT_RE = re.compile(
+    r"(?:^|\n\n)Part\s+([a-z]):[ \t]*(?:\n+|\s+)", re.IGNORECASE
+)
 # Inline Dataview fields written by the vault export. They describe the statement,
 # not its narrative, so they must not be copied into the DOCX control tables.
 _EXPORT_PART_META_RE = re.compile(

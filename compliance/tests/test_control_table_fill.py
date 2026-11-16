@@ -947,3 +947,41 @@ class TestSlotPreservesExistingNarrative:
         assert cell.count("Source sentence one is kept.") == 1
         assert "See AU-2 below for audit detail." in cell
         assert cell.count("New OSCAL sentence is added.") == 1
+
+    def test_line_wrapped_existing_sentence_is_not_duplicated_on_refill(self, tmp_path):
+        doc = docx.Document()
+        table = _add_cis_table(doc, "AC-2(1)", with_parts=False)
+        table.rows[4].cells[0].text = (
+            "Synthetic account management sentence wrapped\n"
+            "across two hard lines in the table cell."
+        )
+        control = CanonicalControl.from_raw(
+            "ac-02.01",
+            raw_status="planned",
+            raw_origination=["system-specific"],
+            statement_ids=["ac-02.01_smt.a"],
+        )
+        statement_text = {
+            "ac-02.01": {
+                "ac-02.01_smt.a": (
+                    "Synthetic account management sentence wrapped "
+                    "across two hard lines in the table cell."
+                )
+            }
+        }
+        out = tmp_path / "filled.docx"
+        result = fill_control_tables(
+            doc, [control], out, statement_text_by_control=statement_text
+        )
+        assert (
+            result.control_results[0]["statements"][0]["placement"] == "existing-text"
+        )
+        cell = docx.Document(str(out)).tables[0].rows[4].cells[0].text
+        assert cell.lower().count("synthetic account management sentence") == 1
+
+
+def test_match_key_normalizes_dot_and_parenthesized_enhancements():
+    assert _match_key("ac-02.01") == "AC-2(1)"
+    assert _match_key("ac-2.1") == "AC-2(1)"
+    assert _match_key("AC-02(01)") == "AC-2(1)"
+    assert _match_key("AC-2(1)") == "AC-2(1)"
