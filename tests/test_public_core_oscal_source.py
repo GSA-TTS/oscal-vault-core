@@ -213,3 +213,33 @@ def test_vault_export_metadata_is_not_copied_into_docx_narratives():
     assert "statement_part::" not in result
     assert "inheritance_mode::" not in result
     assert result.count("Synthetic narrative.") == 1
+
+
+def test_inline_part_labels_in_by_components_do_not_duplicate_first_statement():
+    requirement = {
+        "control-id": "ac-2.1",
+        "by-components": [
+            {
+                "description": (
+                    "Part a: Synthetic federated identity narrative.\n\n"
+                    "Part b: Synthetic role review narrative."
+                )
+            }
+        ],
+        "statements": [
+            {
+                "statement-id": "ac-2.1_stmt.a",
+                "remarks": "Synthetic federated identity narrative.",
+            },
+            {
+                "statement-id": "ac-2.1_stmt.b",
+                "remarks": "Synthetic role review narrative.",
+            },
+        ],
+    }
+    result = statement_text_map_from_oscal_ssp(
+        {"control-implementation": {"implemented-requirements": [requirement]}}
+    )["ac-2.1"]
+    assert result["ac-2.1_stmt.a"].count("Synthetic federated identity narrative.") == 1
+    assert "Synthetic role review narrative." not in result["ac-2.1_stmt.a"]
+    assert result["ac-2.1_stmt.b"].count("Synthetic role review narrative.") == 1

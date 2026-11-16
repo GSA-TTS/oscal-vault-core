@@ -178,3 +178,25 @@ def test_split_cis_and_continuation_tables_preserve_status_and_parts():
         "a": "Access control policy is documented and reviewed annually.",
         "b": "Procedures are maintained by the ISSO.",
     }
+
+
+def test_extract_implementation_details_preserves_merged_narrative_mentioning_control_summary():
+    """Merged narrative cells > 80 chars containing 'Control Summary Information:' or 'Part PT-...' must map to part 'a'."""
+    narrative = (
+        "Part PT-07_01_: Control Summary Information: Synthetic tenant safeguards "
+        "for specific categories of records are enforced through role-based access."
+    )
+    table = _make_multi_row_mock_table(
+        [
+            ["PT-07", "Control Summary Information"],
+            [
+                "PT-07 Describe how the control is implemented.",
+                "PT-07 Describe how the control is implemented.",
+            ],
+            [narrative, narrative],
+        ]
+    )
+    details = parser.extract_implementation_details(
+        {"table": table, "is_control_table": True, "control_id": "PT-07"}
+    )
+    assert details == {"implementation": {"a": narrative}}

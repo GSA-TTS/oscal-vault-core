@@ -98,17 +98,7 @@ class Control:
                     if imp:  # Only process non-empty implementations
                         try:
                             # Convert to string and clean up whitespace
-                            imp_text = str(imp).strip()
-                            # Remove control references
-                            control_pattern = r"(?:AC|AT|AU|CA|CM|CP|IA|IR|MA|MP|PE|PL|PS|RA|SA|SC|SI)-\d+(?:\(\d+\))?"
-                            imp_text = re.sub(
-                                r"(?i)control\s+" + control_pattern, "", imp_text
-                            )
-                            imp_text = re.sub(
-                                r"(?i)see\s+" + control_pattern, "", imp_text
-                            )
-                            # Clean up whitespace
-                            imp_text = re.sub(r"\s+", " ", imp_text).strip()
+                            imp_text = re.sub(r"\s+", " ", str(imp)).strip()
                             if imp_text:
                                 self._implementation[part] = imp_text
                         except Exception as e:

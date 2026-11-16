@@ -577,3 +577,63 @@ def test_cis_row2_and_crm_reference_rows_remain_explicit_source_records(
         "Customer Responsibility: synthetic prose" in record["text"]
         for record in records
     )
+
+
+def test_control_readback_matches_oscal_dot_enhancement_and_smt_statement_ids(tmp_path):
+    from compliance.lib.canonical_model import CanonicalControl
+    from compliance.lib.control_table_fill import fill_control_tables
+    from compliance.scripts.docx_e2e_integrity import control_readback
+    from compliance.tests.test_control_table_fill import _add_cis_table
+
+    document = docx.Document()
+    _add_cis_table(document, "AC-02(01)", with_parts=True)
+    filled = tmp_path / "filled.docx"
+    control = CanonicalControl.from_raw(
+        "ac-02.01",
+        raw_status="implemented",
+        raw_origination=["system-specific"],
+        statement_ids=["ac-02.01_smt.a", "ac-02.01_smt.b", "ac-02.01_smt.c"],
+    )
+    fill_control_tables(
+        document,
+        [control],
+        filled,
+        statement_text_by_control={
+            "ac-02.01": {
+                "ac-02.01_smt.a": "Synthetic part a (see AC-02(13)).",
+                "ac-02.01_smt.b": "Synthetic part b.",
+                "ac-02.01_smt.c": "Synthetic part c.",
+            }
+        },
+    )
+    expected = {
+        "system-security-plan": {
+            "control-implementation": {
+                "implemented-requirements": [
+                    {
+                        "control-id": "ac-02.01",
+                        "props": [
+                            {"name": "implementation-status", "value": "implemented"},
+                            {"name": "control-origination", "value": "system-specific"},
+                        ],
+                        "statements": [
+                            {
+                                "statement-id": "ac-02.01_smt.a",
+                                "remarks": "Synthetic part a (see AC-02(13)).",
+                            },
+                            {
+                                "statement-id": "ac-02.01_smt.b",
+                                "remarks": "Synthetic part b.",
+                            },
+                            {
+                                "statement-id": "ac-02.01_smt.c",
+                                "remarks": "Synthetic part c.",
+                            },
+                        ],
+                    }
+                ]
+            }
+        }
+    }
+    result = control_readback(expected, filled, tmp_path)
+    assert result["status"] == "PASS", result["findings"]

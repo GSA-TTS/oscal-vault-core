@@ -69,10 +69,9 @@ def _norm_text(text: str) -> str:
 
 def _narrative_pieces(text: str) -> list[str]:
     """Return meaningful sentence fragments after removing routing labels."""
+    cleaned = re.sub(r"(?<!\n)\n(?!\n)", " ", _ROUTING_LABEL_RE.sub("\n\n", text or ""))
     pieces: list[str] = []
-    for sentence in re.split(
-        r"(?<=[.!?])\s+|\n+", _ROUTING_LABEL_RE.sub("\n", text or "")
-    ):
+    for sentence in re.split(r"(?<=[.!?])\s+|\n\s*\n+", cleaned):
         piece = _norm_text(sentence)
         if piece:
             pieces.append(piece)
@@ -82,7 +81,9 @@ def _narrative_pieces(text: str) -> list[str]:
 _W_SDT = qn("w:sdt")
 _W_SDT_CONTENT = qn("w:sdtContent")
 _PAREN_RE = re.compile(r"\([^)]*\)")
-_CONTROL_ID_COMPONENTS_RE = re.compile(r"^([A-Za-z]{2})-0*(\d+)(?:\s*\(0*(\d+)\))?$")
+_CONTROL_ID_COMPONENTS_RE = re.compile(
+    r"^([A-Za-z]{2})-0*(\d+)(?:\s*\(0*(\d+)\)|\.0*(\d+))?$"
+)
 
 
 def _unwrap_sdt_runs(paragraph: Paragraph) -> None:
@@ -134,9 +135,26 @@ def _match_key(control_id: str | None) -> str | None:
     m = _CONTROL_ID_COMPONENTS_RE.match(control_id.strip())
     if not m:
         return control_id.strip().upper() or None
-    family, number, enhancement = m.groups()
+    family, number, paren_enhancement, dot_enhancement = m.groups()
+    enhancement = paren_enhancement or dot_enhancement
     base = f"{family.upper()}-{number}"
     return f"{base}({enhancement})" if enhancement else base
+
+
+def _statement_key(statement_id: str) -> str:
+    """Normalize statement IDs across OSCAL dot/parenthesis forms and _smt./_stmt. markers."""
+    normalized = (statement_id or "").strip().replace("_stmt.", "_smt.")
+    if "_smt." in normalized:
+        prefix, part = normalized.rsplit("_smt.", 1)
+        return f"{_match_key(prefix) or prefix.lower()}_smt.{part.lower()}"
+    if normalized.lower().endswith(("_smt", "_stmt")):
+        prefix = re.sub(r"(?i)_st?mt$", "", normalized)
+        return f"{_match_key(prefix) or prefix.lower()}_smt"
+    return normalized.lower()
+
+
+def _normalize_statement_map(statements: dict[str, str]) -> dict[str, str]:
+    return {_statement_key(sid): text for sid, text in (statements or {}).items()}
 
 
 @dataclass
@@ -327,11 +345,10 @@ def _write_into_slot(cell, text: str) -> None:
         cell.text = text
         return
     existing_pieces = _narrative_pieces(existing)
+    cleaned = re.sub(r"(?<!\n)\n(?!\n)", " ", _ROUTING_LABEL_RE.sub("\n\n", text))
     missing = [
         sentence
-        for sentence in re.split(
-            r"(?<=[.!?])\s+|\n+", _ROUTING_LABEL_RE.sub("\n", text)
-        )
+        for sentence in re.split(r"(?<=[.!?])\s+|\n\s*\n+", cleaned)
         if _norm_text(sentence) and _norm_text(sentence) not in existing_pieces
     ]
     if missing:
