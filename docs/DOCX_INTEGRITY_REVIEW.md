@@ -98,6 +98,7 @@ core-pin changes or publication. Source corpus was not copied into core.
 - Consumer frontmatter/wikilink discovery incorrectly excluded every note under an absolute hidden parent, producing zero-count PASS. Fixed to inspect vault-relative paths; regression verifies visible notes are checked and hidden children excluded. Corrected full consumer gate passed with real counts and unchanged baselines.
 - Canonical check now fails on missing content hashes and generation errors. Content-keyed bounded mapping cache avoids reparsing unchanged YAML while invalidating on content changes; mutable return-list isolation tested.
 - Consumer Taskfile verify/roundtrip no longer depend on setup, avoiding implicit submodule reset or installs. Core-owned Task dispatch regression covers delegation without setup/reset.
+- PR #76 CI exposed an undeclared integration-test prerequisite: Task existed on the local machine but not in core's pinned CI environment. Declare Task 3.54.0 in core mise tools, matching the consumer; retain the actual dispatch test rather than skipping or mocking it. CI run 43924141591 otherwise passed 1190 tests; the missing executable was its sole test failure.
 
 An early frozen UV invocation created a core-local virtualenv despite the initial
 no-install scope; this was disclosed. Later Node installation was explicitly
