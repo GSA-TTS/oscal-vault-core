@@ -140,7 +140,13 @@ _ORIGIN_HEADER_RE = re.compile(
     r"^control\s+origination(?:\s*\([^)]*\))?\s*:?\s*$", re.IGNORECASE
 )
 _CONTINUATION_HEADER_RE = re.compile(
-    r"^(?:[a-z]{2}[\s-]*0*\d+(?:\s*\(0*(?:\d+|[a-z]+)\))?\s+)?(?:describe\s+how\b|what\s+is\s+the\s+solution\b)",
+    r"^(?:(?:[a-z]{2}|cr)[\s-]*0*\d+(?:\s*\(0*(?:\d+|[a-z]+)\)|\.0*(?:\d+|[a-z]+))?[\s:.-]*)?"
+    r"(?:describe\s+how\b|what\s+is\s+the\s+solution\b|instruction(?:s)?\s*:)",
+    re.IGNORECASE,
+)
+_SUMMARY_HEADER_RE = re.compile(
+    r"^(?:(?:[a-z]{2}|cr)[\s-]*0*\d+(?:\s*\(0*(?:\d+|[a-z]+)\)|\.0*(?:\d+|[a-z]+))?[\s:.-]*)?"
+    r"(?:control(?:\s+enhancement)?|responsibility)\s+summary(?:\s+information)?\s*$",
     re.IGNORECASE,
 )
 _CIS_TABLE_MARKER_RE = re.compile(
@@ -659,7 +665,7 @@ def extract_implementation_details(
         else "responsible + role"
     ).lower()
 
-    for row in getattr(table, "rows", []):
+    for row_index, row in enumerate(getattr(table, "rows", [])):
         try:
             label = row.cells[0].text.strip()
             value = row.cells[-1].text.strip()
@@ -669,17 +675,30 @@ def extract_implementation_details(
             continue
 
         label_lower = label.lower()
-        is_merged_narrative = len(label) > 80 and label == value
-
-        if _CONTINUATION_HEADER_RE.match(label) or (
-            not is_merged_narrative
-            and (
-                "describe how" in label_lower
-                or "what is the solution" in label_lower
-                or "control summary" in label_lower
-                or "control enhancement summary" in label_lower
+        is_unmerged_label = label != value
+        is_summary_header = bool(
+            _SUMMARY_HEADER_RE.match(label)
+            or _SUMMARY_HEADER_RE.match(value)
+            or (
+                (row_index == 0 or is_unmerged_label)
+                and (
+                    "control summary" in label_lower
+                    or "control enhancement summary" in label_lower
+                    or "responsibility summary" in label_lower
+                )
             )
-        ):
+        )
+        is_instruction_row = bool(
+            _CONTINUATION_HEADER_RE.match(label)
+            or (
+                is_unmerged_label
+                and (
+                    "describe how" in label_lower
+                    or "what is the solution" in label_lower
+                )
+            )
+        )
+        if is_summary_header or is_instruction_row:
             continue
 
         # Skip headers, prompts, and CIS rows if this is a control table

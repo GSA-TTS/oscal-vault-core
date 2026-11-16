@@ -637,3 +637,82 @@ def test_control_readback_matches_oscal_dot_enhancement_and_smt_statement_ids(tm
     }
     result = control_readback(expected, filled, tmp_path)
     assert result["status"] == "PASS", result["findings"]
+
+    # Colliding normalized statement records must fail closed rather than overwrite.
+    colliding = json.loads(json.dumps(expected))
+    colliding["system-security-plan"]["control-implementation"][
+        "implemented-requirements"
+    ][0]["statements"].append(
+        {
+            "statement-id": "ac-02(01)_stmt.a",
+            "remarks": "Conflicting statement a.",
+        }
+    )
+    collision_result = control_readback(colliding, filled, tmp_path)
+    assert collision_result["status"] == "FAIL"
+    assert any(
+        f["kind"] == "duplicate_statement_ids" for f in collision_result["findings"]
+    )
+
+
+def test_live_enhancement_roundtrip_preserves_cross_references_end_to_end(tmp_path):
+    """Full DOCX -> parser -> vault -> export -> fill -> readback chain on an enhancement control with cross-references."""
+    from compliance.lib.canonical_model import CanonicalControl
+    from compliance.lib.control_table_fill import fill_control_tables
+    from compliance.lib.docx_integrity_render import build_from_oscal
+    from compliance.scripts.docx_e2e_integrity import control_readback, execute_run
+    from compliance.tests.test_control_table_fill import _add_cis_table
+
+    source = tmp_path / "source.docx"
+    document = docx.Document()
+    document.add_heading("Synthetic system", 1)
+    _add_cis_table(document, "AC-02(01)", with_parts=True)
+    control = CanonicalControl.from_raw(
+        "AC-02(01)",
+        raw_status="implemented",
+        raw_origination=["system-specific"],
+        statement_ids=["ac-02(01)_stmt.a", "ac-02(01)_stmt.b", "ac-02(01)_stmt.c"],
+    )
+    fill_control_tables(
+        document,
+        [control],
+        source,
+        statement_text_by_control={
+            "AC-02(01)": {
+                "ac-02(01)_stmt.a": "See AC-06(01) for the verified detail. Access is constrained (see AC-02(13)).",
+                "ac-02(01)_stmt.b": "This control AC-02 reference is intentional.",
+                "ac-02(01)_stmt.c": "Cross-family references: see AU-02, IA-05(01), and SC-08(01).",
+            }
+        },
+    )
+    output = tmp_path / "output"
+    output.mkdir()
+    args = argparse.Namespace(
+        source=source,
+        system_id="synthetic",
+        template_family="unknown",
+        timeout=60,
+        fill_context=None,
+        decisions=None,
+    )
+    report = execute_run(args, output)
+    assert report["layers"]["L2"]["status"] == "PASS"
+    ssp = next(
+        path
+        for path in (output / "vault/synthetic/.exports/oscal-json").glob("*.json")
+        if "system-security-plan" in json.loads(path.read_text())
+    )
+    blank = tmp_path / "blank.docx"
+    blank_doc = docx.Document()
+    _add_cis_table(blank_doc, "AC-02(01)", with_parts=True)
+    blank_doc.save(blank)
+    refilled = tmp_path / "refilled.docx"
+    build_from_oscal(
+        ssp,
+        blank,
+        refilled,
+        tmp_path / "fill-manifest.json",
+        strict_mapping=True,
+    )
+    readback = control_readback(json.loads(ssp.read_text()), refilled, output)
+    assert readback["status"] == "PASS", readback["findings"]

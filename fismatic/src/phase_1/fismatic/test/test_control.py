@@ -11,12 +11,16 @@ def test_normalized_name(test_input, expected):
     assert control.normalized_name() == expected
 
 
-def test_implementation_preserves_inline_control_cross_references():
+@pytest.mark.parametrize(
+    "narrative",
+    [
+        "See AC-06(01) for the verified detail.",
+        "Access is constrained (see AC-02(13)).",
+        "This control AC-02 reference is intentional.",
+        "Cross-family references: see AU-02, Control IA-05(01), and see SC-08(01) for details.",
+    ],
+)
+def test_implementation_preserves_inline_control_cross_references(narrative):
     control = Control("AC-2")
-    control.implementation = {
-        "a": "Session revocation is enforced upstream (see AC-02(13)). See AC-06(01) for control AC-2 detail."
-    }
-    assert (
-        control.implementation["a"]
-        == "Session revocation is enforced upstream (see AC-02(13)). See AC-06(01) for control AC-2 detail."
-    )
+    control.implementation = {"a": narrative}
+    assert control.implementation["a"] == narrative

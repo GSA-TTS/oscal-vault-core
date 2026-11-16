@@ -141,20 +141,43 @@ def _match_key(control_id: str | None) -> str | None:
     return f"{base}({enhancement})" if enhancement else base
 
 
-def _statement_key(statement_id: str) -> str:
-    """Normalize statement IDs across OSCAL dot/parenthesis forms and _smt./_stmt. markers."""
-    normalized = (statement_id or "").strip().replace("_stmt.", "_smt.")
-    if "_smt." in normalized:
-        prefix, part = normalized.rsplit("_smt.", 1)
-        return f"{_match_key(prefix) or prefix.lower()}_smt.{part.lower()}"
-    if normalized.lower().endswith(("_smt", "_stmt")):
-        prefix = re.sub(r"(?i)_st?mt$", "", normalized)
-        return f"{_match_key(prefix) or prefix.lower()}_smt"
-    return normalized.lower()
+_STATEMENT_SUFFIX_RE = re.compile(
+    r"^(.+?)_(?:smt|stmt)(?:\.([A-Za-z0-9][A-Za-z0-9._-]*))?$"
+)
 
 
-def _normalize_statement_map(statements: dict[str, str]) -> dict[str, str]:
-    return {_statement_key(sid): text for sid, text in (statements or {}).items()}
+def _statement_key(owner_control_id: str | None, statement_id: str) -> str:
+    """Normalize a statement ID using its owning control and recognized _smt./_stmt. suffix grammar."""
+    raw = (statement_id or "").strip()
+    match = _STATEMENT_SUFFIX_RE.match(raw)
+    if not match:
+        return raw
+    prefix, part = match.groups()
+    owner_key = _match_key(owner_control_id) if owner_control_id else _match_key(prefix)
+    prefix_key = _match_key(prefix)
+    if not owner_key or prefix_key != owner_key:
+        return raw
+    return f"{owner_key}_smt.{part.lower()}" if part else f"{owner_key}_smt"
+
+
+def _normalize_statement_map(
+    owner_control_id: str,
+    statements: dict[str, str],
+    statement_ids: list[str] | None = None,
+) -> tuple[dict[str, str], bool]:
+    """Normalize a control's statement map and detect collisions before overwriting."""
+    declared = [
+        _statement_key(owner_control_id, sid)
+        for sid in (statement_ids or list(statements or {}))
+    ]
+    collision = len(declared) != len(set(declared))
+    normalized: dict[str, str] = {}
+    for sid, text in (statements or {}).items():
+        key = _statement_key(owner_control_id, sid)
+        if key in normalized:
+            collision = True
+        normalized[key] = text
+    return normalized, collision
 
 
 @dataclass
@@ -226,7 +249,6 @@ def _set_checkbox_lines(
     """
     targets = set(target_keys)
     for para in cell_paragraphs:
-        _unwrap_sdt_runs(para)
         glyph_el = _find_glyph_element(para)
         if glyph_el is None:
             continue
@@ -243,9 +265,14 @@ def _set_checkbox_lines(
             if re.search(pattern, haystack, re.IGNORECASE):
                 matched_key = key
                 break
-        glyph_el.text = _replace_leading_glyph(
-            glyph_el.text, CHECKED_GLYPH if matched_key in targets else UNCHECKED_GLYPH
-        )
+        desired = CHECKED_GLYPH if matched_key in targets else UNCHECKED_GLYPH
+        current = (glyph_el.text or "").lstrip()[:1]
+        if current == desired:
+            continue
+        _unwrap_sdt_runs(para)
+        glyph_el = _find_glyph_element(para)
+        if glyph_el is not None:
+            glyph_el.text = _replace_leading_glyph(glyph_el.text, desired)
 
 
 def _text_already_in_table(anchor: ControlTableAnchor, text: str) -> bool:
@@ -294,7 +321,8 @@ def _fill_narrative(
                 break
         cell = anchor.part_rows.get(part_key) if part_key else None
         if cell is not None:
-            cell.text = text or cell.text
+            if text and _norm_text(cell.text) != _norm_text(text):
+                cell.text = text
             results.append(
                 {
                     "statement_id": stmt_id,
