@@ -249,7 +249,9 @@ def main() -> int:
                         drift.append(f"unreadable sidecar: {rel_path}")
                     else:
                         committed_hash = committed.get("_meta", {}).get("content_hash")
-                        if committed_hash is not None and committed_hash != fresh_hash:
+                        if committed_hash is None:
+                            drift.append(f"missing content_hash: {rel_path}")
+                        elif committed_hash != fresh_hash:
                             drift.append(
                                 f"content drift: {rel_path} "
                                 f"(committed {committed_hash[:19]}... != "
@@ -304,6 +306,11 @@ def main() -> int:
         total_errors += errors
 
     if args.check:
+        if total_errors:
+            print(
+                f"FAIL: {total_errors} canonical generation error(s).", file=sys.stderr
+            )
+            return 1
         if total_drift:
             print(
                 f"\nFAIL: {total_drift} canonical sidecar drift issue(s). "

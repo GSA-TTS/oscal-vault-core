@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DOCX integrity machine report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "system_id", "timestamp", "source_sha256", "template_family", "status", "review_status", "layers"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "system_id": {"type": "string", "pattern": "^[a-z0-9_][a-z0-9_-]{0,100}$"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "source_sha256": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9a-f]{64}$"}]},
+    "template_family": {"enum": ["low", "moderate", "high", "crm", "lightweight", "unknown"]},
+    "status": {"$ref": "#/$defs/status"},
+    "review_status": {"const": "PENDING"},
+    "layers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["L0", "L1", "L2", "L3"],
+      "properties": {
+        "L0": {"$ref": "#/$defs/layer"},
+        "L1": {"$ref": "#/$defs/layer"},
+        "L2": {"$ref": "#/$defs/layer"},
+        "L3": {"$ref": "#/$defs/layer"}
+      }
+    }
+  },
+  "$defs": {
+    "status": {"enum": ["PASS", "FAIL", "BLOCKED", "INCOMPLETE"]},
+    "layer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason"],
+      "properties": {
+        "status": {"$ref": "#/$defs/status"},
+        "reason": {"type": "string"},
+        "tags": {"type": "object"}
+      }
+    },
+    "delta": {
+      "type": "object",
+      "required": ["locator", "before_sha256", "after_sha256", "category", "severity", "invariant_changes"],
+      "additionalProperties": false,
+      "properties": {
+        "locator": {"type": "string"},
+        "before_sha256": {"type": ["string", "null"]},
+        "after_sha256": {"type": ["string", "null"]},
+        "category": {"enum": ["volatile_serialization", "template_boilerplate", "catalog_reference", "structured_preserved", "opaque_preserved", "known_baselined_gap", "new_loss", "ambiguous"]},
+        "severity": {"enum": ["info", "warning", "error"]},
+        "invariant_changes": {"type": "array", "items": {"type": "string"}},
+        "id": {"type": "string"},
+        "reason": {"type": "string"}
+      }
+    }
+  }
+}

@@ -46,6 +46,7 @@ BASE_RULES = (
     ".snapshots/history/",
     "review-output/",
     "roundtrip_review/",
+    "docx-integrity-run/",
     "examples/docx_catchall/",
     "examples/feedback/",
     "# Obsidian per-user state",

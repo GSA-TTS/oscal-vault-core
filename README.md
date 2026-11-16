@@ -1,5 +1,10 @@
 # oscal-vault-core
 
+For opt-in, authorized single-document review, see the draft
+[DOCX integrity contract](docs/DOCX_INTEGRITY.md). No corpus processing is implied.
+The [core review guide](docs/DOCX_INTEGRITY_REVIEW.md) owns registry setup,
+implementation evidence and follow-up tracking independently of consumer repos.
+
 Turn real-world FedRAMP System Security Plan (SSP) `.docx` documents into a
 navigable **Obsidian knowledge vault** and validated **NIST OSCAL** JSON.
 

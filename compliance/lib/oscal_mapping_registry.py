@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -58,7 +59,13 @@ def _properties(values: Iterable[dict[str, Any]]) -> dict[str, Any]:
 
 def load_mappings(contract_path: str | Path) -> list[Mapping]:
     """Load and fail closed on incomplete mapping metadata in an ODCS contract."""
-    raw = yaml.safe_load(Path(contract_path).read_text(encoding="utf-8"))
+    return list(_parse_mappings(Path(contract_path).read_text(encoding="utf-8")))
+
+
+@lru_cache(maxsize=8)
+def _parse_mappings(content: str) -> tuple[Mapping, ...]:
+    """Cache immutable mappings by content, so edits invalidate without mtime guesses."""
+    raw = yaml.safe_load(content)
     mappings: list[Mapping] = []
     errors: list[str] = []
     for obj in raw.get("schema", []):
@@ -147,7 +154,7 @@ def load_mappings(contract_path: str | Path) -> list[Mapping]:
             mappings.append(mapping)
     if errors:
         raise MappingValidationError("; ".join(errors))
-    return mappings
+    return tuple(mappings)
 
 
 def _resolve_ref(schema: dict[str, Any], node: dict[str, Any]) -> dict[str, Any]:

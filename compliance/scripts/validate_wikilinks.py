@@ -73,7 +73,10 @@ def _build_note_index(vault_dir: Path) -> Dict[str, Path]:
     """
     index: Dict[str, Path] = {}
     for path in vault_dir.rglob("*"):
-        if any(p.startswith(".") for p in path.parts) or not path.is_file():
+        if (
+            any(p.startswith(".") for p in path.relative_to(vault_dir).parts)
+            or not path.is_file()
+        ):
             continue
         rel = path.relative_to(vault_dir)
         rel_str = str(rel).replace("\\", "/")
@@ -159,9 +162,6 @@ def main() -> int:
     skipped_template = 0
 
     for md_path in md_files:
-        if any(p.startswith(".") for p in md_path.parts):
-            continue
-
         # Determine which vault this file belongs to
         parent_vault = None
         for vd in vault_indices:
@@ -173,6 +173,8 @@ def main() -> int:
                 continue
 
         if parent_vault is None:
+            continue
+        if any(p.startswith(".") for p in md_path.relative_to(parent_vault).parts):
             continue
 
         note_index = vault_indices[parent_vault]

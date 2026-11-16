@@ -49,3 +49,4 @@ Proposed tooling record: [ADR-031](ADR-031-pinned-tooling-and-actions-boundaries
 | ADR-029 | [Path-Aware Wikilink Resolution and a Vault Graph Audit](ADR-029-path-aware-wikilink-resolution.md) | Proposed | 2026-11-02 |
 | ADR-030 | [Connect Extension Notes to Their System and to the Index](ADR-030-extension-note-graph-links.md) | Proposed | 2026-11-02 |
 | ADR-032 | [Synthetic CRM Roundtrip Template Family](ADR-032-synthetic-crm-roundtrip-template.md) | Proposed | 2026-11-13 |
+| ADR-033 | [Per-document Accountable DOCX Integrity](ADR-033-per-document-docx-integrity.md) | Proposed | 2026-11-16 |

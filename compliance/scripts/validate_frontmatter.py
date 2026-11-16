@@ -118,7 +118,7 @@ def _find_md_files(vault_dirs: List[Path]) -> List[Path]:
             continue
         for md in vd.rglob("*.md"):
             # Skip hidden dirs
-            if any(p.startswith(".") for p in md.parts):
+            if any(p.startswith(".") for p in md.relative_to(vd).parts):
                 continue
             files.append(md)
     return sorted(files)
