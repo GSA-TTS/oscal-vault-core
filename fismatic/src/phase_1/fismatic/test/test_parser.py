@@ -180,19 +180,20 @@ def test_split_cis_and_continuation_tables_preserve_status_and_parts():
     }
 
 
-def test_extract_implementation_details_preserves_merged_narrative_mentioning_control_summary():
-    """Merged narrative cells > 80 chars containing 'Control Summary Information:' or 'Part PT-...' must map to part 'a'."""
+def test_extract_implementation_details_separates_headers_and_long_prompts_from_narrative():
+    """Structural summary headers and long instructional prompts remain excluded while narrative mentioning 'Control Summary Information' survives."""
+    long_prompt = (
+        "PT-07 Describe how the control is implemented across all environments, "
+        "including automated mechanisms, review frequency, and role responsibilities."
+    )
     narrative = (
         "Part PT-07_01_: Control Summary Information: Synthetic tenant safeguards "
         "for specific categories of records are enforced through role-based access."
     )
     table = _make_multi_row_mock_table(
         [
-            ["PT-07", "Control Summary Information"],
-            [
-                "PT-07 Describe how the control is implemented.",
-                "PT-07 Describe how the control is implemented.",
-            ],
+            ["PT-07 Control Summary Information", "PT-07 Control Summary Information"],
+            [long_prompt, long_prompt],
             [narrative, narrative],
         ]
     )
@@ -200,3 +201,47 @@ def test_extract_implementation_details_preserves_merged_narrative_mentioning_co
         {"table": table, "is_control_table": True, "control_id": "PT-07"}
     )
     assert details == {"implementation": {"a": narrative}}
+
+
+def test_extract_implementation_details_preserves_named_parts_and_crm_rows():
+    """Named Part rows and CRM responsibility rows survive while Responsibility Summary headers are excluded."""
+    part_table = _make_multi_row_mock_table(
+        [
+            ["AC-02", "Control Summary Information"],
+            ["Part a", "Part a references the Control Summary Information table."],
+            ["Part b", "Part b defines review cadence."],
+        ]
+    )
+    assert parser.extract_implementation_details(
+        {"table": part_table, "is_control_table": True, "control_id": "AC-02"}
+    ) == {
+        "implementation": {
+            "a": "Part a references the Control Summary Information table.",
+            "b": "Part b defines review cadence.",
+        }
+    }
+
+    crm_table = _make_multi_row_mock_table(
+        [
+            ["CR-1", "Responsibility Summary Information"],
+            [
+                "Implementation Status:\n☒ Implemented",
+                "Implementation Status:\n☒ Implemented",
+            ],
+            ["Controls Reference: AC-2, IA-2", "Controls Reference: AC-2, IA-2"],
+            [
+                "Customer Responsibility: Configure tenant role assignments.",
+                "Customer Responsibility: Configure tenant role assignments.",
+            ],
+        ]
+    )
+    crm_details = parser.extract_implementation_details(
+        {"table": crm_table, "is_control_table": True, "control_id": "CR-1"}
+    )
+    assert (
+        "Responsibility Summary Information" not in crm_details["implementation"]["a"]
+    )
+    assert (
+        "Customer Responsibility: Configure tenant role assignments."
+        in crm_details["implementation"]["a"]
+    )

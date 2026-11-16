@@ -80,11 +80,17 @@ def compare_control(control, data: dict) -> list:
 
     key = _match_key(control.control_id)
     other = data["actual"].get(key)
-    expected_text = _normalize_statement_map(
-        data["expected_text"].get(control.control_id, {})
+    expected_text, exp_collision = _normalize_statement_map(
+        key, data["expected_text"].get(control.control_id, {}), control.statement_ids
     )
-    actual_text = _normalize_statement_map(data["actual_text"].get(key, {}))
+    actual_text, act_collision = _normalize_statement_map(
+        key, data["actual_text"].get(key, {}), getattr(other, "statement_ids", None)
+    )
     findings = []
+    if exp_collision or act_collision:
+        findings.append(
+            {"control_id": control.control_id, "kind": "duplicate_statement_ids"}
+        )
     if (expected_text or control.control_id not in data["expected_whole"]) and set(
         expected_text
     ) != set(actual_text):
@@ -99,23 +105,30 @@ def compare_control(control, data: dict) -> list:
         findings.append(
             {"control_id": control.control_id, "kind": "status_or_origination"}
         )
+    findings.extend(
+        compare_narratives(control.control_id, key, expected_text, actual_text, data)
+    )
+    return findings
+
+
+def compare_narratives(
+    control_id: str, key: str | None, expected_text: dict, actual_text: dict, data: dict
+) -> list:
+    findings = []
     for statement_id, text in expected_text.items():
         found = actual_text.get(statement_id, "")
         if " ".join(text.split()) != " ".join(found.split()):
             findings.append(
-                prose_delta(control.control_id, "narrative", text, found)
+                prose_delta(control_id, "narrative", text, found)
                 | {"statement_id": statement_id}
             )
-    if control.control_id in data["expected_whole"]:
-        expected_body = data["expected_whole"][control.control_id]
+    if control_id in data["expected_whole"]:
+        expected_body = data["expected_whole"][control_id]
         actual_body = data["actual_whole"].get(key) or "\n\n".join(actual_text.values())
         if " ".join(expected_body.split()) != " ".join(actual_body.split()):
             findings.append(
                 prose_delta(
-                    control.control_id,
-                    "whole_control_narrative",
-                    expected_body,
-                    actual_body,
+                    control_id, "whole_control_narrative", expected_body, actual_body
                 )
             )
     return findings

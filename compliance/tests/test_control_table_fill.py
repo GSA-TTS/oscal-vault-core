@@ -980,8 +980,77 @@ class TestSlotPreservesExistingNarrative:
         assert cell.lower().count("synthetic account management sentence") == 1
 
 
-def test_match_key_normalizes_dot_and_parenthesized_enhancements():
+def test_match_key_and_statement_normalization_and_collision_detection():
+    from compliance.lib.control_table_fill import (
+        _normalize_statement_map,
+        _statement_key,
+    )
+
     assert _match_key("ac-02.01") == "AC-2(1)"
     assert _match_key("ac-2.1") == "AC-2(1)"
     assert _match_key("AC-02(01)") == "AC-2(1)"
     assert _match_key("AC-2(1)") == "AC-2(1)"
+    assert _match_key("ac-02.01") != _match_key("ac-02.02")
+
+    assert _statement_key("ac-02.01", "ac-02.01_smt.a") == "AC-2(1)_smt.a"
+    assert _statement_key("AC-02(01)", "ac-02(01)_stmt.a") == "AC-2(1)_smt.a"
+    assert _statement_key("AC-2(1)", "ac-2.1_stmt.a") == "AC-2(1)_smt.a"
+    assert _statement_key("AC-2(1)", "ac-2.1_smt.a") != _statement_key(
+        "AC-2(1)", "ac-2.1_smt.b"
+    )
+    assert _statement_key("AC-2(1)", "ac-2.2_smt.a") == "ac-2.2_smt.a"
+
+    normalized, collision = _normalize_statement_map(
+        "ac-02.01",
+        {"ac-02.01_smt.a": "first", "ac-02(01)_stmt.a": "colliding"},
+    )
+    assert collision is True
+    assert normalized == {"AC-2(1)_smt.a": "colliding"}
+
+
+def test_unchanged_part_cell_preserves_numbering_and_untouched_sdt_wrappers(tmp_path):
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    doc = docx.Document()
+    table = _add_cis_table(doc, "AC-01", with_parts=True)
+    part_a_cell = table.rows[4].cells[1]
+    part_a_cell.text = "Synthetic numbered policy statement."
+    p_pr = part_a_cell.paragraphs[0]._p.get_or_add_pPr()
+    num_pr = OxmlElement("w:numPr")
+    num_id = OxmlElement("w:numId")
+    num_id.set(qn("w:val"), "1")
+    num_pr.append(num_id)
+    p_pr.append(num_pr)
+
+    # Wrap an already-unchecked status line in <w:sdt>
+    unchecked_para = table.rows[1].cells[0].paragraphs[2]
+    sdt = OxmlElement("w:sdt")
+    sdt_content = OxmlElement("w:sdtContent")
+    for child in list(unchecked_para._p):
+        if child.tag != qn("w:pPr"):
+            unchecked_para._p.remove(child)
+            sdt_content.append(child)
+    sdt.append(sdt_content)
+    unchecked_para._p.append(sdt)
+
+    control = CanonicalControl.from_raw(
+        "AC-01",
+        raw_status="implemented",
+        raw_origination=["system-specific"],
+        statement_ids=["ac-01_smt.a"],
+    )
+    out = tmp_path / "filled.docx"
+    fill_control_tables(
+        doc,
+        [control],
+        out,
+        statement_text_by_control={
+            "AC-01": {"ac-01_smt.a": "Synthetic numbered policy statement."}
+        },
+    )
+    reloaded = docx.Document(str(out))
+    reloaded_part_a = reloaded.tables[0].rows[4].cells[1].paragraphs[0]._p
+    assert reloaded_part_a.find(qn("w:pPr") + "/" + qn("w:numPr")) is not None
+    reloaded_unchecked = reloaded.tables[0].rows[1].cells[0].paragraphs[2]._p
+    assert reloaded_unchecked.find(qn("w:sdt")) is not None
