@@ -111,6 +111,9 @@ workspace vaults and generated local ignored exports.
   PR CI passed; top-level local verify passed through the adopted core, including
   5835 frontmatter notes, 5576 Dataview blocks, 52/52 valid OSCAL documents,
   canonical parity and lineage attestations. Existing warnings/debt were not waived.
+- Consumer post-merge [validation run 43947901553](https://github.com/GSA-TTS/oscal-vault/actions/runs/43947901553)
+  passed on `7e98b63b9db5557f260718813016566428efe829`, including pipeline gates
+  and core-template roundtrip fill-back parity (4m10s).
 - Consumer pin-only PR #129 was closed as superseded by #130, not conflict-resolved
   to the older pin: ancestry confirms `b4bd872` is included in `33d613bd`.
 
