@@ -34,3 +34,21 @@ See [ADR-031](ADR/ADR-031-pinned-tooling-and-actions-boundaries.md) for the narr
 scoped base-only inventory-trigger exception and its tests. Offline Zizmor cannot
 prove online audits. Missing optional DOCX fixtures/backends are reported as
 skipped by tests, never claimed as validated live integrations.
+
+## GSA assessment workbooks to canonical JSON
+
+Converts the GSA Control Tailoring Workbook and the NIST SP 800-53A test-case workbook (ODS)
+into schema-validated canonical JSON. See ADR-034. The data is not committed to the core.
+
+```bash
+# convert (writes <workspace>/data/catalog/*.canonical.json)
+python compliance/scripts/convert_gsa_workbooks.py \
+  --tailoring-workbook CTW.ods --test-case-workbook TESTS.ods
+
+# prove committed JSON still matches the workbooks (exit 1 on drift)
+python compliance/scripts/convert_gsa_workbooks.py \
+  --tailoring-workbook CTW.ods --test-case-workbook TESTS.ods --check
+
+# structural check only; no ODS needed
+python compliance/scripts/convert_gsa_workbooks.py --validate data/catalog/*.canonical.json
+```
