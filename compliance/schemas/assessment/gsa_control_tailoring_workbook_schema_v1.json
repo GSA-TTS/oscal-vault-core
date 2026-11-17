@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gsa.gov/oscal-vault/assessment/gsa-control-tailoring-workbook-v1.json",
+  "title": "GSA Control Tailoring Workbook, canonical JSON",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "title", "version", "source_document", "authority", "poc_email", "instructions", "control_designations", "total_controls", "baselines_summary", "overlays_summary", "controls", "hva_overlay"],
+  "$defs": {
+    "controlId": {"type": "string", "pattern": "^[A-Z]{2}-[0-9]+(\\([0-9A-Z]+\\))?$"},
+    "baselines": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ccc", "low", "moderate", "high", "lato", "misaas"],
+      "properties": {
+        "ccc": {"type": "boolean"}, "low": {"type": "boolean"}, "moderate": {"type": "boolean"},
+        "high": {"type": "boolean"}, "lato": {"type": "boolean"}, "misaas": {"type": "boolean"}
+      }
+    },
+    "overlays": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["privacy", "pci", "cui", "infra", "hva_moderate", "hva_high"],
+      "properties": {
+        "privacy": {"type": "boolean"}, "pci": {"type": "boolean"}, "cui": {"type": "boolean"},
+        "infra": {"type": "boolean"}, "hva_moderate": {"type": "boolean"}, "hva_high": {"type": "boolean"}
+      }
+    },
+    "baselineCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ccc", "low", "moderate", "high", "lato", "misaas"],
+      "properties": {
+        "ccc": {"type": "integer", "minimum": 0}, "low": {"type": "integer", "minimum": 0},
+        "moderate": {"type": "integer", "minimum": 0}, "high": {"type": "integer", "minimum": 0},
+        "lato": {"type": "integer", "minimum": 0}, "misaas": {"type": "integer", "minimum": 0}
+      }
+    },
+    "overlayCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["privacy", "pci", "cui", "infra", "hva_moderate", "hva_high"],
+      "properties": {
+        "privacy": {"type": "integer", "minimum": 0}, "pci": {"type": "integer", "minimum": 0},
+        "cui": {"type": "integer", "minimum": 0}, "infra": {"type": "integer", "minimum": 0},
+        "hva_moderate": {"type": "integer", "minimum": 0}, "hva_high": {"type": "integer", "minimum": 0}
+      }
+    }
+  },
+  "properties": {
+    "kind": {"const": "gsa-control-tailoring-workbook"},
+    "title": {"type": "string"},
+    "version": {"type": "string", "minLength": 1},
+    "source_document": {"type": "string"},
+    "authority": {"type": "string"},
+    "poc_email": {"const": "<POC_EMAIL>"},
+    "instructions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overview", "shading_notes", "column_descriptions"],
+      "properties": {
+        "overview": {"type": "string"},
+        "shading_notes": {"type": "array", "items": {"type": "string"}},
+        "column_descriptions": {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    },
+    "control_designations": {"type": "array", "items": {"type": "string"}},
+    "total_controls": {"type": "integer", "minimum": 0},
+    "baselines_summary": {"$ref": "#/$defs/baselineCounts"},
+    "overlays_summary": {"$ref": "#/$defs/overlayCounts"},
+    "controls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["control_id", "raw_control_id", "family", "name", "designation", "statement", "baselines", "overlays", "vendor_contractor_values", "gsa_approval"],
+        "properties": {
+          "control_id": {"$ref": "#/$defs/controlId"},
+          "raw_control_id": {"type": "string"},
+          "family": {"type": "string", "pattern": "^[A-Z]{2}$"},
+          "name": {"type": "string"},
+          "designation": {"type": ["string", "null"]},
+          "statement": {"type": "string"},
+          "baselines": {"$ref": "#/$defs/baselines"},
+          "overlays": {"$ref": "#/$defs/overlays"},
+          "vendor_contractor_values": {"type": "string"},
+          "gsa_approval": {"type": "string"}
+        }
+      }
+    },
+    "hva_overlay": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["control_id", "raw_control_id", "name", "hva_moderate", "hva_high", "vendor_contractor_values", "gsa_approval"],
+        "properties": {
+          "control_id": {"$ref": "#/$defs/controlId"},
+          "raw_control_id": {"type": "string"},
+          "name": {"type": "string"},
+          "hva_moderate": {"type": "boolean"},
+          "hva_high": {"type": "boolean"},
+          "vendor_contractor_values": {"type": "string"},
+          "gsa_approval": {"type": "string"}
+        }
+      }
+    }
+  }
+}
