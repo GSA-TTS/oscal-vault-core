@@ -355,6 +355,21 @@ def test_invalid_workbooks_fail_closed(tmp_path: Path) -> None:
         g.canonical_control_id("not-a-control")
 
 
+def test_cli_bundled_flag_targets_the_shipped_data_dir(tmp_path: Path) -> None:
+    ctw, tc = tailoring_ods(tmp_path), build_test_cases_ods(tmp_path)
+    result = run_cli(
+        "--tailoring-workbook",
+        str(ctw),
+        "--test-case-workbook",
+        str(tc),
+        "--bundled",
+        "--check",
+        cwd=tmp_path,
+    )
+    # synthetic workbooks differ from the shipped data, so this must report drift
+    assert result.returncode == 1 and str(g.DATA_DIR) in result.stderr
+
+
 def run_cli(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(SCRIPT), *args], capture_output=True, text=True, cwd=cwd

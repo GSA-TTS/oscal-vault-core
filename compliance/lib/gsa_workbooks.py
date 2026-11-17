@@ -35,6 +35,7 @@ TEST_CASES_SCHEMA = SCHEMA_DIR / "gsa_test_cases_schema_v1.json"
 
 TAILORING_KIND = "gsa-control-tailoring-workbook"
 TEST_CASES_KIND = "gsa-lato-low-test-cases"
+DATA_DIR = ROOT / "compliance" / "data" / "gsa"
 TAILORING_FILENAME = "gsa-control-tailoring-workbook.canonical.json"
 TEST_CASES_FILENAME = "gsa-lato-low-test-cases.canonical.json"
 
@@ -514,6 +515,22 @@ def validate_canonical_json(data: dict[str, Any]) -> None:
         validate_test_cases(data)
     else:
         raise WorkbookError(f"unknown canonical JSON kind: {kind!r}")
+
+
+def bundled_path(filename: str) -> Path:
+    """Where the core ships a canonical workbook JSON file."""
+    return DATA_DIR / filename
+
+
+def load_bundled(filename: str) -> dict[str, Any]:
+    """Load and validate a canonical workbook JSON file shipped with the core."""
+    path = bundled_path(filename)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise WorkbookError(f"bundled workbook data not found: {path}") from exc
+    validate_canonical_json(data)
+    return data
 
 
 def render_json(data: dict[str, Any]) -> str:
