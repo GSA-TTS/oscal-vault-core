@@ -30,8 +30,13 @@ Provide the converter and its schemas in the core, and keep the data out of it.
 - Tests use small synthetic ODS packages built in the test. No GSA workbook, and no JSON
   converted from one, is committed to the core.
 
-The canonical JSON stays in the consuming repository. Whether any workbook-derived data may
-be published is a classification and release decision for humans; this ADR does not make it.
+The canonical JSON is a local build product, not a version-controlled artifact. A consuming
+repository regenerates it from the ODS workbooks (which it keeps out of git) and should
+gitignore it. The ODS conversion is deterministic, so `--check` against the workbooks, not a
+committed copy, is what proves the JSON is faithful. Anything derived from it that carries
+workbook text (such as a rendered assessment) is treated the same way. Whether any
+workbook-derived data may be published is a classification and release decision for humans;
+this ADR does not make it.
 
 ## Consequences
 
