@@ -52,3 +52,15 @@ python compliance/scripts/convert_gsa_workbooks.py \
 # structural check only; no ODS needed
 python compliance/scripts/convert_gsa_workbooks.py --validate data/catalog/*.canonical.json
 ```
+
+## GSA A&A assessment engine
+
+Builds a system's Assessment and Attestation from a neutral system input plus the canonical
+workbook JSON. See ADR-035 and `skills/gsa-aa-assessment/SKILL.md`. The core never reads a
+system's own files; the system repository emits the input.
+
+```bash
+python compliance/scripts/build_gsa_assessment.py --system-input build/assessment/<slug>-assessment-input.json
+python compliance/scripts/build_gsa_assessment.py --system-input ... --check      # exit 1 on drift
+python compliance/scripts/build_poam_issues.py --assessment ... --work-items ...   # dry run
+```
