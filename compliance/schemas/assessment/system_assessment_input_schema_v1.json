@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gsa.gov/oscal-vault/assessment/system-assessment-input-v1.json",
+  "title": "Neutral per-system input for the GSA assessment engine",
+  "description": "Emitted by a small adapter that lives in the system repository. The core never reads a system's own files.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "system", "controls"],
+  "$defs": {
+    "controlId": {"type": "string", "pattern": "^[A-Z]{2}-[0-9]+(\\([0-9A-Z]+\\))?$"},
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  },
+  "properties": {
+    "schema_version": {"const": 1},
+    "system": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "name", "baseline"],
+      "properties": {
+        "slug": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+        "name": {"type": "string", "minLength": 1},
+        "baseline": {"enum": ["Low", "Moderate", "High"]},
+        "confirmations_path": {"type": "string"}
+      }
+    },
+    "input_digests": {
+      "type": "object",
+      "description": "Repository-relative path to SHA-256 of each file the adapter read.",
+      "additionalProperties": {"$ref": "#/$defs/sha256"}
+    },
+    "controls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["control_id", "has_countermeasure"],
+        "properties": {
+          "control_id": {"$ref": "#/$defs/controlId"},
+          "name": {"type": "string"},
+          "inheritance": {"type": ["string", "null"]},
+          "providing_service": {"type": ["string", "null"]},
+          "implementation_status": {"enum": ["implemented", "partially-implemented", "not-implemented", "gap", "planned", "not-applicable", null]},
+          "model_status": {"type": ["string", "null"]},
+          "has_countermeasure": {"type": "boolean"},
+          "draft": {"type": "boolean"},
+          "summary": {"type": "string"},
+          "strategy": {"type": ["string", "null"]},
+          "prose": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["part", "text"],
+              "properties": {"part": {"type": ["string", "null"]}, "text": {"type": "string"}}
+            }
+          },
+          "evidence_refs": {"type": "array", "items": {"type": "string"}},
+          "inline_mechanisms": {"type": "integer", "minimum": 0},
+          "residual_actions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["text", "gap"],
+              "properties": {"text": {"type": "string"}, "gap": {"type": "boolean"}}
+            }
+          },
+          "test_procedures": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["method", "description", "automated"],
+              "properties": {
+                "method": {"enum": ["examine", "interview", "test"]},
+                "description": {"type": "string"},
+                "automated": {"type": "boolean"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "kind", "role", "control_ids"],
+        "properties": {
+          "key": {"type": "string", "minLength": 1},
+          "title": {"type": ["string", "null"]},
+          "repo": {"type": ["string", "null"]},
+          "path": {"type": ["string", "null"]},
+          "kind": {"enum": ["ci-test", "ci-workflow", "config", "source", "none"]},
+          "role": {"enum": ["implementation", "observation"]},
+          "claim_sha256": {"$ref": "#/$defs/sha256"},
+          "control_ids": {"type": "array", "items": {"$ref": "#/$defs/controlId"}}
+        }
+      }
+    },
+    "confirmations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "result", "assessor", "date"],
+        "properties": {
+          "id": {"type": "string"},
+          "result": {"type": "string"},
+          "assessor": {"type": "string"},
+          "date": {"type": ["string", "null"]},
+          "observation": {"type": "string"}
+        }
+      }
+    },
+    "issue_links": {
+      "type": "object",
+      "description": "Control ID to tracked issue number for POA&M-required controls.",
+      "additionalProperties": {"type": "integer", "minimum": 1}
+    }
+  }
+}

@@ -6,7 +6,7 @@
 
 ## Context
 
-Two system repositories (an FPDF SSPP repository and gsa-pages) each carried a private copy
+Two system repositories each carried a private copy
 of a converter that turns two GSA workbooks into JSON: the Control Tailoring Workbook
 (baselines, overlays, GSA parameter values) and the NIST SP 800-53A test-case workbook
 (assessment objectives with Examine, Interview and Test methods). The copies had already

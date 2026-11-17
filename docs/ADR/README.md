@@ -51,3 +51,4 @@ Proposed tooling record: [ADR-031](ADR-031-pinned-tooling-and-actions-boundaries
 | ADR-032 | [Synthetic CRM Roundtrip Template Family](ADR-032-synthetic-crm-roundtrip-template.md) | Proposed | 2026-11-13 |
 | ADR-033 | [Per-document Accountable DOCX Integrity](ADR-033-per-document-docx-integrity.md) | Proposed | 2026-11-16 |
 | ADR-034 | [Canonical JSON for GSA Assessment Workbooks](ADR-034-gsa-assessment-workbook-canonical-json.md) | Proposed | 2026-11-17 |
+| ADR-035 | [GSA Assessment Engine and the System-Adapter Boundary](ADR-035-gsa-assessment-engine-and-adapter-boundary.md) | Proposed | 2026-11-17 |
