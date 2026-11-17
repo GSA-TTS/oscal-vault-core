@@ -38,10 +38,11 @@ skipped by tests, never claimed as validated live integrations.
 ## GSA assessment workbooks to canonical JSON
 
 Converts the GSA Control Tailoring Workbook and the NIST SP 800-53A test-case workbook (ODS)
-into schema-validated canonical JSON. See ADR-034. The data is not committed to the core.
+into schema-validated canonical JSON. See ADR-034. The converted JSON ships in
+`compliance/data/gsa/` (see its `PROVENANCE.md`); the ODS files are never committed.
 
 ```bash
-# convert (writes <workspace>/data/catalog/*.canonical.json)
+# convert (writes <workspace>/data/catalog/*.canonical.json; add --bundled to refresh the shipped data)
 python compliance/scripts/convert_gsa_workbooks.py \
   --tailoring-workbook CTW.ods --test-case-workbook TESTS.ods
 
@@ -55,8 +56,8 @@ python compliance/scripts/convert_gsa_workbooks.py --validate data/catalog/*.can
 
 ## GSA A&A assessment engine
 
-Builds a system's Assessment and Attestation from a neutral system input plus the canonical
-workbook JSON. See ADR-035 and `skills/gsa-aa-assessment/SKILL.md`. The core never reads a
+Builds a system's Assessment and Attestation from a neutral system input plus the bundled
+canonical workbook JSON (override with `--tailoring` and `--test-cases`). See ADR-035 and `skills/gsa-aa-assessment/SKILL.md`. The core never reads a
 system's own files; the system repository emits the input.
 
 ```bash

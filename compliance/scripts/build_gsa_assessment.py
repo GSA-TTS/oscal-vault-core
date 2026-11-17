@@ -24,7 +24,12 @@ from compliance.lib.gsa_assessment_report import (  # noqa: E402
     render_json,
     render_markdown,
 )
-from compliance.lib.gsa_workbooks import TAILORING_FILENAME, TEST_CASES_FILENAME  # noqa: E402
+from compliance.lib.gsa_workbooks import (  # noqa: E402
+    TAILORING_FILENAME,
+    TEST_CASES_FILENAME,
+    WorkbookError,
+    load_bundled,
+)
 from compliance.lib.workspace import (  # noqa: E402
     WorkspaceError,
     add_workspace_arguments,
@@ -43,12 +48,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--tailoring",
         type=Path,
-        help=f"Default: <workspace>/data/catalog/{TAILORING_FILENAME}",
+        help=f"Default: the core's bundled compliance/data/gsa/{TAILORING_FILENAME}",
     )
     parser.add_argument(
         "--test-cases",
         type=Path,
-        help=f"Default: <workspace>/data/catalog/{TEST_CASES_FILENAME}",
+        help=f"Default: the core's bundled compliance/data/gsa/{TEST_CASES_FILENAME}",
     )
     parser.add_argument(
         "--out-dir", type=Path, help="Default: <workspace>/build/assessment"
@@ -60,16 +65,25 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         workspace = resolve_workspace(args.workspace)
-        catalog = workspace / "data" / "catalog"
         system = _load(args.system_input)
         assessment = build_assessment(
             system,
-            _load(args.tailoring or catalog / TAILORING_FILENAME),
-            _load(args.test_cases or catalog / TEST_CASES_FILENAME),
+            _load(args.tailoring)
+            if args.tailoring
+            else load_bundled(TAILORING_FILENAME),
+            _load(args.test_cases)
+            if args.test_cases
+            else load_bundled(TEST_CASES_FILENAME),
         )
         out_dir = args.out_dir or workspace / "build" / "assessment"
         guard_output(out_dir, allow_in_core=args.allow_write_in_core)
-    except (AssessmentError, WorkspaceError, OSError, json.JSONDecodeError) as exc:
+    except (
+        AssessmentError,
+        WorkbookError,
+        WorkspaceError,
+        OSError,
+        json.JSONDecodeError,
+    ) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
     slug = assessment["system"]

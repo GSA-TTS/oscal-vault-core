@@ -22,7 +22,7 @@ Put the engine in the core and the file reading in the system.
   inheritance, authored prose by statement part, evidence references, residual actions with a
   GAP flag, optional test procedures, an evidence list, assessor confirmations, and issue links.
 - `compliance/lib/gsa_assessment.py` consumes only that document and the two canonical
-  workbook files. Rules cover results, objective-to-part mapping, findings AA-1 to AA-9, and an
+  workbook files, which it loads from the core's bundled data by default. Rules cover results, objective-to-part mapping, findings AA-1 to AA-9, and an
   attestation block whose decision, name, signature and date fields are always null.
 - `compliance/lib/gsa_assessment_report.py` renders JSON and Markdown deterministically and
   fails on any URL, e-mail address or CUI banner left in the output.

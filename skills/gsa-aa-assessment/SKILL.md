@@ -12,8 +12,8 @@ confirm them, and you never fill in an AO decision, name, signature or date.
 
 | Input | Role |
 | --- | --- |
-| `gsa-lato-low-test-cases.canonical.json` | Assessment objectives (Examine, Interview, Test), the assessment questions. |
-| `gsa-control-tailoring-workbook.canonical.json` | Control statement, parameters, baseline and overlay flags. |
+| `compliance/data/gsa/gsa-lato-low-test-cases.canonical.json` | Assessment objectives (Examine, Interview, Test), the assessment questions. Bundled with the core. |
+| `compliance/data/gsa/gsa-control-tailoring-workbook.canonical.json` | Control statement, parameters, baseline and overlay flags. Bundled with the core. |
 | System input JSON | One neutral document emitted by the system repository's adapter. Schema: `compliance/schemas/assessment/system_assessment_input_schema_v1.json`. |
 
 The core never reads a system's own files. If the system has no adapter yet, write one in
@@ -22,7 +22,8 @@ the system repository; do not add system-specific code to the core.
 ## Procedure
 
 ```bash
-# 1. convert workbooks once (ADR-034), then check committed JSON matches the workbooks
+# 1. the workbook JSON ships with the core (compliance/data/gsa, see PROVENANCE.md).
+#    Maintainers refresh it with --bundled; --check proves it matches the ODS workbooks
 python compliance/scripts/convert_gsa_workbooks.py --tailoring-workbook CTW.ods --test-case-workbook TESTS.ods --check
 python compliance/scripts/convert_gsa_workbooks.py --validate data/catalog/*.canonical.json
 

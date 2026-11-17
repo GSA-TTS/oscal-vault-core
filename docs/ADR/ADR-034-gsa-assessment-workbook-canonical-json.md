@@ -27,22 +27,30 @@ Provide the converter and its schemas in the core, and keep the data out of it.
   vendored core (ADR-028).
 - Validation goes beyond the schema: summary counts must match the rows, IDs must be
   canonical and unique, and expected test-case counts must match the extracted objectives.
-- Tests use small synthetic ODS packages built in the test. No GSA workbook, and no JSON
-  converted from one, is committed to the core.
+- Converter tests use small synthetic ODS packages built in the test. No ODS file is committed.
 
-The canonical JSON is a local build product, not a version-controlled artifact. A consuming
-repository regenerates it from the ODS workbooks (which it keeps out of git) and should
-gitignore it. The ODS conversion is deterministic, so `--check` against the workbooks, not a
-committed copy, is what proves the JSON is faithful. Anything derived from it that carries
-workbook text (such as a rendered assessment) is treated the same way. Whether any
-workbook-derived data may be published is a classification and release decision for humans;
-this ADR does not make it.
+The converted JSON ships in the core under `compliance/data/gsa/`, so every consumer
+assesses against one question set and nothing depends on a copy in a system repository.
+
+- The source workbooks carry a CUI banner. The requesting maintainer stated that the converted
+  content is cleared for public release; `compliance/data/gsa/PROVENANCE.md` records that
+  statement, the redactions applied, and the refresh procedure. It is not an independent
+  classification review, and the pull request that adds the data needs a human reviewer to
+  confirm it.
+- The ODS files themselves are never committed. The system-content guard rejects office
+  documents, and the data is added only as JSON.
+- Only converted workbook content is allowed there. The test-case file ships with every
+  observation, result and recommendation blank, and tests fail on system names, URLs, e-mail
+  addresses, UUIDs, IP addresses or `CUI//` markings.
+- Consumers load the bundled data by default (`load_bundled`) and may point at their own
+  files. Consumers do not need to commit or regenerate it.
 
 ## Consequences
 
 - Consumers drop their private converters and call the core; drift between them ends.
 - A consumer can prove its committed JSON is faithful with `--check` and structurally valid
   with `--validate`, and the second needs no ODS.
+- Refreshing the data is a reviewed change: `--bundled`, update `PROVENANCE.md`, open a PR.
 - The schemas set a stable contract (`kind`, `version`, closed property sets) for the
   assessment engine that follows in a separate change.
 - Workbook layout changes (column order, sheet names) fail loudly rather than silently.

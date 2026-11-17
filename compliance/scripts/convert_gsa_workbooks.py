@@ -5,6 +5,7 @@ Examples:
     convert_gsa_workbooks.py --tailoring-workbook CTW.ods --test-case-workbook TC.ods
     convert_gsa_workbooks.py --tailoring-workbook CTW.ods --test-case-workbook TC.ods --check
     convert_gsa_workbooks.py --validate data/catalog/*.canonical.json
+    convert_gsa_workbooks.py --tailoring-workbook CTW.ods --test-case-workbook TC.ods --bundled --check
 
 Output goes under the workspace (``--workspace``, ``OSCAL_VAULT_WORKSPACE``, or the current
 directory), never inside a vendored core. ``--check`` writes nothing and exits 1 on drift.
@@ -22,6 +23,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from compliance.lib.gsa_workbooks import (  # noqa: E402
+    DATA_DIR,
     TAILORING_FILENAME,
     TEST_CASES_FILENAME,
     WorkbookError,
@@ -67,7 +69,10 @@ def _convert(args: argparse.Namespace) -> int:
         return 2
 
     workspace = resolve_workspace(args.workspace)
-    out_dir = args.out_dir or workspace / "data" / "catalog"
+    if args.bundled:
+        out_dir = DATA_DIR
+    else:
+        out_dir = args.out_dir or workspace / "data" / "catalog"
     guard_output(out_dir, allow_in_core=args.allow_write_in_core)
 
     drift = False
@@ -102,6 +107,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--out-dir", type=Path, help="Default: <workspace>/data/catalog"
+    )
+    parser.add_argument(
+        "--bundled",
+        action="store_true",
+        help="Target the JSON the core ships in compliance/data/gsa (maintainers; "
+        "update compliance/data/gsa/PROVENANCE.md and open a reviewed PR)",
     )
     parser.add_argument(
         "--check", action="store_true", help="Fail on drift; write nothing"
