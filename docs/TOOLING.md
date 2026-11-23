@@ -55,6 +55,18 @@ assert not any(nf.audit_document(doc, header_re).values())
 doc.save("formatted.docx")
 ```
 
+## Restricted local DOCX redline
+
+`compliance/scripts/generate_docx_redline.py` writes a full DOCX redline, split DOCX files,
+escaped HTML and a manifest comparing the extracted text of two DOCX files. The output holds
+raw prose, so `--out-dir` must be outside any git repository or worktree, every artifact carries
+a restricted-review warning, and nothing is uploaded, committed or opened. See ADR-037.
+
+```bash
+python compliance/scripts/generate_docx_redline.py before.docx after.docx \
+  --out-dir ~/review-output/redline
+```
+
 ## GSA assessment workbooks to canonical JSON
 
 Converts the GSA Control Tailoring Workbook and the NIST SP 800-53A test-case workbook (ODS)
