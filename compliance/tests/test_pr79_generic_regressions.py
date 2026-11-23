@@ -134,3 +134,135 @@ def test_normalized_collision_does_not_overwrite_first_observed_value():
     )
     assert collision
     assert values == {"AC-2(1)_smt.a": "first"}
+
+
+def test_short_merged_narrative_row_routes_to_part_a():
+    from fismatic.parser import extract_implementation_details
+
+    document = docx.Document()
+    table = document.add_table(rows=2, cols=2)
+    table.cell(0, 0).text = "AC-1"
+    table.cell(0, 1).text = "Control Summary Information"
+    table.cell(1, 0).merge(table.cell(1, 1)).text = "Implementation TBD:"
+    result = extract_implementation_details(
+        {"table": table, "is_control_table": True, "control_id": "AC-1"}
+    )
+    assert result == {"implementation": {"a": "Implementation TBD:"}}
+
+
+def test_pre_part_merged_crm_row_is_not_duplicated_into_part_a(tmp_path):
+    from fismatic.parser import extract_implementation_details, parse_control_table
+
+    document = docx.Document()
+    table = document.add_table(rows=6, cols=2)
+    table.cell(0, 0).text = "AC-07"
+    table.cell(0, 1).text = "Control Summary Information"
+    table.cell(1, 0).merge(
+        table.cell(1, 1)
+    ).text = "Implementation Status:\n☒ Implemented\n☐ Planned"
+    table.cell(2, 0).merge(
+        table.cell(2, 1)
+    ).text = "Control Origination:\n☒ Service Provider System Specific"
+    crm_prefix = (
+        "Platform Provider: Account lockout thresholds are enforced at the platform."
+    )
+    table.cell(3, 0).merge(table.cell(3, 1)).text = crm_prefix
+    table.cell(4, 0).merge(
+        table.cell(4, 1)
+    ).text = "AC-07 Describe how the control is implemented."
+    part_a_body = "Application Tenant: Tenant admins configure lockout duration."
+    table.cell(5, 0).text = "Part a"
+    table.cell(5, 1).text = part_a_body
+
+    combined = f"{crm_prefix} {part_a_body}"
+    control = CanonicalControl.from_raw(
+        "ac-07",
+        raw_status="implemented",
+        raw_origination=["system-specific"],
+        statement_ids=["ac-07_smt.a"],
+    )
+    output = tmp_path / "filled.docx"
+    fill_control_tables(
+        document,
+        [control],
+        output,
+        statement_text_by_control={"ac-07": {"ac-07_smt.a": combined}},
+    )
+    reloaded = docx.Document(output)
+    assert reloaded.tables[0].rows[5].cells[1].text == part_a_body
+    parsed = extract_implementation_details(parse_control_table(reloaded.tables[0]))
+    assert " ".join(parsed["implementation"]["a"].split()) == combined
+
+
+def test_crm_summary_table_without_origination_row_roundtrips_without_duplication(
+    tmp_path,
+):
+    from compliance.lib.docx_integrity_fillback import control_readback
+
+    document = docx.Document()
+    table = document.add_table(rows=6, cols=2)
+    table.cell(0, 0).text = "CR-1"
+    table.cell(0, 1).text = "Responsibility Summary Information"
+    table.cell(1, 0).merge(
+        table.cell(1, 1)
+    ).text = "Implementation Status:\n☐ Implemented\n☐ Planned"
+    table.cell(2, 0).merge(
+        table.cell(2, 1)
+    ).text = "Customer Responsibility: [Add Customer Responsibility here]"
+    table.cell(3, 0).merge(
+        table.cell(3, 1)
+    ).text = "Controls Reference: [Enter Control Reference(s) (e.g., SC-8)"
+    table.cell(4, 0).merge(
+        table.cell(4, 1)
+    ).text = "CR-1 Describe how the customer responsibility is implemented."
+    table.cell(5, 0).merge(
+        table.cell(5, 1)
+    ).text = "[Add Implementation statement here]"
+
+    combined = (
+        "Customer Responsibility: [Add Customer Responsibility here] "
+        "Controls Reference: [Enter Control Reference(s) (e.g., SC-8) "
+        "[Add Implementation statement here]"
+    )
+    control = CanonicalControl.from_raw(
+        "cr-01",
+        raw_status="not-implemented",
+        raw_origination=["system-specific"],
+        statement_ids=["cr-01_smt.a"],
+    )
+    filled = tmp_path / "crm.filled.docx"
+    fill_control_tables(
+        document,
+        [control],
+        filled,
+        statement_text_by_control={"cr-01": {"cr-01_smt.a": combined}},
+    )
+    expected = {
+        "system-security-plan": {
+            "control-implementation": {
+                "implemented-requirements": [
+                    {
+                        "control-id": "cr-01",
+                        "props": [
+                            {
+                                "name": "implementation-status",
+                                "value": "not-implemented",
+                            },
+                            {
+                                "name": "control-origination",
+                                "value": "system-specific",
+                            },
+                        ],
+                        "statements": [
+                            {
+                                "statement-id": "cr-01_smt.a",
+                                "remarks": combined,
+                            }
+                        ],
+                    }
+                ]
+            }
+        }
+    }
+    readback = control_readback(expected, filled, tmp_path)
+    assert readback["status"] == "PASS", readback["findings"]

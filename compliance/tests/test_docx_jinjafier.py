@@ -32,9 +32,10 @@ from compliance.lib.instruction_anchors import find_instruction_anchors
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _FISMATIC = _REPO_ROOT / "fismatic"
-_LOW_BLANK = _FISMATIC / "Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx"
+_BLANK_TEMPLATES = _REPO_ROOT / "templates"
+_LOW_BLANK = _BLANK_TEMPLATES / "Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx"
 _CRM_BLANK = (
-    _FISMATIC / "Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx"
+    _BLANK_TEMPLATES / "Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx"
 )
 _LOW_CONTRACT = _REPO_ROOT / "compliance" / "datacontracts" / "low-sspp-roundtrip.yaml"
 _CRM_CONTRACT = (

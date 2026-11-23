@@ -286,7 +286,7 @@ class TestSummary:
 # Fixture-gated: real official blank templates
 # ---------------------------------------------------------------------------
 
-_LOW = _FISMATIC / "Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx"
+_LOW = _REPO_ROOT / "templates" / "Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx"
 _CRM = _FISMATIC / "Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx"
 
 

@@ -31,7 +31,8 @@ from compliance.lib.instruction_extract import (
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _FISMATIC = _REPO_ROOT / "fismatic"
-_LOW_BLANK = _FISMATIC / "Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx"
+_BLANK_TEMPLATES = _REPO_ROOT / "templates"
+_LOW_BLANK = _BLANK_TEMPLATES / "Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx"
 _LOW_CONTRACT = _REPO_ROOT / "compliance" / "datacontracts" / "low-sspp-roundtrip.yaml"
 
 BLUE = RGBColor(0x00, 0x70, 0xC0)

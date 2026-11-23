@@ -53,14 +53,15 @@ class DocxParser:
         elif "zendesk" in name:
             pid = "zendesk-ssp"
         else:
-            return base
+            pid = None
 
         for parent in Path(__file__).resolve().parents:
             dc_dir = parent / "compliance" / "datacontracts"
             if dc_dir.is_dir():
-                override = dc_dir / f"{pid}.yaml"
-                if override.exists():
-                    return str(override)
+                if pid:
+                    override = dc_dir / f"{pid}.yaml"
+                    if override.exists():
+                        return str(override)
                 # No per-project override -> shared base.
                 base_path = dc_dir / "fedramp-ssp-v1.yaml"
                 if base_path.exists():

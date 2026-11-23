@@ -30,7 +30,7 @@ def initialize(output: Path, system_ids: list[str], workspace: Path) -> dict:
         raise ValueError("registry must be outside the core and workspace root")
     if workspace in output.parents:
         result = subprocess.run(
-            ["git", "check-ignore", "--quiet", str(output)],
+            ["git", "check-ignore", "--quiet", f"{output}/"],
             cwd=workspace,
             timeout=30,
             check=False,

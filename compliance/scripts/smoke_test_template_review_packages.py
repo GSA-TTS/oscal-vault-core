@@ -35,14 +35,24 @@ from compliance.lib.workspace import resolve_workspace  # noqa: E402
 _WORKSPACE = resolve_workspace()
 _REGISTRY = _WORKSPACE / "scripts" / "registry.yaml"
 
+
+def _resolve_template(filename: str) -> Path:
+    for candidate in (
+        _REPO_ROOT / "templates" / filename,
+        _WORKSPACE / "templates" / filename,
+        _WORKSPACE / "fismatic" / filename,
+    ):
+        if candidate.is_file():
+            return candidate
+    return _REPO_ROOT / "templates" / filename
+
+
 _TEMPLATES = {
-    "low": _WORKSPACE / "fismatic" / "Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
-    "moderate": _WORKSPACE
-    / "fismatic"
-    / "Moderate-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
-    "high": _WORKSPACE
-    / "fismatic"
-    / "High-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
+    "low": _resolve_template("Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx"),
+    "moderate": _resolve_template(
+        "Moderate-SSPP-Template-[Contains-CUI]-10-16-2024.docx"
+    ),
+    "high": _resolve_template("High-SSPP-Template-[Contains-CUI]-10-16-2024.docx"),
 }
 
 _SPEC = importlib.util.spec_from_file_location("template_review_package", _BUILDER)

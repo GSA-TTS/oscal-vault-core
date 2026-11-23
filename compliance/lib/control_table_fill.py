@@ -300,6 +300,88 @@ def _set_checkbox_lines(
             glyph_el.text = _replace_leading_glyph(glyph_el.text, desired)
 
 
+def _table_non_instruction_text(anchor: ControlTableAnchor) -> str:
+    """Concatenate unique non-instruction row texts from the owning table."""
+    rows: list[str] = []
+    collapsed_rows: list[str] = []
+    for row in anchor.table.rows:
+        seen_tc: set[int] = set()
+        cells: list[str] = []
+        for cell in row.cells:
+            if id(cell._tc) not in seen_tc:
+                seen_tc.add(id(cell._tc))
+                if cell.text.strip():
+                    cells.append(cell.text.strip())
+        row_text = "\n\n".join(cells)
+        low = row_text.lower()
+        if "describe how" in low or "what is the solution" in low:
+            continue
+        if row_text:
+            rows.append(row_text)
+            collapsed_rows.append(" ".join(row_text.split()))
+    return "\n\n".join([*rows, *collapsed_rows, " ".join(collapsed_rows)])
+
+
+def _strip_pre_part_prefix(
+    anchor: ControlTableAnchor, part_key: str | None, text: str
+) -> str:
+    """Strip any pre-Part-a merged CRM row prefix that already sits above Part a."""
+    if part_key != "a" or "a" not in anchor.part_rows:
+        return text
+    part_a_tc = anchor.part_rows["a"]._tc
+    status_tc = anchor.status_cell._tc if anchor.status_cell is not None else None
+    orig_tc = (
+        anchor.origination_cell._tc if anchor.origination_cell is not None else None
+    )
+    pre_texts: list[str] = []
+    for row_idx, row in enumerate(anchor.table.rows):
+        if any(c._tc is part_a_tc for c in row.cells):
+            break
+        if row_idx == 0 or any(
+            c._tc is status_tc or c._tc is orig_tc for c in row.cells
+        ):
+            continue
+        label = row.cells[0].text.strip()
+        value = row.cells[-1].text.strip()
+        if not label or label != value:
+            continue
+        low = label.lower()
+        if (
+            "control summary" in low
+            or "control enhancement summary" in low
+            or "responsibility summary" in low
+            or "describe how" in low
+            or "what is the solution" in low
+            or "implementation status" in low
+            or "implementation type" in low
+            or "control origination" in low
+            or "control applicability" in low
+            or re.match(r"^(?:implemented\s+)?parameter\b", low)
+        ):
+            continue
+        if len(label) <= 40 and "responsible" in low and "role" in low:
+            continue
+        pre_texts.append(value)
+    if not pre_texts:
+        return text
+    pre_words = " ".join(pre_texts).split()
+    text_words = text.split()
+    if text_words == pre_words:
+        cell_norm = " ".join(anchor.part_rows["a"].text.split())
+        if cell_norm and cell_norm in " ".join(pre_words):
+            return anchor.part_rows["a"].text
+        return text
+    if len(text_words) < len(pre_words) or text_words[: len(pre_words)] != pre_words:
+        return text
+    pos = 0
+    for token in pre_words:
+        m = re.search(re.escape(token), text[pos:])
+        if not m:
+            return text
+        pos += m.end()
+    return text[pos:].lstrip()
+
+
 def _text_already_in_table(anchor: ControlTableAnchor, text: str) -> bool:
     """True when every sentence-level piece of ``text`` already sits in this table.
 
@@ -308,9 +390,7 @@ def _text_already_in_table(anchor: ControlTableAnchor, text: str) -> bool:
     match proves placement under the owning control. Controls Reference labels
     are not narrative and are ignored.
     """
-    table_pieces = _narrative_pieces(
-        "\n".join(cell.text for row in anchor.table.rows for cell in row.cells)
-    )
+    table_pieces = _narrative_pieces(_table_non_instruction_text(anchor))
     pieces = _narrative_pieces(text)
     return bool(pieces) and all(piece in table_pieces for piece in pieces)
 
@@ -346,8 +426,9 @@ def _fill_narrative(
                 break
         cell = anchor.part_rows.get(part_key) if part_key else None
         if cell is not None:
-            if text and " ".join(cell.text.split()) != " ".join(text.split()):
-                cell.text = text
+            part_text = _strip_pre_part_prefix(anchor, part_key, text) if text else ""
+            if part_text and " ".join(cell.text.split()) != " ".join(part_text.split()):
+                cell.text = part_text
             results.append(
                 {
                     "statement_id": stmt_id,
@@ -377,7 +458,11 @@ def _fill_narrative(
             )
 
     if remaining_text and anchor.blank_answer_cell is not None:
-        _write_into_slot(anchor.blank_answer_cell, "; ".join(remaining_text))
+        _write_into_slot(
+            anchor.blank_answer_cell,
+            "; ".join(remaining_text),
+            existing_table_text=_table_non_instruction_text(anchor),
+        )
         for result in results:
             if result["placement"] == "unmatched":
                 result["placement"] = "blank-answer"
@@ -385,7 +470,9 @@ def _fill_narrative(
     return results
 
 
-def _write_into_slot(cell, text: str) -> None:
+def _write_into_slot(
+    cell, text: str, *, existing_table_text: str | None = None
+) -> None:
     """Write ``text`` into a blank-answer slot without destroying existing content.
 
     An empty slot receives the text. A slot that already carries template or
@@ -397,8 +484,9 @@ def _write_into_slot(cell, text: str) -> None:
     if not _norm_text(existing):
         cell.text = text
         return
-    existing_pieces = _narrative_pieces(existing)
-    cleaned = re.sub(r"(?<!\n)\n(?!\n)", " ", _ROUTING_LABEL_RE.sub("\n\n", text))
+    existing_pieces = _narrative_pieces(existing_table_text or existing)
+    collapsed = " ".join((text or "").split())
+    cleaned = _ROUTING_LABEL_RE.sub("\n\n", collapsed)
     missing = [
         sentence
         for sentence in re.split(r"(?<=[.!?])\s+|\n\s*\n+", cleaned)

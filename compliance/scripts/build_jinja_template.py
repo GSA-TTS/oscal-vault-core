@@ -37,25 +37,25 @@ from compliance.lib.docx_jinjafier import JinjafyError, jinjafy, rendered_tags  
 _REGISTRY = [
     {
         "name": "low-sspp",
-        "blank": "fismatic/Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
+        "blank": "templates/Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
         "contract": "compliance/datacontracts/low-sspp-roundtrip.yaml",
         "output": "compliance/templates/low-sspp.jinja.docx",
     },
     {
         "name": "moderate-sspp",
-        "blank": "fismatic/Moderate-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
+        "blank": "templates/Moderate-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
         "contract": "compliance/datacontracts/moderate-sspp-roundtrip.yaml",
         "output": "compliance/templates/moderate-sspp.jinja.docx",
     },
     {
         "name": "high-sspp",
-        "blank": "fismatic/High-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
+        "blank": "templates/High-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
         "contract": "compliance/datacontracts/high-sspp-roundtrip.yaml",
         "output": "compliance/templates/high-sspp.jinja.docx",
     },
     {
         "name": "leveraged-saas-crm",
-        "blank": "fismatic/Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx",
+        "blank": "templates/Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx",
         "contract": "compliance/datacontracts/leveraged-saas-crm-roundtrip.yaml",
         "output": "compliance/templates/leveraged-saas-crm.jinja.docx",
     },

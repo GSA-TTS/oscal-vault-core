@@ -9,6 +9,13 @@ from typing import Any, Dict, Iterable, List, Optional
 TABLE_RECORD_SCHEMA_VERSION = 1
 
 _SEPARATOR_CELL = re.compile(r":?-{3,}:?")
+_WIKILINK_RE = re.compile(r"\[\[[^\]]*\]\]")
+
+
+def _has_table_pipe(line: str) -> bool:
+    return "|" in _WIKILINK_RE.sub("", line)
+
+
 _PRESENTATION_HEADINGS = {
     "coverage",
     "mapping",
@@ -130,15 +137,19 @@ def parse_table_records(body_text: str) -> List[Dict[str, Any]]:
             index += 1
             continue
         if (
-            "|" not in lines[index]
+            not _has_table_pipe(lines[index])
             or index + 1 >= len(lines)
-            or "|" not in lines[index + 1]
+            or not _has_table_pipe(lines[index + 1])
         ):
             index += 1
             continue
 
         raw_lines: List[str] = []
-        while index < len(lines) and "|" in lines[index] and lines[index].strip():
+        while (
+            index < len(lines)
+            and _has_table_pipe(lines[index])
+            and lines[index].strip()
+        ):
             raw_lines.append(lines[index])
             index += 1
         parsed_rows = [split_markdown_table_row(line) for line in raw_lines]

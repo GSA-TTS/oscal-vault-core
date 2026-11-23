@@ -314,7 +314,11 @@ def test_all_initial_table_kinds_have_queryable_base_views() -> None:
 def test_typed_summary_frontmatter_conforms_to_component_and_extension_schemas() -> (
     None
 ):
-    schema = yaml.safe_load(Path("vault-schemas.json").read_text(encoding="utf-8"))
+    schema = yaml.safe_load(
+        (Path(__file__).resolve().parents[2] / "vault-schemas.json").read_text(
+            encoding="utf-8"
+        )
+    )
     component = build_synthetic_component_note(
         {"system-characteristics": {"system-name": "Example"}},
         index=VaultIndex(systems={"Example": "[[Systems/example]]"}),
@@ -348,3 +352,13 @@ def test_typed_summary_frontmatter_conforms_to_component_and_extension_schemas()
     Draft202012Validator(
         schema["$defs"]["VaultExtensionNarrativeFrontmatter"]
     ).validate(extension)
+
+
+def test_wikilink_alias_bullet_list_is_not_parsed_as_table_record() -> None:
+    records = parse_table_records(
+        "## Navigate\n\n"
+        "- [[Boundaries/sample-boundary|Sample — Authorization Boundary]]\n"
+        "- [[Decisions/sample-decision|Sample — Digital Identity]]\n"
+        "- [[Controls/AC-01|AC-01]]\n"
+    )
+    assert records == []
