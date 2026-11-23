@@ -1276,23 +1276,23 @@ def canonical_to_oscal_ssp(
                 f"cannot export control {control_id!r}: {exc}"
             ) from exc
 
+    # Parity gate: the plan note records source control rows, before repeated
+    # controls are represented as one OSCAL requirement. Fail before merging so
+    # a missing source row cannot be hidden by an otherwise valid merge.
+    declared = fm.get("controls_parsed", sys_fm.get("controls_parsed"))
+    if isinstance(declared, bool):
+        declared = None
+    if isinstance(declared, int) and declared != len(implemented_reqs):
+        raise ControlParityError(
+            f"plan declares controls_parsed={declared} but "
+            f"{len(implemented_reqs)} implemented-requirement(s) were converted"
+        )
+
     # Rows for a repeated control describe the same OSCAL implemented requirement
     # from more than one source/component. Preserve every row's by-component and
     # statement details beneath one requirement so semantic validation sees one
     # stable requirement UUID per control rather than colliding duplicates.
     implemented_reqs = _merge_implemented_requirements(implemented_reqs)
-
-    # Parity gate: the plan note records source control rows. Conversion may
-    # legitimately merge repeated rows, but it must never create more OSCAL
-    # requirements than rows or quietly drop a distinct control.
-    declared = fm.get("controls_parsed", sys_fm.get("controls_parsed"))
-    if isinstance(declared, bool):
-        declared = None
-    if isinstance(declared, int) and declared < len(implemented_reqs):
-        raise ControlParityError(
-            f"plan declares controls_parsed={declared} but "
-            f"{len(implemented_reqs)} implemented-requirement(s) were converted"
-        )
 
     if not implemented_reqs:
         if not allow_synthetic:

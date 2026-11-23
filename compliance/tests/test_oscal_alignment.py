@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _FISMATIC_SRC = _REPO_ROOT / "fismatic" / "src" / "phase_1"
 if str(_FISMATIC_SRC) not in sys.path:
@@ -11,6 +13,7 @@ from compliance.lib.export_oscal import (  # noqa: E402
     canonical_to_oscal_ssp,
     control_to_oscal_implemented_requirement,
 )
+from compliance.lib.export_oscal import ControlParityError  # noqa: E402
 from compliance.lib.validate_oscal import validate_oscal_document  # noqa: E402
 from fismatic.parser import sanitize_responsible_role  # noqa: E402
 
@@ -118,3 +121,12 @@ def test_ssp_merges_repeated_control_rows_into_one_requirement():
     }
     result = validate_oscal_document(document, semantic=True)
     assert result.valid, result.errors
+
+
+def test_ssp_checks_source_row_parity_before_merging_repeated_controls():
+    """A duplicate-control merge must not hide a missing canonical row."""
+    plan = {"frontmatter": {"title": "Example", "controls_parsed": 2}}
+    controls = [{"frontmatter": {"control_id": "AC-2"}}]
+
+    with pytest.raises(ControlParityError, match="controls_parsed=2"):
+        canonical_to_oscal_ssp(plan, "example", control_sidecars=controls)
