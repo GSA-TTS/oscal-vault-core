@@ -30,7 +30,7 @@ def prepare_output(output: Path, source: Path, workspace: Path) -> Path:
         raise ValueError("integrity output must be outside the core")
     if workspace in output.parents:
         ignored = subprocess.run(
-            ["git", "check-ignore", "--quiet", str(output)],
+            ["git", "check-ignore", "--quiet", f"{output}/"],
             cwd=workspace,
             timeout=30,
             check=False,
@@ -148,20 +148,23 @@ def export_stage(
 
 
 def export_commands(source: Path, vault: Path, output: Path, system_id: str) -> tuple:
+    from compliance.lib.workspace import resolve_workspace
+
+    registry = resolve_workspace() / "scripts/registry.yaml"
+    vault_args = [
+        "export_obsidian_vault.py",
+        "--docx",
+        str(source),
+        "--plan-id",
+        system_id,
+        "--vault",
+        str(vault),
+        "--keep-existing",
+    ]
+    if registry.is_file():
+        vault_args.extend(["--metadata-yaml", str(registry)])
     return (
-        (
-            "vault",
-            [
-                "export_obsidian_vault.py",
-                "--docx",
-                str(source),
-                "--plan-id",
-                system_id,
-                "--vault",
-                str(vault),
-                "--keep-existing",
-            ],
-        ),
+        ("vault", vault_args),
         ("canonical", ["generate_canonical_json.py", "--vault", str(vault)]),
         (
             "export",

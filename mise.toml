@@ -41,6 +41,7 @@ depends = ["lint", "audit", "security", "test"]
 
 [tasks.workspace-verify]
 description = "Validate a system-output workspace named by OSCAL_VAULT_WORKSPACE"
+shell = "bash -c"
 run = """
 set -euo pipefail
 : "${OSCAL_VAULT_WORKSPACE:?Set OSCAL_VAULT_WORKSPACE to the system-output repository path}"

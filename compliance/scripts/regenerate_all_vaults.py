@@ -48,6 +48,15 @@ def plan(
     """``(plan_id, docx, vault_dir, skip_reason)`` for one registry entry."""
     plan_id = system["plan_id"]
     docx = workspace / system["docx"]
+    if not docx.exists():
+        fname = Path(system["docx"]).name
+        for fallback in (
+            workspace / "templates" / fname,
+            CORE_ROOT / "templates" / fname,
+        ):
+            if fallback.exists():
+                docx = fallback
+                break
     vault_dir = workspace / "examples" / "vault" / plan_id
     if not docx.exists():
         return plan_id, docx, vault_dir, f"docx not found at {docx}"

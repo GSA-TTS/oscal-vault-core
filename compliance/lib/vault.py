@@ -635,7 +635,7 @@ def build_control_note(
         sid = s.get("statement-id")
         desc = s.get("description") or ""
         label = sid or ""
-        label_match = re.search(r"_stmt\.([A-Za-z0-9]+)$", label)
+        label_match = re.search(r"_(?:stmt|smt)\.([A-Za-z0-9._-]+)$", label)
         part_label = label_match.group(1) if label_match else None
         statements_with_narrative.append(
             {

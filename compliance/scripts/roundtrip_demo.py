@@ -56,37 +56,52 @@ from compliance.lib.docx_fill import (  # noqa: E402
 )
 from compliance.lib.docx_jinjafier import jinjafy  # noqa: E402
 from compliance.lib.heading_parser import load_contract  # noqa: E402
+from compliance.lib.workspace import resolve_workspace  # noqa: E402
 
 _REGISTRY = [
     {
         "name": "low-sspp",
-        "blank": "fismatic/Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
+        "blank": "templates/Low-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
         "contract": "compliance/datacontracts/low-sspp-roundtrip.yaml",
         "jinja": "compliance/templates/low-sspp.jinja.docx",
         "fixture": "compliance/tests/fixtures/roundtrip/low-sspp.sample.json",
     },
     {
         "name": "moderate-sspp",
-        "blank": "fismatic/Moderate-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
+        "blank": "templates/Moderate-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
         "contract": "compliance/datacontracts/moderate-sspp-roundtrip.yaml",
         "jinja": "compliance/templates/moderate-sspp.jinja.docx",
         "fixture": "compliance/tests/fixtures/roundtrip/moderate-sspp.sample.json",
     },
     {
         "name": "high-sspp",
-        "blank": "fismatic/High-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
+        "blank": "templates/High-SSPP-Template-[Contains-CUI]-10-16-2024.docx",
         "contract": "compliance/datacontracts/high-sspp-roundtrip.yaml",
         "jinja": "compliance/templates/high-sspp.jinja.docx",
         "fixture": "compliance/tests/fixtures/roundtrip/high-sspp.sample.json",
     },
     {
         "name": "leveraged-saas-crm",
-        "blank": "fismatic/Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx",
+        "blank": "templates/Leveraged-SaaS-CRM-SSPP-Template-[Contains-CUI]-02-01-2024.docx",
         "contract": "compliance/datacontracts/leveraged-saas-crm-roundtrip.yaml",
         "jinja": "compliance/templates/leveraged-saas-crm.jinja.docx",
         "fixture": "compliance/tests/fixtures/roundtrip/leveraged-saas-crm.sample.json",
     },
 ]
+
+
+def _resolve_asset(rel: str) -> Path:
+    workspace = resolve_workspace()
+    fname = Path(rel).name
+    for candidate in (
+        _REPO_ROOT / rel,
+        workspace / rel,
+        _REPO_ROOT / "fismatic" / fname,
+        workspace / "fismatic" / fname,
+    ):
+        if candidate.exists():
+            return candidate
+    return _REPO_ROOT / rel
 
 
 def _run_control_tables(name: str, jinja_path: Path, out_dir: Path) -> int:
@@ -159,10 +174,10 @@ def _run_control_tables(name: str, jinja_path: Path, out_dir: Path) -> int:
 
 def _run_one(entry: dict, out_dir: Path, *, skip_control_tables: bool = False) -> int:
     name = entry["name"]
-    contract = load_contract(_REPO_ROOT / entry["contract"])
-    fixture = _REPO_ROOT / entry["fixture"]
-    blank = _REPO_ROOT / entry["blank"]
-    committed_jinja = _REPO_ROOT / entry["jinja"]
+    contract = load_contract(_resolve_asset(entry["contract"]))
+    fixture = _resolve_asset(entry["fixture"])
+    blank = _resolve_asset(entry["blank"])
+    committed_jinja = _resolve_asset(entry["jinja"])
 
     print(f"\n=== {name} ===")
 

@@ -73,7 +73,8 @@ def _convert(args: argparse.Namespace) -> int:
         out_dir = DATA_DIR
     else:
         out_dir = args.out_dir or workspace / "data" / "catalog"
-    guard_output(out_dir, allow_in_core=args.allow_write_in_core)
+    if not args.check:
+        guard_output(out_dir, allow_in_core=args.allow_write_in_core)
 
     drift = False
     for filename, data in jobs:

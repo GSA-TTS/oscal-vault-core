@@ -24,11 +24,8 @@ CONTRACTS = {
 
 
 def control_readback(expected: dict, filled: Path, output: Path) -> dict:
-    from compliance.lib.oscal_source import (
-        load_from_oscal_ssp,
-        statement_text_map_from_oscal_ssp,
-        whole_control_text_map_from_oscal_ssp,
-    )
+    from compliance.lib import oscal_source as src
+    from compliance.lib.control_table_anchors import find_control_tables
     from compliance.lib.control_table_fill import _match_key
 
     fismatic = str(CORE / "fismatic/src/phase_1")
@@ -36,11 +33,11 @@ def control_readback(expected: dict, filled: Path, output: Path) -> dict:
         sys.path.insert(0, fismatic)
     from fismatic.ssp_converter import SSPConverter
 
-    controls = load_from_oscal_ssp(expected, strict=True)
+    controls = src.load_from_oscal_ssp(expected, strict=True)
     parsed = SSPConverter(str(filled)).get_oscal_data()
     if not parsed:
         raise StageError("FAIL", "Fismatic produced no fill-back readback")
-    recovered = load_from_oscal_ssp(parsed)
+    recovered = src.load_from_oscal_ssp(parsed)
     actual = {_match_key(c.control_id): c for c in recovered}
     expected_keys = [_match_key(c.control_id) for c in controls]
     findings = []
@@ -50,18 +47,21 @@ def control_readback(expected: dict, filled: Path, output: Path) -> dict:
         findings.append({"kind": "duplicate_expected_control_ids"})
     if set(actual) != set(expected_keys):
         findings.append({"kind": "control_set_difference"})
+    st_map, wc_map = (
+        src.statement_text_map_from_oscal_ssp,
+        src.whole_control_text_map_from_oscal_ssp,
+    )
     data = {
         "actual": actual,
-        "expected_text": statement_text_map_from_oscal_ssp(expected),
-        "actual_text": {
-            _match_key(k): v
-            for k, v in statement_text_map_from_oscal_ssp(parsed).items()
+        "no_origination": {
+            _match_key(a.control_id)
+            for a in find_control_tables(filled)
+            if a.origination_cell is None
         },
-        "expected_whole": whole_control_text_map_from_oscal_ssp(expected),
-        "actual_whole": {
-            _match_key(k): v
-            for k, v in whole_control_text_map_from_oscal_ssp(parsed).items()
-        },
+        "expected_text": st_map(expected),
+        "actual_text": {_match_key(k): v for k, v in st_map(parsed).items()},
+        "expected_whole": wc_map(expected),
+        "actual_whole": {_match_key(k): v for k, v in wc_map(parsed).items()},
     }
     for control in controls:
         findings.extend(compare_control(control, data))
@@ -97,10 +97,17 @@ def compare_control(control, data: dict) -> list:
         findings.append(
             {"control_id": control.control_id, "kind": "statement_set_difference"}
         )
+    origination_diff = sorted(control.oscal_origination) != sorted(
+        getattr(other, "oscal_origination", [])
+    ) and not (
+        key in data.get("no_origination", set())
+        and control.oscal_origination == ["system-specific"]
+        and not getattr(other, "oscal_origination", [])
+    )
     if (
         other is None
         or control.oscal_implementation_status != other.oscal_implementation_status
-        or sorted(control.oscal_origination) != sorted(other.oscal_origination)
+        or origination_diff
     ):
         findings.append(
             {"control_id": control.control_id, "kind": "status_or_origination"}

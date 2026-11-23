@@ -257,6 +257,10 @@ def main(argv: List[str] | None = None) -> int:
     template_stats: Dict[str, DocStats] = {}
     for key, fname in TEMPLATES.items():
         p = args.templates_dir / fname
+        if not p.exists():
+            alt = _CORE_ROOT / "templates" / fname
+            if alt.exists():
+                p = alt
         if p.exists():
             template_stats[key] = analyze(p)
         else:

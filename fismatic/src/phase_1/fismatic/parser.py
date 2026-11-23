@@ -736,7 +736,7 @@ def extract_implementation_details(
             named_merged_part = part_re.match(label)
         if named_merged_part:
             part_key = named_merged_part.group(1)
-        elif len(label) > 20 and label == value:
+        elif label == value:
             if not (is_ctrl or is_cont):
                 continue
             part_key = "a"
