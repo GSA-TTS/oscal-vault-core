@@ -1523,3 +1523,38 @@ class TestRelatedControlsFrontmatterResolves:
         links = [str(x) for x in control.frontmatter.get("related_controls", [])]
         assert f"[[Controls/{absent}]]" not in links
         assert absent in control.body
+
+
+def test_organization_notes_read_roles_from_party_role_ids():
+    ssp = {
+        "system-security-plan": {
+            "uuid": "u",
+            "metadata": {
+                "roles": [
+                    {"id": "system-owner", "title": "System Owner"},
+                    {"id": "isso", "title": "Information System Security Officer"},
+                ],
+                "parties": [
+                    {
+                        "uuid": "p1",
+                        "type": "organization",
+                        "name": "Example Agency",
+                        "role-ids": ["system-owner", "isso"],
+                    },
+                    {"uuid": "p2", "type": "organization", "name": "No Roles"},
+                ],
+            },
+            "system-characteristics": {"system-name": "Role Test"},
+            "control-implementation": {"implemented-requirements": []},
+        }
+    }
+    orgs = {
+        n.frontmatter["name"]: n
+        for n in build_vault(ssp, plan_id="role-test")
+        if n.relpath.startswith("Organizations/")
+    }
+    agency = orgs["Example Agency"].frontmatter
+    assert agency["role_ids"] == ["system-owner", "isso"]
+    assert agency["role"] == "System Owner, Information System Security Officer"
+    assert "- System Owner" in orgs["Example Agency"].body
+    assert orgs["No Roles"].frontmatter["role"] == "cloud-service-provider"
