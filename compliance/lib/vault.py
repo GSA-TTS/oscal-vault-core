@@ -813,7 +813,11 @@ def build_control_note(
         fm["sub_controls"] = []
 
     # related_controls: wire heuristically-detected related controls
-    related_for_excalibrain = _extract_related_controls(req)
+    # Only link controls that exist in this vault; the body already applies the same guard, so
+    # an unguarded link here creates an unresolved wikilink for every out-of-baseline reference.
+    related_for_excalibrain = [
+        rid for rid in _extract_related_controls(req) if rid in index.controls
+    ]
     if related_for_excalibrain:
         fm["related_controls"] = [
             _Literal(f"[[Controls/{rid}]]") for rid in related_for_excalibrain
