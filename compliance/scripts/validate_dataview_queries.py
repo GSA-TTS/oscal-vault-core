@@ -75,6 +75,11 @@ _KNOWN_FOLDERS: Set[str] = {
 _OPTIONAL_EMPTY_BASE_VIEWS = {
     ("controls.base", "Requiring attention"),
     ("controls.base", "Inherited / hybrid"),
+    # Typed-table views only match notes that carry parsed table records, which a vault
+    # whose source has no such table (e.g. a small CRM template) legitimately lacks.
+    ("components.base", "Typed table coverage"),
+    ("inheritance.base", "Typed provider tables"),
+    ("relationships.base", "Typed protocol tables"),
 }
 
 
