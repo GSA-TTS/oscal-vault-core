@@ -190,3 +190,55 @@ def test_full_corpus_section_guidance_moderate():
     # A representative section with known guidance.
     keys = {k.lower() for k in sg}
     assert any("network architecture" in k for k in keys)
+
+
+class TestEnhancementShapes:
+    def test_heading_with_space_before_enhancement_matches(self, tmp_path):
+        doc = docx.Document()
+        doc.add_paragraph("SA-08 (33): Security and Privacy Engineering Principles")
+        _add_cis_table(doc, "SA-08 (33)", parts=0)
+        out = tmp_path / "space.docx"
+        doc.save(str(out))
+
+        g = extract_control_guidance(out)
+        assert g["SA-08(33)"].describe_prompt == (
+            "SA-08 (33) Describe how the control is implemented."
+        )
+        assert "SA-08" not in g
+
+    def test_cis_table_with_extra_blank_row_still_yields_prompt(self, tmp_path):
+        doc = docx.Document()
+        doc.add_paragraph("PT-07(01): Specific Categories of PII")
+        t = doc.add_table(rows=6, cols=2)
+        t.rows[0].cells[0].text = "PT-07(01)"
+        t.rows[1].cells[0].text = ""
+        t.rows[2].cells[0].text = "Implementation Status:\n\u2612 Implemented"
+        t.rows[3].cells[0].text = "Control Origination:\n\u2612 System Specific Control"
+        t.rows[4].cells[0].text = "PT-07(01) Describe how the control is implemented."
+        t.rows[5].cells[0].text = "Part a"
+        out = tmp_path / "blank-row.docx"
+        doc.save(str(out))
+
+        g = extract_control_guidance(out)
+        assert g["PT-07(01)"].describe_prompt == (
+            "PT-07(01) Describe how the control is implemented."
+        )
+
+    def test_non_cis_table_is_not_given_a_prompt(self, tmp_path):
+        doc = docx.Document()
+        doc.add_paragraph("AC-01: Policy")
+        t = doc.add_table(rows=6, cols=2)
+        t.rows[0].cells[0].text = "AC-01"
+        t.rows[4].cells[0].text = "Describe how something unrelated works"
+        out = tmp_path / "noncis.docx"
+        doc.save(str(out))
+
+        assert "AC-01" not in extract_control_guidance(out)
+
+
+@pytest.mark.skipif(not _MOD.exists(), reason="blank Moderate template not present")
+def test_moderate_enhancements_with_irregular_shapes_have_guidance():
+    g = extract_control_guidance(_MOD)
+    assert g["SA-08(33)"].describe_prompt
+    assert g["PT-07(01)"].describe_prompt
+    assert len(g) == 331

@@ -142,7 +142,7 @@ def _supports_strict(name: str) -> bool:
 def check_template_guidance_invariant(vault: Path) -> List[str]:
     """The official blank Moderate SSP template (``moderate-sspp-template-2024``)
     must carry a ``> [!note]- Template guidance`` callout (R18/R19,
-    ADR-022/ADR-023) on every one of its 330 control notes. Downstream
+    ADR-022/ADR-023) on every one of its 331 control notes. Downstream
     consumers that vendor this repo as a submodule build audit tooling
     directly on this invariant (e.g. the SSPP project's
     ``control-response-review`` skill fail-closes without it) — a silent
@@ -161,7 +161,7 @@ def check_template_guidance_invariant(vault: Path) -> List[str]:
         return []
     controls_dir = vault / "Controls"
     if not controls_dir.is_dir():
-        return [f"{vault.name}: no Controls/ directory (expected 330 control notes)"]
+        return [f"{vault.name}: no Controls/ directory (expected 331 control notes)"]
 
     control_files = sorted(controls_dir.glob("*.md"))
     total = len(control_files)
@@ -171,9 +171,9 @@ def check_template_guidance_invariant(vault: Path) -> List[str]:
         if "Template guidance" in p.read_text(encoding="utf-8", errors="replace")
     )
     issues: List[str] = []
-    if total != 330:
+    if total != 331:
         issues.append(
-            f"{vault.name}: expected 330 control notes, found {total} "
+            f"{vault.name}: expected 331 control notes, found {total} "
             "(control-count drift — flag in the pin-advance change summary)"
         )
     if with_guidance != total:
@@ -537,7 +537,7 @@ def main(argv: List[str] | None = None) -> int:
 
     # --- 2) Template-guidance invariant (error-level regression guard) -----
     # This is a hard invariant, not an advisory: the moderate template must
-    # keep its 330 guidance callouts (ADR-022/ADR-023) or downstream audit
+    # keep its 331 guidance callouts (ADR-022/ADR-023) or downstream audit
     # tooling that consumes this repo as a submodule fails closed. It errors
     # regardless of --strict.
     guidance_issues: List[str] = []

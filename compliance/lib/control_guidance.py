@@ -55,7 +55,7 @@ if str(_FISMATIC_SRC) not in sys.path:
 # A control-family heading like "AC-01: (Access Control) Policy and Procedures"
 # or "AC-02: Account Management". Anchored, short, family-prefixed.
 _CONTROL_HEADING_RE = re.compile(
-    r"^([A-Z]{2})-0*(\d{1,3})(?:\(0*(\d+)\))?\s*[:\.]?",
+    r"^([A-Z]{2})-0*(\d{1,3})(?:\s*\(0*(\d+)\))?\s*[:\.]?",
     re.IGNORECASE,
 )
 _DESCRIBE_PROMPT_RE = re.compile(r"Describe how", re.IGNORECASE)
@@ -147,17 +147,31 @@ def _section_heading_text(para: Paragraph) -> Optional[str]:
 
 
 def _table_describe_prompt(table: Table) -> Optional[str]:
-    """Return row-3's 'Describe how...' prompt text if this is a CIS table."""
+    """Return the 'Describe how...' prompt text if this is a CIS table.
+
+    Normally the prompt is row 3 and row 1 is the implementation-status row. Some template
+    tables carry an extra blank row (e.g. PT-07(01)), shifting both down, so fall back to
+    locating the status row and the first 'Describe how' row.
+    """
     if len(table.rows) < 4:
         return None
     try:
         row1 = table.rows[1].cells[0].text.strip()
     except Exception:
         return None
-    if not row1.startswith("Implementation Status:"):
+    if row1.startswith("Implementation Status:"):
+        describe = table.rows[3].cells[0].text.strip()
+        return describe or None
+    try:
+        cells = [row.cells[0].text.strip() for row in table.rows[:8]]
+    except Exception:
         return None
-    describe = table.rows[3].cells[0].text.strip()
-    return describe or None
+    if not any(c.startswith("Implementation Status:") for c in cells[:4]):
+        return None
+    for cell in cells:
+        if _DESCRIBE_PROMPT_RE.search(cell):
+            return cell
+    return None
 
 
 def extract_control_guidance(
