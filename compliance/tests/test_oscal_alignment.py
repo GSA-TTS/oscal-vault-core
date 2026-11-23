@@ -130,3 +130,36 @@ def test_ssp_checks_source_row_parity_before_merging_repeated_controls():
 
     with pytest.raises(ControlParityError, match="controls_parsed=2"):
         canonical_to_oscal_ssp(plan, "example", control_sidecars=controls)
+
+
+def test_ssp_repeated_control_crm_exports_have_distinct_uuids():
+    """Merged source rows sharing this-system retain distinct CRM identifiers."""
+    plan = {"frontmatter": {"title": "Example", "controls_parsed": 2}}
+    controls = [
+        {
+            "frontmatter": {
+                "control_id": "AC-2",
+                "inherited_from": "Identity provider",
+                "customer_responsibilities": "Review account access.",
+            }
+        },
+        {
+            "frontmatter": {
+                "control_id": "AC-2",
+                "inherited_from": "Directory service",
+                "customer_responsibilities": "Review group membership.",
+            }
+        },
+    ]
+
+    document = canonical_to_oscal_ssp(plan, "example", control_sidecars=controls)
+    by_components = document["system-security-plan"]["control-implementation"][
+        "implemented-requirements"
+    ][0]["by-components"]
+    assert len({item["export"]["provided"][0]["uuid"] for item in by_components}) == 2
+    assert (
+        len({item["export"]["responsibilities"][0]["uuid"] for item in by_components})
+        == 2
+    )
+    result = validate_oscal_document(document, semantic=True)
+    assert result.valid, result.errors

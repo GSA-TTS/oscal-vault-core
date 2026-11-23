@@ -446,6 +446,7 @@ def control_to_oscal_implemented_requirement(
                 fm,
                 control_id=_oscal_control_id(control_id),
                 by_component_uuid=entry["component-uuid"],
+                source_seed=source_seed,
                 lineage_events=crm_events,
             )
             if lineage_events is not None:
@@ -491,6 +492,7 @@ def control_to_oscal_implemented_requirement(
             fm,
             control_id=_oscal_control_id(control_id),
             by_component_uuid=by_comp["component-uuid"],
+            source_seed=source_seed,
             lineage_events=crm_events,
         )
         if lineage_events is not None:
@@ -523,6 +525,7 @@ def _oscal_crm_export(
     *,
     control_id: str,
     by_component_uuid: str,
+    source_seed: Optional[str] = None,
     lineage_events: Optional[List[Dict[str, Any]]] = None,
 ) -> Optional[Dict[str, Any]]:
     """Build native SSP ``by-component.export`` from CRM/inheritance fields.
@@ -596,8 +599,9 @@ def _oscal_crm_export(
             f"at component {by_component_uuid}."
         )
     }
+    seed_suffix = f":{source_seed}" if source_seed else ""
     provided_uuid = _coerce_uuid(
-        None, seed=f"crm-provided:{control_id}:{by_component_uuid}"
+        None, seed=f"crm-provided:{control_id}:{by_component_uuid}{seed_suffix}"
     )
     if provider_parts:
         export["provided"] = [
@@ -609,7 +613,9 @@ def _oscal_crm_export(
     if responsibility_parts:
         responsibility: Dict[str, Any] = {
             "uuid": _coerce_uuid(
-                None, seed=f"crm-responsibility:{control_id}:{by_component_uuid}"
+                None,
+                seed=f"crm-responsibility:{control_id}:{by_component_uuid}"
+                f"{seed_suffix}",
             ),
             "description": "\n".join(responsibility_parts),
         }
@@ -1671,17 +1677,16 @@ def canonical_to_oscal_component_definition(
             # vault extensions.
             incorporated_components = [
                 {
+                    "component-uuid": extra_component["uuid"],
+                    "description": extra_component["description"],
+                }
+                for extra_component in extra_components
+            ] or [
+                {
                     "component-uuid": comp_uuid,
                     "description": f"Incorporates {component_name}.",
                 }
             ]
-            for extra_component in extra_components:
-                incorporated_components.append(
-                    {
-                        "component-uuid": extra_component["uuid"],
-                        "description": extra_component["description"],
-                    }
-                )
             capability = {
                 "uuid": _coerce_uuid(None, seed=f"capability:{component_name}"),
                 "name": fm.get("capability_name")
@@ -1706,7 +1711,7 @@ def canonical_to_oscal_component_definition(
                 "version": str(fm.get("version", "1.0")),
                 "oscal-version": oscal_version,
             },
-            "components": [component, *extra_components],
+            "components": extra_components or [component],
         }
     }
     if capabilities:

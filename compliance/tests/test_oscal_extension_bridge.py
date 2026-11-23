@@ -374,8 +374,8 @@ def test_component_capability_incorporates_declared_dependencies():
     )
     definition = document["component-definition"]
     capability = definition["capabilities"][0]
-    assert len(definition["components"]) == 3
-    assert len(capability["incorporates-components"]) == 3
+    assert len(definition["components"]) == 2
+    assert len(capability["incorporates-components"]) == 2
     assert {
         item["component-uuid"] for item in capability["incorporates-components"]
     } == {item["uuid"] for item in definition["components"]}
