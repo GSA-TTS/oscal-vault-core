@@ -64,7 +64,6 @@ def inventory(vaults_root: Path) -> dict[str, Any]:
             debt[stable_id] = {
                 "sidecar": relative,
                 "source_heading": record.get("source_heading"),
-                "source_locator": record.get("source_locator"),
                 "headers": record.get("headers") or [],
                 "classification": classification,
             }

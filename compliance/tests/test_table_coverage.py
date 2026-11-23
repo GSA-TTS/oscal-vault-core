@@ -39,6 +39,16 @@ def test_debt_id_is_stable_when_source_line_moves(tmp_path: Path) -> None:
     assert set(inventory(tmp_path)["debt"]) == set(first["debt"])
 
 
+def test_baseline_content_is_stable_when_source_line_moves(tmp_path: Path) -> None:
+    sidecar = _sidecar(tmp_path)
+    first = inventory(tmp_path)
+    document = json.loads(sidecar.read_text(encoding="utf-8"))
+    document["table_records"][0]["source_locator"] = "markdown:line[40]"
+    sidecar.write_text(json.dumps(document), encoding="utf-8")
+
+    assert inventory(tmp_path) == first
+
+
 def test_baseline_rejects_new_debt(tmp_path: Path, monkeypatch) -> None:
     vaults = tmp_path / "vaults"
     baseline = tmp_path / "baseline.json"
