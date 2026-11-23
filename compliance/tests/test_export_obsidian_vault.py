@@ -1501,3 +1501,25 @@ def test_control_template_defers_parameter_view_until_values_exist():
 
     assert "# Parameters" not in control.body
     assert "FLATTEN parameters AS parameter" not in control.body
+
+
+class TestRelatedControlsFrontmatterResolves:
+    """`related_controls` frontmatter must only link controls present in the vault."""
+
+    def test_out_of_baseline_reference_is_not_linked(self):
+        ssp = json.loads(EXAMPLE_SSP_PATH.read_text(encoding="utf-8"))
+        root = ssp["system-security-plan"]
+        reqs = root["control-implementation"]["implemented-requirements"]
+        present = {canonical_control_id(r["control-id"]) for r in reqs}
+        absent = "SA-11"
+        assert absent not in present
+        reqs[0]["statements"] = [
+            {
+                "description": f"See {absent} and {next(iter(present - {canonical_control_id(reqs[0]['control-id'])}), 'AC-02')}."
+            }
+        ]
+        notes = {n.relpath: n for n in build_vault(ssp, plan_id="p")}
+        control = notes[f"Controls/{canonical_control_id(reqs[0]['control-id'])}.md"]
+        links = [str(x) for x in control.frontmatter.get("related_controls", [])]
+        assert f"[[Controls/{absent}]]" not in links
+        assert absent in control.body
