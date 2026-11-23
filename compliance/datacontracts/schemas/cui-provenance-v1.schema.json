@@ -2,14 +2,13 @@
   "$schema": "https://json-schema.org/draft/2019-09/schema",
   "$id": "https://github.com/GSA-TTS/oscal-vault/compliance/datacontracts/schemas/cui-provenance-v1.schema.json",
   "title": "OSCAL Vault CUI Classification + Provenance Sidecar",
-  "description": "Generic schema for a per-system CUI classification and source-document provenance record. See docs/ADR/ADR-024-cui-provenance-datacontract.md. This schema describes the *shape* of a classification record; it does not itself classify any system. A sidecar with cui_category: not_cui is a valid, complete record (a reviewed 'not CUI' determination is a first-class state, not an absence of data).",
+  "description": "Generic schema for a per-system CUI classification and source-document provenance record. See docs/ADR/ADR-024-cui-provenance-datacontract.md. This schema describes the *shape* of a classification record; it does not itself classify any system. A sidecar with cui_category: not_cui is a valid, complete record (a reviewed 'not CUI' determination is a first-class state, not an absence of data). A sidecar with determination_status: pending records provenance while classification and ingestion approval await owner determination.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schema_version",
     "system_slug",
     "classification",
-    "ingestion_approval",
     "source_documents",
     "downstream_artifacts",
     "retention"
@@ -21,12 +20,18 @@
     "system_slug": {
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9-]*$",
-      "description": "Must match the vault directory name under examples/vault/."
+      "description": "Must match the vault or system directory name."
+    },
+    "determination_status": {
+      "type": "string",
+      "enum": ["pending", "approved"],
+      "default": "approved",
+      "description": "Optional determination lifecycle state (defaults to 'approved' when omitted for backward compatibility)."
     },
     "classification": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["cui_category", "cui_marking", "authority", "review_cadence"],
+      "required": ["review_cadence"],
       "properties": {
         "cui_category": {
           "type": "string",
@@ -120,5 +125,35 @@
     "notes": {
       "type": "string"
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "determination_status": { "const": "pending" } },
+        "required": ["determination_status"]
+      },
+      "then": {
+        "not": { "required": ["ingestion_approval"] },
+        "properties": {
+          "classification": {
+            "not": {
+              "anyOf": [
+                { "required": ["cui_category"] },
+                { "required": ["cui_marking"] },
+                { "required": ["authority"] }
+              ]
+            }
+          }
+        }
+      },
+      "else": {
+        "required": ["ingestion_approval"],
+        "properties": {
+          "classification": {
+            "required": ["cui_category", "cui_marking", "authority", "review_cadence"]
+          }
+        }
+      }
+    }
+  ]
 }

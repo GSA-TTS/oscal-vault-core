@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 
 import pytest
@@ -27,15 +28,20 @@ def _template(name: str) -> Path:
     return path
 
 
+@lru_cache(maxsize=4)
+def _cached_collect(name: str) -> dict:
+    return collect(_template(name))
+
+
 def test_collect_returns_all_three_metric_families():
-    result = collect(_template(MODERATE))
+    result = _cached_collect(MODERATE)
     assert isinstance(result["structural"], StructuralCoverage)
     assert isinstance(result["semantic"], SemanticCoverage)
     assert isinstance(result["integrity"], IntegrityMetrics)
 
 
 def test_moderate_structural_coverage_shape():
-    struct: StructuralCoverage = collect(_template(MODERATE))["structural"]
+    struct: StructuralCoverage = _cached_collect(MODERATE)["structural"]
     assert struct.total_blocks > 2_000
     assert struct.routed_tables > 300
     assert struct.dropped_tables > 0
@@ -44,7 +50,7 @@ def test_moderate_structural_coverage_shape():
 
 
 def test_contract_routed_tables_are_not_counted_as_residual_loss():
-    result = collect(_template(MODERATE))
+    result = _cached_collect(MODERATE)
     structural = result["structural"]
     asset_inventory = next(
         element
@@ -58,7 +64,7 @@ def test_contract_routed_tables_are_not_counted_as_residual_loss():
 
 def test_cis_readback_is_lossless_on_blank_templates():
     for name in (LOW, MODERATE):
-        integ: IntegrityMetrics = collect(_template(name))["integrity"]
+        integ: IntegrityMetrics = _cached_collect(name)["integrity"]
         assert integ.cis_tables_detected > 100
         assert integ.cis_tables_readback_fail == 0
         assert integ.readback_fraction == 1.0
@@ -66,13 +72,13 @@ def test_cis_readback_is_lossless_on_blank_templates():
 
 def test_part_narrative_survival_lossless_where_present():
     for name in (LOW, MODERATE):
-        integ: IntegrityMetrics = collect(_template(name))["integrity"]
+        integ: IntegrityMetrics = _cached_collect(name)["integrity"]
         assert integ.total_part_narrative_slots > 0
         assert integ.part_narrative_fraction == 1.0
 
 
 def test_semantic_control_and_narrative_elements_are_routed():
-    sem: SemanticCoverage = collect(_template(MODERATE))["semantic"]
+    sem: SemanticCoverage = _cached_collect(MODERATE)["semantic"]
     elems = {e["element"]: e for e in sem.elements}
     assert elems["control_responses"]["routed"] is True
     assert elems["system_description"]["routed"] is True
@@ -82,7 +88,7 @@ def test_semantic_control_and_narrative_elements_are_routed():
 
 
 def test_render_markdown_and_json_have_all_sections():
-    result = collect(_template(MODERATE))
+    result = _cached_collect(MODERATE)
     md = render_markdown(result)
     assert "Structural coverage" in md
     assert "Semantic coverage" in md
