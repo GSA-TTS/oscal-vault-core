@@ -20,7 +20,10 @@ run = ["uv sync --frozen", "pnpm install --frozen-lockfile --ignore-scripts"]
 run = ["ruff check compliance tests scripts", "ruff format --check compliance tests scripts"]
 
 [tasks.audit]
-run = ["uv audit --frozen --system-certs", "pnpm audit --registry https://registry.npmjs.org"]
+run = [
+  "for i in 1 2 3; do uv audit --frozen --system-certs && break || { test $i -lt 3 && sleep $((i * 2)) || exit 1; }; done",
+  "for i in 1 2 3; do pnpm audit --registry https://registry.npmjs.org && break || { test $i -lt 3 && sleep $((i * 2)) || exit 1; }; done",
+]
 
 [tasks.security]
 run = ["betterleaks dir . --redact --config .betterleaks.toml", "zizmor --offline --strict-collection .github/workflows"]

@@ -106,6 +106,40 @@ class TestValidateSidecar:
         p = _write_sidecar(tmp_path, record)
         assert validate_cui_contracts.validate_sidecar(p, schema) == []
 
+    def test_pending_determination_without_classification_fields_is_valid(
+        self, tmp_path
+    ):
+        schema = validate_cui_contracts._load_schema()
+        record = _valid_record(
+            determination_status="pending",
+            classification={"review_cadence": "per-source-update"},
+        )
+        del record["ingestion_approval"]
+        p = _write_sidecar(tmp_path, record)
+        assert validate_cui_contracts.validate_sidecar(p, schema) == []
+
+    def test_pending_determination_rejects_classification_or_approval_fields(
+        self, tmp_path
+    ):
+        schema = validate_cui_contracts._load_schema()
+        record = _valid_record(determination_status="pending")
+        p = _write_sidecar(tmp_path, record)
+        issues = validate_cui_contracts.validate_sidecar(p, schema)
+        assert issues
+
+    def test_approved_determination_requires_classification_and_approval_fields(
+        self, tmp_path
+    ):
+        schema = validate_cui_contracts._load_schema()
+        record = _valid_record(
+            determination_status="approved",
+            classification={"review_cadence": "annual"},
+        )
+        del record["ingestion_approval"]
+        p = _write_sidecar(tmp_path, record)
+        issues = validate_cui_contracts.validate_sidecar(p, schema)
+        assert issues
+
 
 class TestSidecarIsOptional:
     def test_system_without_sidecar_is_not_an_error(self, tmp_path):

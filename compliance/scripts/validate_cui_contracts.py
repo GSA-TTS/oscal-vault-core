@@ -77,8 +77,10 @@ def _load_schema() -> dict[str, Any]:
 
 
 def _find_sidecar(vault: Path) -> Path | None:
-    p = vault / "classification" / "cui.yaml"
-    return p if p.exists() else None
+    for candidate in (vault / "classification" / "cui.yaml", vault / "cui.yaml"):
+        if candidate.exists():
+            return candidate
+    return None
 
 
 def validate_sidecar(path: Path, schema: dict[str, Any]) -> List[str]:

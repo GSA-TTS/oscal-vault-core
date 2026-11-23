@@ -45,7 +45,15 @@ contract; forcing it into ODCS's `SchemaObject` shape would be a poor fit).
 `compliance/datacontracts/schemas/cui-provenance-v1.schema.json` defines:
 
 - `schema_version` (integer, `1`)
-- `system_slug` (string, matches the vault directory name)
+- `system_slug` (string, matches the vault or system directory name)
+- `determination_status` (optional string, `pending` or `approved`, defaulting
+  to `approved` when omitted for backward compatibility):
+  - When `approved` (or omitted), `classification.{cui_category,cui_marking,authority,review_cadence}`
+    and `ingestion_approval` are required.
+  - When `pending`, only `classification.review_cadence` is required and
+    `cui_category`, `cui_marking`, `authority`, and `ingestion_approval` must
+    be omitted so a pending record cannot be mistaken for an approved
+    determination.
 - `classification`:
   - `cui_category` — a NARA CUI Registry category code (e.g. `ISVI`,
     `SP-PRIV`) **or** the literal `not_cui`
