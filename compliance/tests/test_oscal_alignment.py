@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _FISMATIC_SRC = _REPO_ROOT / "fismatic" / "src" / "phase_1"
 if str(_FISMATIC_SRC) not in sys.path:
@@ -8,8 +10,11 @@ if str(_FISMATIC_SRC) not in sys.path:
 
 from compliance.lib.export_oscal import (  # noqa: E402
     _oscal_set_parameters,
+    canonical_to_oscal_ssp,
     control_to_oscal_implemented_requirement,
 )
+from compliance.lib.export_oscal import ControlParityError  # noqa: E402
+from compliance.lib.validate_oscal import validate_oscal_document  # noqa: E402
 from fismatic.parser import sanitize_responsible_role  # noqa: E402
 
 
@@ -80,3 +85,48 @@ def test_control_to_oscal_with_by_components_and_set_parameters():
         req["by-components"][0]["description"]
         == "Enterprise Logging Policy implements AC-1."
     )
+
+
+def test_ssp_merges_repeated_control_rows_into_one_requirement():
+    """Repeated source rows become one requirement with distinct providers."""
+    plan = {"frontmatter": {"title": "Example", "controls_parsed": 2}}
+    controls = [
+        {
+            "frontmatter": {
+                "control_id": "AC-2",
+            },
+            "body_sections": [
+                {"heading": "Part a", "content": "Identity provider implementation."}
+            ],
+        },
+        {
+            "frontmatter": {
+                "control_id": "AC-2",
+            },
+            "body_sections": [
+                {"heading": "Part b", "content": "Application implementation."}
+            ],
+        },
+    ]
+
+    document = canonical_to_oscal_ssp(plan, "example", control_sidecars=controls)
+    requirements = document["system-security-plan"]["control-implementation"][
+        "implemented-requirements"
+    ]
+    assert len(requirements) == 1
+    assert requirements[0]["control-id"] == "ac-2"
+    assert {entry["description"] for entry in requirements[0]["by-components"]} == {
+        "Part a: Identity provider implementation.",
+        "Part b: Application implementation.",
+    }
+    result = validate_oscal_document(document, semantic=True)
+    assert result.valid, result.errors
+
+
+def test_ssp_checks_source_row_parity_before_merging_repeated_controls():
+    """A duplicate-control merge must not hide a missing canonical row."""
+    plan = {"frontmatter": {"title": "Example", "controls_parsed": 2}}
+    controls = [{"frontmatter": {"control_id": "AC-2"}}]
+
+    with pytest.raises(ControlParityError, match="controls_parsed=2"):
+        canonical_to_oscal_ssp(plan, "example", control_sidecars=controls)
