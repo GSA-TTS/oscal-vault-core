@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "contracts": {
+    "docx_roundtrip": 1,
+    "oscal_input": 1
+  }
+}
