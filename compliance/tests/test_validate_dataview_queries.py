@@ -396,3 +396,11 @@ def test_evaluate_declarative_query_portable():
     )
     assert len(res) == 1
     assert res[0]["control_id"] == "AC-01"
+
+
+def test_typed_table_views_may_be_empty():
+    optional = validate_dataview_queries._OPTIONAL_EMPTY_BASE_VIEWS
+    assert ("components.base", "Typed table coverage") in optional
+    assert ("inheritance.base", "Typed provider tables") in optional
+    assert ("relationships.base", "Typed protocol tables") in optional
+    assert ("components.base", "All components") not in optional

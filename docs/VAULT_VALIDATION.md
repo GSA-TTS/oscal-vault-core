@@ -92,6 +92,9 @@ validator context instead of an `allowEmpty` extension:
 - `Requiring attention` and `Inherited / hybrid` in `controls.base` are
   conditional views and may be empty in a populated `Controls/` folder. This
   explicit policy is maintained in `_OPTIONAL_EMPTY_BASE_VIEWS`.
+- The typed-table views (`Typed table coverage`, `Typed provider tables`,
+  `Typed protocol tables`) are likewise conditional: they match only notes with
+  parsed table records, so a vault whose source has none may leave them empty.
 
 The committed `compliance/tests/fixtures/bases/obsidian-1.14.4-controls.base`
 is the complete expected serialization regression fixture, not evidence of a
