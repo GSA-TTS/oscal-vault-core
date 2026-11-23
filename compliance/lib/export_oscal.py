@@ -223,6 +223,10 @@ _NON_PROP_KEYS = frozenset(
         "profile_ref",
         "import_profile",
         "component_type",
+        "capability_name",
+        "capability_description",
+        "capability_components",
+        "incorporates_components",
     }
 )
 
@@ -294,6 +298,7 @@ def control_to_oscal_implemented_requirement(
     canonical_data: Dict[str, Any],
     *,
     component_uuid: Optional[str] = None,
+    source_seed: Optional[str] = None,
     role_titles: Optional[Dict[str, str]] = None,
     lineage_events: Optional[List[Dict[str, Any]]] = None,
     lineage_derivations: Optional[List[Dict[str, Any]]] = None,
@@ -309,6 +314,10 @@ def control_to_oscal_implemented_requirement(
             requirement's ``by-component`` points at. Passing the plan's real
             component UUID keeps the by-component/component graph internally
             consistent; if omitted a deterministic synthetic one is derived.
+        source_seed: stable source discriminator used when the same control is
+            represented by multiple canonical rows. It keeps intermediate
+            statement and by-component UUIDs distinct until the rows are
+            merged under one OSCAL implemented-requirement.
         role_titles: collector for ``role-id -> title``. The caller declares
             these in ``metadata.roles[]`` so the emitted ``responsible-roles``
             references resolve.
@@ -320,7 +329,8 @@ def control_to_oscal_implemented_requirement(
     control_id = fm.get("control_id", "")
     if not isinstance(control_id, str) or not control_id.strip():
         raise ValueError("control_id is required for OSCAL export")
-    ir_uuid = _coerce_uuid(fm.get("uuid"), seed=f"ir:{control_id}")
+    seed_suffix = f":{source_seed}" if source_seed else ""
+    ir_uuid = _coerce_uuid(fm.get("uuid"), seed=f"ir:{control_id}{seed_suffix}")
 
     result: Dict[str, Any] = {
         "uuid": ir_uuid,
@@ -383,7 +393,7 @@ def control_to_oscal_implemented_requirement(
             stmt_id = _oscal_statement_id(control_id, part_id)
             entry: Dict[str, Any] = {
                 "statement-id": stmt_id,
-                "uuid": _coerce_uuid(None, seed=f"stmt:{stmt_id}"),
+                "uuid": _coerce_uuid(None, seed=f"stmt:{stmt_id}{seed_suffix}"),
             }
             if content:
                 entry["remarks"] = content
@@ -410,7 +420,9 @@ def control_to_oscal_implemented_requirement(
                 "component-uuid": _coerce_uuid(
                     bc_uuid, seed=f"comp:{idx}:{control_id}"
                 ),
-                "uuid": _coerce_uuid(bc.get("uuid"), seed=f"bycomp:{control_id}:{idx}"),
+                "uuid": _coerce_uuid(
+                    bc.get("uuid"), seed=f"bycomp:{control_id}:{idx}{seed_suffix}"
+                ),
                 "description": bc.get("description")
                 or f"Implementation of {control_id or 'control'}.",
             }
@@ -466,7 +478,7 @@ def control_to_oscal_implemented_requirement(
         )
         by_comp: Dict[str, Any] = {
             "component-uuid": comp_uuid,
-            "uuid": _coerce_uuid(None, seed=f"bycomp:{control_id}"),
+            "uuid": _coerce_uuid(None, seed=f"bycomp:{control_id}{seed_suffix}"),
             # Prefer the real statement narrative; fall back to a placeholder
             # only when the control captured no statement prose (D-7 / #42).
             "description": combined_prose
@@ -986,6 +998,59 @@ def _capability_control_implementation(
     return copied
 
 
+def _merge_implemented_requirements(
+    requirements: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Merge source rows for the same OSCAL control into one requirement.
+
+    The canonical interchange can represent several offerings/components for
+    one control. OSCAL represents that relationship as one implemented
+    requirement with several ``by-components``, not duplicate requirements.
+    """
+    merged: Dict[str, Dict[str, Any]] = {}
+    for requirement in requirements:
+        control_id = requirement["control-id"]
+        existing = merged.get(control_id)
+        if existing is None:
+            # Requirement UUIDs must be stable per control, independent of the
+            # source-row ordering used to produce the merged record.
+            requirement["uuid"] = _coerce_uuid(None, seed=f"ir:{control_id}")
+            merged[control_id] = requirement
+            continue
+
+        for key in ("by-components", "statements", "responsible-roles", "props"):
+            values = requirement.get(key) or []
+            if values:
+                existing.setdefault(key, []).extend(values)
+        if requirement.get("set-parameters"):
+            existing.setdefault("set-parameters", []).extend(
+                requirement["set-parameters"]
+            )
+
+    for requirement in merged.values():
+        for key in (
+            "by-components",
+            "statements",
+            "responsible-roles",
+            "props",
+            "set-parameters",
+        ):
+            values = requirement.get(key)
+            if not values:
+                continue
+            # UUIDs are already distinct for source-specific structures. Remove
+            # exact repeated values while retaining deterministic source order.
+            unique = []
+            seen = set()
+            for value in values:
+                marker = json.dumps(value, sort_keys=True)
+                if marker not in seen:
+                    seen.add(marker)
+                    unique.append(value)
+            requirement[key] = unique
+    return list(merged.values())
+
+
 def canonical_to_oscal_ssp(
     canonical_data: Dict[str, Any],
     plan_id: str = "",
@@ -1197,6 +1262,7 @@ def canonical_to_oscal_ssp(
                 control_to_oscal_implemented_requirement(
                     cdata,
                     component_uuid=component_uuid,
+                    source_seed=str(index),
                     role_titles=role_titles,
                     lineage_events=trace_sink,
                     lineage_derivations=lineage_derivations,
@@ -1210,14 +1276,19 @@ def canonical_to_oscal_ssp(
                 f"cannot export control {control_id!r}: {exc}"
             ) from exc
 
-    # Parity gate: the plan note records how many controls the source document
-    # yielded. A conversion that produces a different number means a control was
-    # dropped (or duplicated) between the vault and the export, which schema
-    # validation cannot see. Fail rather than emit a quietly short document.
+    # Rows for a repeated control describe the same OSCAL implemented requirement
+    # from more than one source/component. Preserve every row's by-component and
+    # statement details beneath one requirement so semantic validation sees one
+    # stable requirement UUID per control rather than colliding duplicates.
+    implemented_reqs = _merge_implemented_requirements(implemented_reqs)
+
+    # Parity gate: the plan note records source control rows. Conversion may
+    # legitimately merge repeated rows, but it must never create more OSCAL
+    # requirements than rows or quietly drop a distinct control.
     declared = fm.get("controls_parsed", sys_fm.get("controls_parsed"))
     if isinstance(declared, bool):
         declared = None
-    if isinstance(declared, int) and declared != len(implemented_reqs):
+    if isinstance(declared, int) and declared < len(implemented_reqs):
         raise ControlParityError(
             f"plan declares controls_parsed={declared} but "
             f"{len(implemented_reqs)} implemented-requirement(s) were converted"
@@ -1460,6 +1531,32 @@ def canonical_to_oscal_component_definition(
         "title": component_name,
         "description": description,
     }
+    extra_components: List[Dict[str, Any]] = []
+    raw_incorporated = fm.get("capability_components") or fm.get(
+        "incorporates_components"
+    )
+    if isinstance(raw_incorporated, list):
+        for index, raw_component in enumerate(raw_incorporated):
+            if not isinstance(raw_component, dict):
+                continue
+            component_ref = raw_component.get("component_uuid") or raw_component.get(
+                "component-uuid"
+            )
+            if not component_ref:
+                continue
+            extra_components.append(
+                {
+                    "uuid": _coerce_uuid(
+                        component_ref,
+                        seed=f"capability-component:{component_name}:{index}",
+                    ),
+                    "type": raw_component.get("component_type") or "service",
+                    "title": raw_component.get("name")
+                    or f"{component_name} dependency {index + 1}",
+                    "description": raw_component.get("description")
+                    or f"Component incorporated by {component_name}.",
+                }
+            )
     # defined-component has no status field; carry vault status + leftovers as props.
     props: List[Dict[str, Any]] = []
     if fm.get("status"):
@@ -1572,18 +1669,26 @@ def canonical_to_oscal_component_definition(
             # implementation requirements under the capability so a catalog
             # consumer can discover the offering without interpreting custom
             # vault extensions.
+            incorporated_components = [
+                {
+                    "component-uuid": comp_uuid,
+                    "description": f"Incorporates {component_name}.",
+                }
+            ]
+            for extra_component in extra_components:
+                incorporated_components.append(
+                    {
+                        "component-uuid": extra_component["uuid"],
+                        "description": extra_component["description"],
+                    }
+                )
             capability = {
                 "uuid": _coerce_uuid(None, seed=f"capability:{component_name}"),
                 "name": fm.get("capability_name")
                 or f"{component_name} service capability",
                 "description": fm.get("capability_description")
                 or f"Controls provided by the {component_name} component.",
-                "incorporates-components": [
-                    {
-                        "component-uuid": comp_uuid,
-                        "description": f"Incorporates {component_name}.",
-                    }
-                ],
+                "incorporates-components": incorporated_components,
                 "control-implementations": [
                     _capability_control_implementation(
                         control_implementation, component_name
@@ -1601,7 +1706,7 @@ def canonical_to_oscal_component_definition(
                 "version": str(fm.get("version", "1.0")),
                 "oscal-version": oscal_version,
             },
-            "components": [component],
+            "components": [component, *extra_components],
         }
     }
     if capabilities:

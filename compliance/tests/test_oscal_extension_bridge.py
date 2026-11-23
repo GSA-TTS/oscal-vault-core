@@ -9,7 +9,10 @@ reference-coherent.
 from __future__ import annotations
 
 from compliance.lib import oscal_extension_bridge as bridge
-from compliance.lib.export_oscal import canonical_to_oscal_ssp
+from compliance.lib.export_oscal import (
+    canonical_to_oscal_component_definition,
+    canonical_to_oscal_ssp,
+)
 from compliance.lib.validate_oscal import validate_oscal_document
 
 
@@ -328,8 +331,6 @@ def test_component_capability_declares_component_scoped_controls():
             }
         }
     ]
-    from compliance.lib.export_oscal import canonical_to_oscal_component_definition
-
     doc = canonical_to_oscal_component_definition(component, control_sidecars=controls)
     cd = doc["component-definition"]
     capability = cd["capabilities"][0]
@@ -342,6 +343,48 @@ def test_component_capability_declares_component_scoped_controls():
     ]
     assert requirement["control-id"] == "ac-2"
     result = validate_oscal_document(doc, semantic=True)
+    assert result.valid, result.errors
+
+
+def test_component_capability_incorporates_declared_dependencies():
+    """A capability can compose its primary component and named dependencies."""
+    component = {
+        "frontmatter": {
+            "name": "Authorization service",
+            "component_type": "service",
+            "capability_name": "Authorization standard tier",
+            "capability_components": [
+                {
+                    "component_uuid": "795533ab-9427-4abe-820f-0b571bacfe6d",
+                    "name": "Identity provider",
+                    "description": "Provides user authentication.",
+                },
+                {
+                    "component_uuid": "1b54c434-2969-417a-baa0-24bb2e7638a2",
+                    "name": "Policy engine",
+                    "description": "Evaluates authorization policy.",
+                },
+            ],
+        }
+    }
+    controls = [{"frontmatter": {"control_id": "AC-2"}}]
+
+    document = canonical_to_oscal_component_definition(
+        component, control_sidecars=controls
+    )
+    definition = document["component-definition"]
+    capability = definition["capabilities"][0]
+    assert len(definition["components"]) == 3
+    assert len(capability["incorporates-components"]) == 3
+    assert {
+        item["component-uuid"] for item in capability["incorporates-components"]
+    } == {item["uuid"] for item in definition["components"]}
+    assert not {
+        prop["name"]
+        for prop in definition["components"][0].get("props", [])
+        if prop["name"].startswith("capability_")
+    }
+    result = validate_oscal_document(document, semantic=True)
     assert result.valid, result.errors
 
 
