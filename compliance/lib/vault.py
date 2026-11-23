@@ -1499,7 +1499,12 @@ def build_organization_notes(
         if not slug:
             slug = f"org-{party.get('uuid', 'untitled')}"
         relpath = _note_path("Organizations", slug)
-        role_ids = party_roles.get(str(party.get("uuid") or ""), [])
+        role_ids = list(party_roles.get(str(party.get("uuid") or ""), []))
+        # Registry-injected parties (and some converters) carry role-ids on the party itself
+        # rather than in metadata.responsible-parties.
+        for rid in party.get("role-ids") or []:
+            if rid and rid not in role_ids:
+                role_ids.append(rid)
         role_summary = (
             ", ".join(roleTitles.get(r, r) for r in role_ids)
             if role_ids
