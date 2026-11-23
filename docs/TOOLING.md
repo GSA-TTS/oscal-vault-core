@@ -35,6 +35,26 @@ scoped base-only inventory-trigger exception and its tests. Offline Zizmor canno
 prove online audits. Missing optional DOCX fixtures/backends are reported as
 skipped by tests, never claimed as validated live integrations.
 
+## DOCX narrative formatting
+
+`compliance/lib/docx_narrative_format.py` renders Markdown narrative in filled DOCX table cells
+as Word formatting at render time (headers, `**bold**`, http(s) links, real lists that restart
+at 1). The caller supplies the header and audited-table patterns; the module holds no system
+labels. See ADR-036.
+
+```python
+import re
+from docx import Document
+from compliance.lib import docx_narrative_format as nf
+
+doc = Document("filled.docx")
+header_re = re.compile(r"(?:Customer|Provider):")
+nf.format_document(doc, header_re)
+nf.strip_table_page_breaks(doc)
+assert not any(nf.audit_document(doc, header_re).values())
+doc.save("formatted.docx")
+```
+
 ## GSA assessment workbooks to canonical JSON
 
 Converts the GSA Control Tailoring Workbook and the NIST SP 800-53A test-case workbook (ODS)
