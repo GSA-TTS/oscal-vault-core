@@ -50,7 +50,7 @@ control notes use (`IA-02(02)`, `SI-12`).
 
 ## Consequences
 
-- **Coverage:** Low 158, Moderate 330, High 406 control notes now carry the
+- **Coverage:** Low 158, Moderate 331, High 406 control notes now carry the
   recovered authoring guidance callout.
 - **Non-destructive:** extraction never mutates the document; the fill/roundtrip
   pipeline (R16/R17, ADR-020) is unaffected.

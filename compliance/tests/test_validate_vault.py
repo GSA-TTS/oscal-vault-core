@@ -255,8 +255,8 @@ class TestTemplateGuidanceInvariant:
         # Only 1 control note, and it lacks the guidance callout.
         (controls / "AC-01.md").write_text("---\ntype: oscal.control\n---\n# AC-01\n")
         issues = validate_vault.check_template_guidance_invariant(vault)
-        # Both the count invariant (expected 330) and the guidance invariant fire.
-        assert any("330" in i for i in issues)
+        # Both the count invariant (expected 331) and the guidance invariant fire.
+        assert any("331" in i for i in issues)
         assert any("Template guidance" in i for i in issues)
 
     def test_moderate_template_missing_controls_dir_flagged(self, tmp_path):
@@ -269,7 +269,7 @@ class TestTemplateGuidanceInvariant:
         vault = tmp_path / "moderate-sspp-template-2024"
         controls = vault / "Controls"
         controls.mkdir(parents=True)
-        for i in range(330):
+        for i in range(331):
             (controls / f"AC-{i:03d}.md").write_text(
                 "---\ntype: oscal.control\n---\n> [!note]- Template guidance\n> text\n",
                 encoding="utf-8",
