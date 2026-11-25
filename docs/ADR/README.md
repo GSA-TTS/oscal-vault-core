@@ -54,3 +54,4 @@ Proposed tooling record: [ADR-031](ADR-031-pinned-tooling-and-actions-boundaries
 | ADR-035 | [GSA Assessment Engine and the System-Adapter Boundary](ADR-035-gsa-assessment-engine-and-adapter-boundary.md) | Proposed | 2026-11-17 |
 | ADR-036 | [Generic Markdown-to-Word Narrative Formatting](ADR-036-docx-narrative-formatting.md) | Proposed | 2026-11-23 |
 | ADR-037 | [Restricted Local DOCX Redline](ADR-037-restricted-local-docx-redline.md) | Proposed | 2026-11-23 |
+| ADR-038 | [Dependency-Free DFD Diagram Rendering](ADR-038-dependency-free-dfd-diagrams.md) | Proposed | 2026-11-25 |

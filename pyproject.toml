@@ -10,6 +10,8 @@ dependencies = [
     "docxtpl>=0.18.0",
     "pyyaml>=6.0.1",
     "jsonschema>=4.23.0",
+    # SVG-to-PNG rasterizer for generated diagrams (compliance/lib/dfd_diagram.py).
+    "resvg-py>=0.5.0",
 ]
 
 [dependency-groups]
