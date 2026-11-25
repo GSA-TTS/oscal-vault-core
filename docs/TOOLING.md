@@ -55,6 +55,19 @@ assert not any(nf.audit_document(doc, header_re).values())
 doc.save("formatted.docx")
 ```
 
+## DFD network and data-flow figures
+
+`compliance/scripts/render_dfd_diagram.py` draws the SSP network (`--view network`) or
+data-flow (`--view data-flow`) figure from a CycloneDX threat-model DFD as SVG, or as PNG
+through `resvg-py`. No imaging library is needed. An optional architecture YAML supplies flow
+overrides and `diagram_layout.mode` (`legacy` or `authorization-boundary`). See ADR-038.
+
+```bash
+python compliance/scripts/render_dfd_diagram.py --dfd model/base-dfd.cdx.json \
+  --architecture model/architecture.yaml --view network \
+  --title "Figure 9-1. Network Diagram" --output build/network.png
+```
+
 ## Restricted local DOCX redline
 
 `compliance/scripts/generate_docx_redline.py` writes a full DOCX redline, split DOCX files,
