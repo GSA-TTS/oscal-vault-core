@@ -214,3 +214,57 @@ def test_diff_ccc_main_writes_stable_csv(tmp_path: Path) -> None:
 
     with out.open(newline="", encoding="utf-8") as fh:
         assert list(csv.DictReader(fh)) == []
+
+
+def test_diff_ccc_reads_enhancement_ids_from_named_columns(tmp_path: Path) -> None:
+    current = tmp_path / "current.yaml"
+    new = tmp_path / "new.yaml"
+    out = tmp_path / "diff.csv"
+    current.write_text(
+        yaml.safe_dump(
+            {
+                "controls": [
+                    {
+                        "control_id": "AC-2",
+                        "core_id": "AC-02",
+                        "gsa_ccc_control_type": "Hybrid",
+                    },
+                    {
+                        "control_id": "AC-2",
+                        "core_id": "AC-02(01)",
+                        "gsa_ccc_control_type": "Hybrid",
+                    },
+                    {
+                        "control_id": "CA-8",
+                        "core_id": "-",
+                        "service_id": "CA-08 (02)",
+                        "gsa_ccc_control_type": "Common",
+                    },
+                ]
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    new.write_text(
+        yaml.safe_dump(
+            {"controls": [{"control_id": "AC-2(1)", "federal_type": "Common"}]},
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="duplicate canonical control ID"):
+        diff_ccc.main(["--current", str(current), "--new", str(new), "--out", str(out)])
+
+    args = ["--current", str(current), "--new", str(new), "--out", str(out)]
+    args += ["--current-id-field", "core_id", "--current-id-field", "service_id"]
+    assert diff_ccc.main(args) == 0
+
+    with out.open(newline="", encoding="utf-8") as fh:
+        rows = [(row["control_id"], row["delta"]) for row in csv.DictReader(fh)]
+    assert rows == [
+        ("AC-2", "REMOVED"),
+        ("CA-8(2)", "REMOVED"),
+        ("AC-2(1)", "TYPE-CHANGED"),
+    ]

@@ -11,6 +11,7 @@ import argparse
 import csv
 import sys
 from pathlib import Path
+from typing import Sequence
 
 import yaml
 
@@ -28,11 +29,23 @@ def _norm(cid: str) -> str:
     return canonical_control_id(cid) if cid and cid.strip() else ""
 
 
-def _load(path: Path) -> dict[str, dict]:
+_BLANK_IDS = {"", "-", "n/a", "none"}
+
+
+def _row_id(row: dict, id_fields: Sequence[str]) -> str:
+    """Return the first usable control ID from ``id_fields`` (then ``control_id``)."""
+    for name in (*id_fields, "control_id"):
+        value = str(row.get(name) or "").strip()
+        if value.casefold() not in _BLANK_IDS:
+            return _norm(value)
+    raise ValueError(f"row has no control ID in {[*id_fields, 'control_id']}: {row}")
+
+
+def _load(path: Path, id_fields: Sequence[str] = ()) -> dict[str, dict]:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     out: dict[str, dict] = {}
     for row in data.get("controls", []):
-        cid = _norm(row["control_id"])
+        cid = _row_id(row, id_fields)
         if cid in out:
             raise ValueError(f"duplicate canonical control ID in CCC YAML: {cid}")
         out[cid] = row
@@ -100,10 +113,26 @@ def main(argv=None) -> int:
     ap.add_argument("--current", required=True, type=Path)
     ap.add_argument("--new", required=True, type=Path)
     ap.add_argument("--out", required=True, type=Path)
+    ap.add_argument(
+        "--current-id-field",
+        action="append",
+        default=[],
+        help=(
+            "Column holding the current side's control ID, tried in order before "
+            "control_id (repeatable). Use when control_id repeats the base control "
+            "for each enhancement."
+        ),
+    )
+    ap.add_argument(
+        "--new-id-field",
+        action="append",
+        default=[],
+        help="Column holding the new side's control ID (repeatable); see above",
+    )
     args = ap.parse_args(argv)
 
-    current = _load(args.current)
-    new = _load(args.new)
+    current = _load(args.current, args.current_id_field)
+    new = _load(args.new, args.new_id_field)
     rows = diff(current, new)
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
