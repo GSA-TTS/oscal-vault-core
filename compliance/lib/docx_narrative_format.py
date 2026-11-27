@@ -29,6 +29,7 @@ from docx.shared import Pt
 from docx.table import Table, _Cell
 
 _INLINE_RE = re.compile(r"\*\*(.+?)\*\*|\[([^\]\n]+)\]\((https?://[^\s)]+)\)")
+_BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 _LIST_ITEM_RE = re.compile(r"^(\s*)(\d+[.)]|[-*\u2022])\s+(\S.*)$")
 _SPACE_BEFORE = Pt(6)
 _HANGING_TWIPS = 360
@@ -227,6 +228,40 @@ def _already_formatted(cell: Any) -> bool:
     )
 
 
+def _render_literal_bold_in_paragraph(paragraph: Any) -> bool:
+    """Render residual Markdown bold without disturbing native hyperlinks or lists.
+
+    Some template-owned cells already contain Word-native list or hyperlink XML.
+    Rebuilding their whole cell would discard that structure, so transform only a
+    plain run which still contains a complete ``**bold**`` span.
+    """
+    changed = False
+    for run in list(paragraph.runs):
+        if not _BOLD_RE.search(run.text):
+            continue
+        parts = _BOLD_RE.split(run.text)
+        run.text = parts[0]
+        insert_after = run._r
+        for index, part in enumerate(parts[1:], start=1):
+            replacement = paragraph.add_run(part)
+            replacement.bold = index % 2 == 1
+            insert_after.addnext(replacement._r)
+            insert_after = replacement._r
+        changed = True
+    return changed
+
+
+def render_literal_bold(doc: Any) -> int:
+    """Render any remaining Markdown bold spans while retaining native DOCX structure."""
+    return sum(
+        _render_literal_bold_in_paragraph(paragraph)
+        for table in doc.tables
+        for row in table.rows
+        for cell in row.cells
+        for paragraph in cell.paragraphs
+    )
+
+
 def format_cell(cell: Any, header_re: re.Pattern[str] | None) -> bool:
     text = _cell_text(cell)
     if (
@@ -265,6 +300,7 @@ def format_document(doc: Any, header_re: re.Pattern[str] | None) -> int:
         for tc in list(tbl.iterchildren(qn("w:tr"))):
             for cell_el in tc.iterchildren(qn("w:tc")):
                 formatted += format_cell(_Cell(cell_el, table), header_re)
+    formatted += render_literal_bold(doc)
     return formatted
 
 
