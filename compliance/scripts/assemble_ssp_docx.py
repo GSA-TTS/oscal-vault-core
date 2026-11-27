@@ -13,7 +13,6 @@ Combines the core DOCX stages into one reusable assembly pipeline:
 
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -71,6 +70,9 @@ def assemble_ssp_docx(
     check_parity_flag: bool = False,
     fail_unmatched_source: bool = False,
     fail_duplicate_targets: bool = False,
+    narrative_format: dict[str, Any] | None = None,
+    manifest_repository_root: Path | None = None,
+    normalize_output_zip: bool = False,
 ) -> int:
     """Execute the end-to-end SSP DOCX assembly pipeline and write the manifest."""
     from compliance.lib.anchored_content import (
@@ -79,6 +81,11 @@ def assemble_ssp_docx(
     )
     from compliance.lib.docx_chapter_tables import fill_chapter_tables
     from compliance.lib.docx_fill import check_parity, fill_template, reextract_filled
+    from compliance.lib.docx_rendering import (
+        format_rendered_narratives,
+        normalize_docx_zip,
+        write_manifest,
+    )
     from compliance.lib.docx_supplemental_controls import (
         append_supplemental_controls,
         append_unwritten_statements,
@@ -196,7 +203,18 @@ def assemble_ssp_docx(
     manifest["fidelity"] = compute_fidelity(
         manifest, chapter_manifest, anchored_results
     )
-    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    if narrative_format is not None:
+        labels = narrative_format.get("implementation_layer_labels") or []
+        manifest["narrative_format"] = format_rendered_narratives(
+            result.output_path,
+            implementation_layer_labels=labels,
+            include_supplemental_control_tables=bool(
+                narrative_format.get("include_supplemental_control_tables", False)
+            ),
+        )
+    write_manifest(manifest_path, manifest, repository_root=manifest_repository_root)
+    if normalize_output_zip:
+        normalize_docx_zip(result.output_path)
     print(
         "control tables: "
         f"{manifest['matching_control_ids_filled']}/{manifest['source_controls']} matched; "
