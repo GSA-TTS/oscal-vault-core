@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
+
+import pytest
 
 SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
 
@@ -59,3 +62,35 @@ def test_compute_fidelity_defaults_to_unity_when_counts_are_zero() -> None:
         "chapter_rows": 1.0,
         "anchored_content": 1.0,
     }
+
+
+def test_manifest_writer_makes_repository_paths_portable(tmp_path: Path) -> None:
+    rendering = _load("docx_rendering", SCRIPTS.parent / "lib" / "docx_rendering.py")
+    manifest = tmp_path / "manifest.json"
+    rendering.write_manifest(
+        manifest,
+        {"diagram": str(tmp_path / "build" / "diagram.png")},
+        repository_root=tmp_path,
+    )
+    assert json.loads(manifest.read_text()) == {"diagram": "build/diagram.png"}
+
+
+def test_narrative_formatting_accepts_consumer_supplied_labels(tmp_path: Path) -> None:
+    docx = pytest.importorskip("docx")
+    rendering = _load(
+        "docx_rendering_with_labels", SCRIPTS.parent / "lib" / "docx_rendering.py"
+    )
+    output = tmp_path / "ssp.docx"
+    document = docx.Document()
+    table = document.add_table(rows=2, cols=1)
+    table.cell(0, 0).text = "AC-02"
+    table.cell(1, 0).text = "Consumer Layer: Use **formatted** prose."
+    document.save(output)
+
+    result = rendering.format_rendered_narratives(
+        output,
+        implementation_layer_labels=["Consumer Layer:"],
+    )
+
+    assert result["formatted_cells"] == 1
+    assert not any(result["audit"].values())
