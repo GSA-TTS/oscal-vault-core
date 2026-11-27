@@ -211,6 +211,7 @@ def assemble_ssp_docx(
             include_supplemental_control_tables=bool(
                 narrative_format.get("include_supplemental_control_tables", False)
             ),
+            audit_tables=narrative_format.get("audit_tables"),
         )
     write_manifest(manifest_path, manifest, repository_root=manifest_repository_root)
     if normalize_output_zip:
