@@ -20,6 +20,12 @@ from compliance.lib import docx_narrative_format
 _ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
 _CONTROL_TABLE_RE = re.compile(r"^[A-Z]{2}-\d+")
 _CONTROL_OR_SUPPLEMENTAL_TABLE_RE = re.compile(r"^(?:[A-Z]{2}-\d+|Control ID\b)")
+_ALL_TABLES_RE = re.compile(r".*", re.DOTALL)
+_AUDIT_TABLE_SCOPES = {
+    "control": _CONTROL_TABLE_RE,
+    "control-and-supplemental": _CONTROL_OR_SUPPLEMENTAL_TABLE_RE,
+    "all": _ALL_TABLES_RE,
+}
 
 
 def portable_manifest_paths(value: Any, repository_root: Path) -> Any:
@@ -58,6 +64,7 @@ def format_rendered_narratives(
     *,
     implementation_layer_labels: list[str],
     include_supplemental_control_tables: bool = False,
+    audit_tables: str | None = None,
 ) -> dict[str, Any]:
     """Render Markdown in control narratives and return auditable formatting facts."""
     if not all(
@@ -83,11 +90,13 @@ def format_rendered_narratives(
         if implementation_layer_labels
         else None
     )
-    table_re = (
-        _CONTROL_OR_SUPPLEMENTAL_TABLE_RE
-        if include_supplemental_control_tables
-        else _CONTROL_TABLE_RE
-    )
+    default_scope = "control-and-supplemental" if include_supplemental_control_tables else "control"
+    audit_scope = audit_tables or default_scope
+    try:
+        table_re = _AUDIT_TABLE_SCOPES[audit_scope]
+    except KeyError as exc:
+        allowed = ", ".join(sorted(_AUDIT_TABLE_SCOPES))
+        raise ValueError(f"audit_tables must be one of: {allowed}") from exc
     document = Document(output_path)
     result = {
         "formatted_cells": docx_narrative_format.format_document(document, header_re),
