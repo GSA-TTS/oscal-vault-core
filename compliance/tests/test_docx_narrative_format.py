@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from docx import Document
+from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
 from compliance.lib import docx_narrative_format as nf
@@ -196,6 +197,20 @@ def test_audit_table_pattern_is_caller_supplied():
     assert not any(nf.audit_document(doc, None).values())
     custom = re.compile(r"^Section \d+")
     assert nf.audit_document(doc, None, table_re=custom)["literal_bold"] == 1
+
+
+def test_format_document_renders_bold_in_cell_with_native_hyperlink() -> None:
+    doc = Document()
+    table = doc.add_table(rows=1, cols=1)
+    cell = table.cell(0, 0)
+    cell.text = "Native link stays; **bold** is rendered."
+    hyperlink = OxmlElement("w:hyperlink")
+    cell.paragraphs[0]._p.append(hyperlink)
+
+    assert nf.format_document(doc, None) == 1
+    assert "**" not in cell.text
+    assert any(run.bold for run in cell.paragraphs[0].runs if run.text == "bold")
+    assert cell._tc.findall(".//" + qn("w:hyperlink"))
 
 
 def test_no_system_vocabulary_in_module():
