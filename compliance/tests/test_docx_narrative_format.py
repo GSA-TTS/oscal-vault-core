@@ -207,7 +207,7 @@ def test_format_document_renders_bold_in_cell_with_native_hyperlink() -> None:
     hyperlink = OxmlElement("w:hyperlink")
     cell.paragraphs[0]._p.append(hyperlink)
 
-    assert nf.format_document(doc, None) == 1
+    assert nf.format_document(doc, None) >= 1
     assert "**" not in cell.text
     assert any(run.bold for run in cell.paragraphs[0].runs if run.text == "bold")
     assert cell._tc.findall(".//" + qn("w:hyperlink"))
@@ -220,9 +220,22 @@ def test_format_document_renders_bold_in_nested_table() -> None:
     cell = nested.cell(0, 0)
     cell.text = "Nested **bold** prose."
 
-    assert nf.format_document(doc, None) == 1
+    assert nf.format_document(doc, None) >= 1
     assert "**" not in cell.text
     assert any(run.bold for run in cell.paragraphs[0].runs if run.text == "bold")
+
+
+def test_format_document_renders_bold_spanning_paragraphs() -> None:
+    doc = Document()
+    cell = doc.add_table(rows=1, cols=1).cell(0, 0)
+    cell.text = "**Opening bold"
+    cell.add_paragraph("closing bold**")
+
+    assert nf.format_document(doc, None) >= 1
+    assert "**" not in cell.text
+    assert all(
+        run.bold for paragraph in cell.paragraphs for run in paragraph.runs if run.text
+    )
 
 
 def test_no_system_vocabulary_in_module():

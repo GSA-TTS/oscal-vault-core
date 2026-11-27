@@ -228,7 +228,7 @@ def _already_formatted(cell: Any) -> bool:
     )
 
 
-def _render_literal_bold_in_paragraph(paragraph: Any) -> bool:
+def _render_literal_bold_in_cell(cell: Any) -> bool:
     """Render residual Markdown bold without disturbing native hyperlinks or lists.
 
     Some template-owned cells already contain Word-native list or hyperlink XML.
@@ -236,30 +236,36 @@ def _render_literal_bold_in_paragraph(paragraph: Any) -> bool:
     plain run which still contains a complete ``**bold**`` span.
     """
     changed = False
-    for run in list(paragraph.runs):
-        if not _BOLD_RE.search(run.text):
-            continue
-        parts = _BOLD_RE.split(run.text)
-        run.text = parts[0]
-        insert_after = run._r
-        for index, part in enumerate(parts[1:], start=1):
-            replacement = paragraph.add_run(part)
-            replacement.bold = index % 2 == 1
-            insert_after.addnext(replacement._r)
-            insert_after = replacement._r
-        changed = True
+    bold = False
+    for paragraph in cell.paragraphs:
+        for run in list(paragraph.runs):
+            if "**" not in run.text:
+                if bold:
+                    run.bold = True
+                continue
+            parts = run.text.split("**")
+            run.text = parts[0]
+            if bold:
+                run.bold = True
+            insert_after = run._r
+            for part in parts[1:]:
+                bold = not bold
+                replacement = paragraph.add_run(part)
+                replacement.bold = bold
+                insert_after.addnext(replacement._r)
+                insert_after = replacement._r
+            changed = True
     return changed
 
 
 def render_literal_bold(doc: Any) -> int:
     """Render any remaining Markdown bold spans while retaining native DOCX structure."""
     return sum(
-        _render_literal_bold_in_paragraph(paragraph)
+        _render_literal_bold_in_cell(cell)
         for table_xml in doc.element.body.iter(qn("w:tbl"))
         for row_xml in table_xml.iterchildren(qn("w:tr"))
         for cell_xml in row_xml.iterchildren(qn("w:tc"))
         for cell in [_Cell(cell_xml, Table(table_xml, doc))]
-        for paragraph in cell.paragraphs
     )
 
 
