@@ -255,9 +255,10 @@ def render_literal_bold(doc: Any) -> int:
     """Render any remaining Markdown bold spans while retaining native DOCX structure."""
     return sum(
         _render_literal_bold_in_paragraph(paragraph)
-        for table in doc.tables
-        for row in table.rows
-        for cell in row.cells
+        for table_xml in doc.element.body.iter(qn("w:tbl"))
+        for row_xml in table_xml.iterchildren(qn("w:tr"))
+        for cell_xml in row_xml.iterchildren(qn("w:tc"))
+        for cell in [_Cell(cell_xml, Table(table_xml, doc))]
         for paragraph in cell.paragraphs
     )
 

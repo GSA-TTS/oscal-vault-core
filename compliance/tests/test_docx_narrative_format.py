@@ -213,6 +213,18 @@ def test_format_document_renders_bold_in_cell_with_native_hyperlink() -> None:
     assert cell._tc.findall(".//" + qn("w:hyperlink"))
 
 
+def test_format_document_renders_bold_in_nested_table() -> None:
+    doc = Document()
+    outer = doc.add_table(rows=1, cols=1)
+    nested = outer.cell(0, 0).add_table(rows=1, cols=1)
+    cell = nested.cell(0, 0)
+    cell.text = "Nested **bold** prose."
+
+    assert nf.format_document(doc, None) == 1
+    assert "**" not in cell.text
+    assert any(run.bold for run in cell.paragraphs[0].runs if run.text == "bold")
+
+
 def test_no_system_vocabulary_in_module():
     source = nf.__file__
     text = open(source, encoding="utf-8").read()
