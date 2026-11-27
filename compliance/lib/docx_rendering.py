@@ -90,7 +90,9 @@ def format_rendered_narratives(
         if implementation_layer_labels
         else None
     )
-    default_scope = "control-and-supplemental" if include_supplemental_control_tables else "control"
+    default_scope = (
+        "control-and-supplemental" if include_supplemental_control_tables else "control"
+    )
     audit_scope = audit_tables or default_scope
     try:
         table_re = _AUDIT_TABLE_SCOPES[audit_scope]

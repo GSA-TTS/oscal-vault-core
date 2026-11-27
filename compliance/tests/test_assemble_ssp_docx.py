@@ -106,7 +106,9 @@ def test_narrative_formatting_can_audit_all_tables(tmp_path: Path, monkeypatch) 
     table = document.add_table(rows=1, cols=1)
     table.cell(0, 0).text = "Encryption: **required**"
     document.save(output)
-    monkeypatch.setattr(rendering.docx_narrative_format, "format_document", lambda *_: 0)
+    monkeypatch.setattr(
+        rendering.docx_narrative_format, "format_document", lambda *_: 0
+    )
 
     result = rendering.format_rendered_narratives(
         output,
